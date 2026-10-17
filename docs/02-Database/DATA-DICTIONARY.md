@@ -46,17 +46,16 @@ CREATE TABLE employees (
 );
 ```
 
-### `devices` Table
+### `users` Table (2-Tier RBAC Only)
 ```sql
-CREATE TABLE devices (
+CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    computer_name VARCHAR(100) UNIQUE NOT NULL, -- %COMPUTERNAME%
-    device_token_hash VARCHAR(64) UNIQUE NOT NULL, -- SHA-256 enrollment token
-    location_id UUID NOT NULL REFERENCES locations(id),
-    department_id UUID NOT NULL REFERENCES departments(id),
-    ip_address VARCHAR(45),
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(150) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL, -- Argon2id
+    full_name VARCHAR(150) NOT NULL,
+    role VARCHAR(20) NOT NULL CHECK (role IN ('it', 'admin')),
     is_active BOOLEAN DEFAULT TRUE,
-    last_seen_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 ```

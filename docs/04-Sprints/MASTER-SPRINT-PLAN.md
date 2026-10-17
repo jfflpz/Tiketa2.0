@@ -96,14 +96,13 @@ flowchart TD
 
 ---
 
-## 4. 1-Click IT Setup Script (`deploy/setup_tiketa_pc.bat`)
+## 4. Pure Employee ID Intake Protocol (Zero Setup, Zero Tokens)
 
-To eliminate manual browser configuration when IT services depot computers, `deploy/setup_tiketa_pc.bat` enables 1-click deployment:
-- Auto-detects `%COMPUTERNAME%`.
-- Asks for 2 numbers: Location (`1. Pasay, 2. Cubao...`) and Department (`1. Dispatch, 2. Cashier...`).
-- Uses native Windows `curl.exe` to register the machine in PostgreSQL.
-- Creates `C:\Users\Public\Desktop\🚨 REPORT IT PROBLEM.url` so the icon appears for all Windows accounts.
-- Launches the browser to verify in under 5 seconds.
+To eliminate all manual client-side configuration and device management overhead:
+- **Zero Client Scripts / Zero Setup**: No `.bat` scripts, no device cookies, and no `devices` database table.
+- **Pure Employee ID Validation**: Employees navigate directly to `/report` from any terminal workstation or mobile browser.
+- **Auto-Locked Branch Routing**: Typing a verified Employee ID (e.g., `FS-1042`) immediately locks Location and Department from the PostgreSQL `employees` table, preventing 100% of human misrouting errors.
+- **IT Fallback Quick Intake (Hotkey `v`)**: Technicians capture walk-in and Viber requests in under 4 seconds on `/queue`, preserving 100% of executive operational metrics without employee resistance.
 
 ---
 

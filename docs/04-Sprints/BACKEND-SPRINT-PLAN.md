@@ -1,7 +1,7 @@
-# Tiketa 2.0 — Backend & DevOps Engineering Sprint Plan (Dockerized + Solution 4 Device Access)
+# Tiketa 2.0 — Backend & DevOps Engineering Sprint Plan (Pure Employee ID Intake & 2-Tier RBAC)
 
 ## Goal Description
-Formulate a dedicated, production-grade **Backend & DevOps Sprint Plan** for **Tiketa 2.0**, combining **Docker Engine (v29.8.2)**, **Docker Compose (v5.6.0)**, **GitHub Actions CI**, **In-Repo Second Brain**, and the approved **Solution 4: Automatic Department Access on Company PCs** from the management decision report ([`Tiketa-Employee-Access-Decision-Report.pdf`](file:///C:/Users/Kanor/Documents/ARCH/01-Projects/Tiketa/Tiketa-Employee-Access-Decision-Report.pdf)).
+Formulate a dedicated, production-grade **Backend & DevOps Sprint Plan** for **Tiketa 2.0**, combining **Docker Engine (v29.8.2)**, **Docker Compose (v5.6.0)**, **GitHub Actions CI**, **In-Repo Second Brain**, and the refined **Pure Employee ID Validated Intake** architecture (zero accounts, zero tokens, zero device setup overhead).
 
 **Lead**: Jefferson Lopez (Backend & DevOps)  
 **Peer Reviewer**: Rafael Emmanuel Codiñera (Frontend)  
@@ -9,24 +9,23 @@ Formulate a dedicated, production-grade **Backend & DevOps Sprint Plan** for **T
 
 ---
 
-## 1. Account Setup Architecture: Solution 4 (Automatic PC Access + IT Fallback)
+## 1. Account & Ticket Intake Architecture: Pure Employee ID Validation
 
-As established in [`Tiketa-Employee-Access-Decision-Report.pdf`](file:///C:/Users/Kanor/Documents/ARCH/01-Projects/Tiketa/Tiketa-Employee-Access-Decision-Report.pdf), Tiketa rejects workforce-wide individual employee accounts (avoiding 500+ forgotten passwords across non-technical terminal staff). Instead, it implements a **hybrid 2-tier access model**:
+Tiketa eliminates both workforce individual accounts (avoiding 500+ forgotten passwords) and client-side device tokens/scripts (avoiding PC setup overhead). Instead, it implements a **clean, 2-tier access model**:
 
 ```mermaid
 flowchart TD
-    subgraph StaffAccess ["1. Terminal Staff: Zero Personal Credentials (Solution 4)"]
-        PC["Approved Company PC<br/>(Dispatch, Cashier, Shop Booth)"]
-        Shortcut["Desktop Shortcut: '🚨 Report IT Problem.url'"]
-        DeviceCookie["Restricted Device Session Cookie<br/>(Scoped to Location & Dept, Revocable per PC)"]
-        Form["Simple Ticket Form (/report)<br/>Auto-binds Dept/Hub | Requester enters Name & Issue"]
+    subgraph StaffAccess ["1. Terminal Staff: Zero Personal Credentials & Zero Device Setup"]
+        AnyDevice["Any Terminal PC, Phone, or Laptop"]
+        BrowserURL["Intranet URL: http://tiketa.fivestarbus.com/report"]
+        Form["Simple Web Kiosk (/report)<br/>• Enters Employee ID (e.g. FS-1042)<br/>• Auto-locks Location & Dept in <100ms<br/>• Taps 1 of 6 Category Buttons<br/>• Enters Brief Description"]
         
-        PC --> Shortcut --> DeviceCookie --> Form
+        AnyDevice --> BrowserURL --> Form
     end
 
     subgraph FallbackAccess ["2. Fallback: Unavoidable Viber / Walk-ins"]
         Walkin["Terminal Staff Walk-In / Viber Chat"]
-        QuickIntake["IT Queue Quick Intake (Hotkey 'v')<br/>Tech logs minimal ticket before fixing"]
+        QuickIntake["IT Queue Quick Intake (Hotkey 'v')<br/>Tech logs Employee ID + Category in <4s"]
         Walkin --> QuickIntake
     end
 
@@ -41,18 +40,21 @@ flowchart TD
     TechCreds --> Engine
 ```
 
-### 1.1 How Accounts & PC Sessions Are Set Up (Technical Workflow)
-1. **IT Technicians & Supervisors**:
+### 1.1 How Pure Employee ID Intake Works
+1. **Zero Device Enrollment / Zero Setup**:
+   - No `.bat` scripts, no device cookies, no computer names, and no `devices` table in PostgreSQL.
+   - Any browser accessing `/report` can submit a ticket.
+2. **Instant Profile Auto-Binding (`GET /api/v1/employees/lookup?q=FS-1042`)**:
+   - The employee enters their Employee ID No. (e.g. `FS-1042`).
+   - The backend queries the indexed `employees` directory table.
+   - The verified employee record **hard-locks** Location and Department as read-only fields. The employee never chooses from dropdowns, eliminating 100% of misrouted tickets.
+3. **Ghost Contact Elimination**:
+   - Submissions are validated against the database. Unrecognized IDs are rejected immediately.
+4. **IT Technicians & Supervisors**:
    - Provisioned via Admin governance (`POST /api/v1/admin/users`).
    - Authenticate with personal credentials via Argon2id hashing and dual-token JWT (`/queue`, `/reports`).
-2. **Terminal Company PCs (Solution 4)**:
-   - **One-Time IT Setup**: When IT deploys or services a company PC at a terminal (e.g. Pasay Dispatch PC 1), the IT technician logs into the Device Enrollment endpoint (`POST /api/v1/auth/enroll-device`).
-   - **Restricted Device Session**: The server issues a long-lived, restricted `device_session_token` stored in an `HttpOnly; Secure; SameSite=Strict` cookie tied to that machine's `location_id` and `department_id`.
-   - **Zero Password in Shortcut**: The desktop shortcut is simply `http://tiketa.local/report` (or company intranet URL). No secrets, passwords, or tokens exist inside the `.url` shortcut file.
-   - **Restricted Scope (Shared Safeguards)**: The device session can ONLY submit tickets for that provisioned department. It has zero access to read IT notes, other employees' private histories, or supervisor dashboards.
-   - **Per-PC Revocation**: If a terminal PC is reassigned or retired, IT revokes that individual device session in `POST /api/v1/admin/devices/{id}/revoke` without changing any passwords.
-3. **Fallback Intake (Viber & Walk-ins)**:
-   - For phone calls, walk-ins, or emergency Viber chats, the IT technician taps hotkey `v` on the IT Queue to execute a 4-second Quick Intake, capturing the requester name, issue, and location before resolving.
+5. **Fallback Intake (Hotkey `v`)**:
+   - For phone calls, walk-ins, or emergency Viber chats, the IT technician taps hotkey `v` on the IT Queue to execute a 4-second Quick Intake, capturing the employee ID, category, and issue before resolving.
 
 ---
 

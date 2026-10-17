@@ -11,8 +11,7 @@
 ```mermaid
 flowchart TD
     subgraph ClientLayer ["Client Layer"]
-        Kiosk["Terminal Kiosks (/report)<br/>• 6 Big Issue Buttons<br/>• Zero passwords / zero accounts<br/>• Employee ID Auto-Binding (e.g. FS-1042)"]
-        DeskShortcut["1-Click Desktop Shortcut<br/>• setup_tiketa_pc.bat<br/>• Auto-identifies PC & Location"]
+        Kiosk["Terminal Employee Web Kiosk (/report)<br/>• 6 Big Category Buttons<br/>• Zero passwords, zero accounts, zero tokens<br/>• Employee ID Auto-Binding (e.g. FS-1042)"]
         Queue["IT Operations Queue (/queue)<br/>• Hotkey 'c' (Claim)<br/>• Hotkey 'v' (Fallback Quick Intake)"]
         Reports["Admin Analytics Dashboard (/reports)<br/>• 8 Executive Reports<br/>• 4 Recharts Widgets"]
     end
@@ -29,12 +28,11 @@ flowchart TD
     end
 
     subgraph DataLayer ["Data & Cache Layer"]
-        Postgres[("PostgreSQL 16 (tiketa-postgres)<br/>12 Normalized Relational Tables")]
+        Postgres[("PostgreSQL 16 (tiketa-postgres)<br/>Normalized Relational Tables")]
         RedisDB[("Redis 7 (tiketa-redis)<br/>Token Blacklist & Rate Limiting")]
     end
 
     Kiosk --> Proxy
-    DeskShortcut --> Proxy
     Queue --> Proxy
     Reports --> Proxy
     Proxy --> BackendAPI
