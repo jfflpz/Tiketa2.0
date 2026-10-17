@@ -3,7 +3,7 @@
 **Project**: Tiketa 2.0  
 **Current Milestone**: Sprint 1 (Foundation & Primitives)  
 **Specification Baseline**: SRS v2.1.0 (`ARCH/01-Projects/Tiketa/SRS.md`)  
-**Status**: In Progress (Frontend Foundation Verified; Backend Foundation Ready for Execution)
+**Status**: Completed (Sprint 1 Foundation & Database Primitives Verified)
 
 ---
 
@@ -24,15 +24,18 @@
 
 ---
 
-### ⏳ Pending: Backend Foundation & Database Primitives
+### ✅ Completed: Backend Foundation & Database Primitives
+- **Date**: 2026-10-17
 - **Lead**: Jefferson Lopez
-- **Target Deliverables**:
+- **Deliverables Completed**:
   - `docker-compose.yml`: Multi-container orchestration (`tiketa-backend`, `tiketa-postgres` [16-Alpine], `tiketa-redis` [7-Alpine]).
+  - `backend/Dockerfile` & `requirements.txt`: Python 3.12+ container environment with SQLAlchemy 2.0 Async, Asyncpg, Greenlet, Pydantic v2, and Redis.
   - `backend/app/core/config.py`: Pydantic settings loading `.env` configuration.
   - `backend/app/db/session.py`: Async SQLAlchemy 2.0 engine with connection pooling.
-  - `backend/app/models/`: Declarative models for `Company`, `Location`, `Department`, `Employee` (for ID auto-lookup), and `User` (2-tier RBAC).
-  - `backend/scripts/seed_dictionaries.py`: Data seeder populating the 11 corporate transit fleets, 15 terminal hubs, and 19 operational departments.
-  - Verification: `GET /health` responding with HTTP 200.
+  - `backend/app/models/`: Declarative models for `Company`, `Location`, `Department`, `Employee` (for pure ID auto-lookup), and `User` (2-tier RBAC).
+  - `backend/scripts/seed_dictionaries.py`: Seeded 11 corporate transit fleets, 15 terminal hubs, 19 operational departments, and baseline employee `FS-1042`.
+  - `backend/app/main.py`: FastAPI entry point with CORS, lifespan table creation, and `/health` endpoint.
+  - **Verification**: `GET /health` responding with HTTP 200 `healthy`; all 3 containers running healthy.
 
 ---
 
