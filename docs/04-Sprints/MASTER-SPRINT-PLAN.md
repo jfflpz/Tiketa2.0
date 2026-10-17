@@ -23,7 +23,7 @@ tags: [tiketa, sprint-plan, agile, docker, fast-api, react, typescript, postgres
 Tiketa 2.0 replaces the legacy PHP 8.2 / Laravel 11 monolith with a modern, decoupled **Python 3.12+ (FastAPI) + React 18/19 SPA (Strict TypeScript 5+)** architecture running on **Docker Compose (PostgreSQL 16 Alpine, Redis 7 Alpine)**.
 
 ### Architectural Invariants:
-1. **Zero Workforce Employee Accounts**: General terminal staff (cashiers, conductors, dispatchers, mechanics) do not have login accounts or passwords. They submit tickets via `/report` using verified **Employee ID No.** (auto-binding terminal location and department) or via 1-click company PC desktop shortcuts.
+1. **Zero Workforce Employee Accounts**: General terminal staff (cashiers, conductors, dispatchers, mechanics) do not have login accounts or passwords. They submit tickets via `/report` using verified **Employee ID No.** (auto-binding terminal location and department) (no device enrollment).
 2. **Simplified 2-Tier RBAC**: Authenticated accounts in `users` are strictly reserved for **IT Technicians** (`role: 'it'`) and **Administrators** (`role: 'admin'`).
 3. **IT Fallback Quick Intake (Hotkey `v`)**: Unavoidable Viber chats and walk-in requests are logged by technicians on the IT Queue in <4 seconds before troubleshooting, preserving 100% of executive labor metrics.
 4. **In-Repository Second Brain**: `AGENTS.md` and `docs/AI-CONTEXT.md` ensure all human engineers and AI coding assistants remain synchronized with the single source of truth.
@@ -65,7 +65,7 @@ flowchart TD
 
 | Sprint & Track | Deliverables | SRS Section & Requirement ID | Deliverable Details |
 | :--- | :--- | :--- | :--- |
-| **Sprint 1: Foundation**<br/>*(Backend: Jefferson)* | B1.0 – B1.6 | **Section 2 & 3**<br/>• `SCHEMA-01` to `SCHEMA-12`<br/>• Docker Compose stack | Docker Compose (`backend`, `db`, `redis`), PostgreSQL 16 schema (12 tables including `employees` and `devices`), Alembic migrations, transit seeders. |
+| **Sprint 1: Foundation**<br/>*(Backend: Jefferson)* | B1.0 – B1.6 | **Section 2 & 3**<br/>• `SCHEMA-01` to `SCHEMA-12`<br/>• Docker Compose stack | Docker Compose (`backend`, `db`, `redis`), PostgreSQL 16 schema (migration-defined schema including `employees` and no `devices`), Alembic migrations, transit seeders. |
 | **Sprint 1: Foundation**<br/>*(Frontend: Rafael)* | F1.0 – F1.5 | **Section 9**<br/>• Strict TypeScript standards<br/>• Tailwind corporate tokens | Vite React 18 SPA scaffold, `"strict": true`, TypeScript models mirroring backend Pydantic schemas, Axios client core. |
 | **Sprint 2: Auth & RBAC**<br/>*(Backend: Jefferson)* | B2.1 – B2.7 | **Section 4 & 5**<br/>• `FR-AUTH-01` (Zero-account intake)<br/>• `FR-AUTH-02` (2-Tier RBAC)<br/>• `FR-SEC-01` (Argon2id + JWT) | Argon2id hasher, 15-min access tokens, HTTP-Only refresh cookies, Redis JTI token revocation, employee lookup API (`/api/v1/employees/lookup`). |
 | **Sprint 2: IT Login**<br/>*(Frontend: Rafael)* | F2.1 – F2.5 | **Section 4.2 & 9.1**<br/>• IT Operations Login (`/login`)<br/>• Route guards (`ProtectedRoute`) | Simplified IT Operations Login (no dual tabs), Zustand RAM auth store, Axios 401 silent token refresh queue. |
@@ -79,14 +79,14 @@ flowchart TD
 
 ## 3. Team Git Standards & GitHub Actions CI
 
-### 3.1 Branch Protection Rules on `main`
+### 3.1 Integration and merge custody
 - **Protected `main` branch**: Direct git push is blocked.
-- **Linear rebase protocol**: `git fetch origin main && git rebase origin/main`.
+- **Linear rebase protocol**: `git fetch origin develop && git rebase origin/develop`.
 - **Merge method**: Always "Squash and merge" or "Rebase and merge".
-- **Peer review gate**: Jefferson (Backend) and Rafael (Frontend) review each other's PRs.
+- **Merge custody**: All feature PRs target `develop`. Only Jefferson Lopez may merge; no automatic merge or force-push.
 
 ### 3.2 GitHub Actions CI (`.github/workflows/backend-ci.yml`)
-- Automatically runs on PRs to `main`:
+- Automatically runs on PRs to `develop`:
   1. Ruff linter and code formatting check.
   2. AI Context and Second Brain file integrity verification.
   3. Spin up PostgreSQL 16 & Redis 7 test containers.
@@ -111,3 +111,6 @@ To eliminate all manual client-side configuration and device management overhead
 - [[01-Projects/Tiketa/Tiketa|Tiketa Project Overview]]
 - [[01-Projects/Tiketa/UnangSiklab-Integration-Roadmap|UnangSiklab Integration Roadmap (Phase 2)]]
 - [[04-System/AI-CONTEXT|ARCH AI Context Router]]
+
+
+Backend evidence and release gates: [BACKEND-PROGRESS.md](BACKEND-PROGRESS.md). Reporting definitions: [REPORTING-RULES.md](../03-Contracts/REPORTING-RULES.md).

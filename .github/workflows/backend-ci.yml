@@ -1,101 +1,72 @@
-name: Backend CI (Docker, Pytest, Lint & AI Context)
-
+name: Backend CI
 on:
   push:
-    branches: [main]
-    paths:
-      - "backend/**"
-      - "docs/**"
-      - "docker-compose.yml"
-      - ".github/workflows/backend-ci.yml"
+    branches: [develop, 'feat/backend-*']
   pull_request:
-    branches: [main]
-    paths:
-      - "backend/**"
-      - "docs/**"
-      - "docker-compose.yml"
-      - ".github/workflows/backend-ci.yml"
-
+    branches: [develop]
+permissions:
+  contents: read
+concurrency:
+  group: backend-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   test-and-lint:
     runs-on: ubuntu-latest
-
     services:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_DB: tiketa_test_db
-          POSTGRES_USER: tiketa_test_user
-          POSTGRES_PASSWORD: tiketa_test_password
-        ports:
-          - 5432:5432
+          POSTGRES_DB: tiketa_test
+          POSTGRES_USER: tiketa_test
+          POSTGRES_PASSWORD: disposable-test-password
+        ports: ['5432:5432']
         options: >-
-          --health-cmd pg_isready
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 5
-
+          --health-cmd 'pg_isready -U tiketa_test -d tiketa_test'
+          --health-interval 5s --health-timeout 5s --health-retries 10
       redis:
         image: redis:7-alpine
-        ports:
-          - 6379:6379
+        ports: ['6379:6379']
         options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 5
-
+          --health-cmd 'redis-cli ping'
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql+asyncpg://tiketa_test:disposable-test-password@localhost/tiketa_test
+      TIKETA_TEST_DATABASE_URL: postgresql+asyncpg://tiketa_test:disposable-test-password@localhost/tiketa_test
+      REDIS_URL: redis://localhost:6379/15
+      TIKETA_TEST_REDIS_URL: redis://localhost:6379/15
+      SECRET_KEY: disposable-test-signing-key-at-least-32-characters
+      APP_FIELD_ENCRYPTION_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      ENVIRONMENT: test
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
-          cache: "pip"
-
-      - name: Install Dependencies
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements*.txt
+      - name: Install and check dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -r backend/requirements.txt
-          pip install ruff pytest pytest-asyncio pytest-cov httpx
-
-      - name: Run Ruff Linter & Formatter Check
+          python -m pip install -r backend/requirements-dev.txt
+          python -m pip check
+      - name: Lint and format
         run: |
-          ruff check backend/app
-          ruff format --check backend/app
-
-      - name: Verify AI Context & Docs Integrity
-        run: |
-          test -f AGENTS.md || (echo "AGENTS.md missing!" && exit 1)
-          test -f docs/AI-CONTEXT.md || (echo "docs/AI-CONTEXT.md missing!" && exit 1)
-
-      - name: Run Database Migrations (Alembic)
-        env:
-          DATABASE_URL: postgresql+asyncpg://tiketa_test_user:tiketa_test_password@localhost:5432/tiketa_test_db
-        run: |
-          cd backend
-          alembic upgrade head
-
-      - name: Seed Test Dictionaries
-        env:
-          DATABASE_URL: postgresql+asyncpg://tiketa_test_user:tiketa_test_password@localhost:5432/tiketa_test_db
-        run: |
-          cd backend
-          python scripts/seed_dictionaries.py
-
-      - name: Run Automated Pytest Suite with Coverage
-        env:
-          DATABASE_URL: postgresql+asyncpg://tiketa_test_user:tiketa_test_password@localhost:5432/tiketa_test_db
-          REDIS_URL: redis://localhost:6379/0
-          SECRET_KEY: test_secret_key_minimum_64_characters_long_for_github_actions_ci_testing_12345
-          AES_ENCRYPTION_KEY: dGVzdF8zMl9ieXRlX2Jhc2U2NF9lbmNyeXB0aW9uX2tleV9mb3JfY2k=
-          ENVIRONMENT: test
-        run: |
-          cd backend
-          pytest tests/ -v --cov=app --cov-report=term-missing --cov-fail-under=80
-
-      - name: Verify Docker Backend Image Build
-        run: |
-          docker build -t tiketa-backend:ci ./backend
+          ruff check backend
+          ruff format --check backend
+      - name: Check repository context
+        run: test -f AGENTS.md && test -f docs/AI-CONTEXT.md
+      - name: PostgreSQL migrations, seeding, Redis/API tests and coverage
+        working-directory: backend
+        run: pytest -q --cov=app --cov=scripts --cov-report=term-missing --cov-report=xml --cov-fail-under=80
+      - name: Check OpenAPI matches code
+        working-directory: backend
+        run: python -m scripts.export_openapi --check
+      - name: Build production container
+        run: docker build --target production -t tiketa-backend:ci backend
+      - name: Verify backup and restore on disposable PostgreSQL
+        run: bash deploy/test_recovery.sh
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage.xml

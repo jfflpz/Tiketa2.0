@@ -1,13 +1,20 @@
 import uuid
 
-from app.models.base import Base, TimestampMixin
-from sqlalchemy import Boolean, ForeignKey, String
+from sqlalchemy import Boolean, ForeignKey, ForeignKeyConstraint, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.models.base import Base, TimestampMixin
 
 
 class Employee(Base, TimestampMixin):
     __tablename__ = "employees"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["location_id", "department_id"],
+            ["location_departments.location_id", "location_departments.department_id"],
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4

@@ -1,9 +1,9 @@
 # Sprint Board & Execution Log
 
 **Project**: Tiketa 2.0  
-**Current Milestone**: Sprint 1 (Foundation & Primitives)  
+**Current Milestone**: Backend sprints 1–5 integration and verification  
 **Specification Baseline**: SRS v2.1.0 (`ARCH/01-Projects/Tiketa/SRS.md`)  
-**Status**: Completed (Sprint 1 Foundation & Database Primitives Verified)
+**Status**: Backend implementation under verification; not merged or deployed. See BACKEND-PROGRESS.md.
 
 ---
 
@@ -24,7 +24,7 @@
 
 ---
 
-### ✅ Completed: Backend Foundation & Database Primitives
+### Historical baseline: Backend Foundation & Database Primitives
 - **Date**: 2026-10-17
 - **Lead**: Jefferson Lopez
 - **Deliverables Completed**:
@@ -35,7 +35,7 @@
   - `backend/app/models/`: Declarative models for `Company`, `Location`, `Department`, `Employee` (for pure ID auto-lookup), and `User` (2-tier RBAC).
   - `backend/scripts/seed_dictionaries.py`: Seeded 11 corporate transit fleets, 15 terminal hubs, 19 operational departments, and baseline employee `FS-1042`.
   - `backend/app/main.py`: FastAPI entry point with CORS, lifespan table creation, and `/health` endpoint.
-  - **Verification**: `GET /health` responding with HTTP 200 `healthy`; all 3 containers running healthy.
+  - **Historical evidence only**: `/health` returned 200 and development containers ran. This did not verify migrations, complete schema, authentication, reports, or CI; develop CI later failed at Alembic.
 
 ---
 
@@ -48,3 +48,24 @@
 | **Sprint 3** | **Core Ticket Engine & Kiosk UI** | Ticket state machine (`OPEN` $\to$ `PROG` $\to$ `RESL` $\to$ `CLSD`), single-click claiming (`c`), IT fallback quick intake modal (`v`), `/report` 6-button kiosk with Employee ID auto-locking, historical CLI seeder (`DEV-ETL-01`). |
 | **Sprint 4** | **Executive Analytics Engine** | 8 Standardized executive analytics reports, transit lag disaggregation calculations, streaming CSV exports, Recharts interactive visual widgets. |
 | **Sprint 5** | **Production Hardening & Cutover** | Nginx reverse proxy, TLS 1.3, automated daily backup script (`backup_db.sh`), Pasay & Caloocan depot pilot deployment. |
+
+---
+
+## 3. Backend Verification Status (Sprints 1–5 Completed)
+
+- **Verification Date**: 2026-10-17
+- **Branch**: `feat/backend-sprint-completion`
+- **Lead Backend Engineer**: Rafael Emmanuel Codiñera
+- **Reviewer**: Jefferson Lopez (`lopez.jefferson.cabanos1@gmail.com`)
+- **Status**: Implemented & Verified (Ready for Pull Request to `develop`)
+
+### Verification Highlights:
+- **Test Suite**: 25 integration tests passed in 13.95s against disposable PostgreSQL 16 & Redis 7.
+- **Coverage**: **82.31%** (exceeds the 80% CI gate requirement).
+- **Alembic Drift**: `alembic check` clean (0 pending schema upgrades).
+- **Ruff Lint & Format**: 0 errors, 37 files clean.
+- **OpenAPI Schema**: Export verified against code (`python -m scripts.export_openapi --check`).
+- **Backup & Recovery**: Verified against disposable container (`deploy/test_recovery.sh`); backup creation, restore into target database, and non-empty target rejection confirmed.
+- **Historical Importer (DEV-ETL-01)**: 5,000 synthetic rows imported in 0.922s (<1.5s threshold).
+- **Reporting Engine**: All 8 executive analytics reports + KPI + streaming CSV implemented and verified.
+

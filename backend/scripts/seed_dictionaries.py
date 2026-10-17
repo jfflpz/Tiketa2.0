@@ -1,7 +1,16 @@
 import asyncio
+
 from sqlalchemy import select
+
 from app.db.session import AsyncSessionLocal
-from app.models import Company, Location, Department, Employee
+from app.models import (
+    Company,
+    Department,
+    Employee,
+    Location,
+    LocationDepartment,
+    TaskCategory,
+)
 
 COMPANIES = [
     ("FS", "Pangasinan Five Star Bus Co."),
@@ -14,7 +23,7 @@ COMPANIES = [
     ("LNDRY", "Laundry Group"),
     ("FSC", "Food Stop Company"),
     ("HG", "Hotel Group"),
-    ("AH", "Adamo Holdings")
+    ("AH", "Adamo Holdings"),
 ]
 
 LOCATIONS = [
@@ -32,7 +41,7 @@ LOCATIONS = [
     ("CSM", "Cisco Mirasol"),
     ("VAL", "Valenzuela"),
     ("NWT", "Northway Terminal"),
-    ("TRL", "Tarlac")
+    ("TRL", "Tarlac"),
 ]
 
 DEPARTMENTS = [
@@ -46,60 +55,90 @@ DEPARTMENTS = [
     ("SOG-DIG", "SOG - Digital"),
     ("ATTI", "ATTI"),
     ("SEC", "Security"),
-    ("HERO", "Hero Express"),
-    ("BP", "Body Plant"),
-    ("BP-FUEL", "Body Plant - Fuel"),
-    ("BP-GPS", "Body Plant - GPS"),
+    ("HERO", "Hero Pharma"),
+    ("BP", "Business Process"),
+    ("BP-FUEL", "Business Process - Fuel Team"),
+    ("BP-GPS", "Business Process - GPS Team"),
     ("PURCH", "Purchasing"),
     ("CS", "Customer Service"),
     ("FIN", "Finance"),
-    ("ADMIN", "Administration"),
-    ("AP", "Accounts Payable")
+    ("ADMIN", "Admin"),
+    ("AP", "AP Team"),
 ]
 
-async def seed():
+TASKS = [
+    ("NET-CFG", "Network Configuration"),
+    ("PC-ASSESS", "PC/Laptop Assessment"),
+    ("SRV-ASSESS", "Server Assessment"),
+    ("PRN-TS", "Printer Troubleshoot"),
+    ("SW-ASST", "Software Assistance"),
+    ("PRN-NET", "Printer Network Connection"),
+    ("PC-HW-REP", "PC/Laptop Hardware Replacement"),
+    ("PERIPH-REP", "Peripherals Replacement"),
+    ("PC-TS", "PC/Laptop Troubleshoot"),
+    ("PC-PMS", "PC/Laptop PMS"),
+    ("PC-SETUP", "PC/Laptop Set-up"),
+    ("PRN-PMS", "Printer PMS"),
+    ("PRN-SETUP", "Printer Set-up"),
+]
+
+
+async def seed(demo=False):
+    from sqlalchemy.dialects.postgresql import insert
+
     async with AsyncSessionLocal() as session:
-        for code, name in COMPANIES:
-            stmt = select(Company).where(Company.code == code)
-            res = await session.execute(stmt)
-            if not res.scalar_one_or_none():
-                session.add(Company(code=code, name=name))
+        async with session.begin():
+            for model, values in (
+                (Company, COMPANIES),
+                (Location, LOCATIONS),
+                (Department, DEPARTMENTS),
+                (TaskCategory, TASKS),
+            ):
+                for code, name in values:
+                    statement = (
+                        insert(model)
+                        .values(code=code, name=name)
+                        .on_conflict_do_nothing(index_elements=[model.code])
+                    )
+                    await session.execute(statement)
+            # Do not invent production department mappings or employees.
+            if demo:
+                from app.core.config import settings
 
-        for code, name in LOCATIONS:
-            stmt = select(Location).where(Location.code == code)
-            res = await session.execute(stmt)
-            if not res.scalar_one_or_none():
-                session.add(Location(code=code, name=name))
+                if settings.ENVIRONMENT == "production":
+                    raise ValueError("Demo seeding is prohibited in production")
+                company = await session.scalar(
+                    select(Company).where(Company.code == "FS")
+                )
+                location = await session.scalar(
+                    select(Location).where(Location.code == "PSY")
+                )
+                department = await session.scalar(
+                    select(Department).where(Department.code == "CASH")
+                )
+                await session.execute(
+                    insert(LocationDepartment)
+                    .values(location_id=location.id, department_id=department.id)
+                    .on_conflict_do_nothing()
+                )
+                await session.execute(
+                    insert(Employee)
+                    .values(
+                        employee_id="FS-1042",
+                        full_name="Maria Santos",
+                        email="maria.santos@example.com",
+                        company_id=company.id,
+                        location_id=location.id,
+                        department_id=department.id,
+                    )
+                    .on_conflict_do_nothing(index_elements=[Employee.employee_id])
+                )
+    print("Dictionary seeding complete.")
 
-        for code, name in DEPARTMENTS:
-            stmt = select(Department).where(Department.code == code)
-            res = await session.execute(stmt)
-            if not res.scalar_one_or_none():
-                session.add(Department(code=code, name=name))
-
-        await session.commit()
-
-        res_fs = await session.execute(select(Company).where(Company.code == "FS"))
-        fs_comp = res_fs.scalar_one()
-        res_psy = await session.execute(select(Location).where(Location.code == "PSY"))
-        psy_loc = res_psy.scalar_one()
-        res_cash = await session.execute(select(Department).where(Department.code == "CASH"))
-        cash_dept = res_cash.scalar_one()
-
-        emp_stmt = select(Employee).where(Employee.employee_id == "FS-1042")
-        emp_res = await session.execute(emp_stmt)
-        if not emp_res.scalar_one_or_none():
-            session.add(Employee(
-                employee_id="FS-1042",
-                full_name="Maria Santos",
-                email="maria.santos@fivestarbus.com",
-                company_id=fs_comp.id,
-                location_id=psy_loc.id,
-                department_id=cash_dept.id
-            ))
-            await session.commit()
-
-        print("✓ Dictionary and initial employee seeding completed successfully.")
 
 if __name__ == "__main__":
-    asyncio.run(seed())
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--demo", action="store_true")
+    asyncio.run(seed(parser.parse_args().demo))

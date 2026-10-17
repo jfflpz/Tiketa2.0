@@ -26,4 +26,4 @@ This rule file configures all AI coding assistants (Antigravity, Cursor, Copilot
 
 ## 4. Git & Commit Protocols
 - Conventional Commits: `feat(scope): ...`, `fix(scope): ...`, `chore(scope): ...`, `docs(scope): ...`, `test(scope): ...`.
-- Protected `main`: Never commit directly to `main`. Create feature branches (`feat/backend-*`, `feat/frontend-*`) and rebase linearly (`git rebase origin/main`).
+- Protected `main` and `develop`: Never commit or push directly. Base feature branches (`feat/backend-*`, `feat/frontend-*`) on `develop`; all PRs target `develop`. Only Jefferson Lopez may merge. Do not force-push or rewrite published history without separate authorization.
