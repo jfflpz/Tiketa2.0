@@ -19,4 +19,3 @@ class Department(Base, TimestampMixin):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     employees = relationship("Employee", back_populates="department")
-    devices = relationship("Device", back_populates="department")

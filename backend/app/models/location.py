@@ -20,4 +20,3 @@ class Location(Base, TimestampMixin):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     employees = relationship("Employee", back_populates="location")
-    devices = relationship("Device", back_populates="location")

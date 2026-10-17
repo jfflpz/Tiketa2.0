@@ -59,45 +59,36 @@ DEPARTMENTS = [
 
 async def seed():
     async with AsyncSessionLocal() as session:
-        # Seed Companies
         for code, name in COMPANIES:
             stmt = select(Company).where(Company.code == code)
             res = await session.execute(stmt)
             if not res.scalar_one_or_none():
                 session.add(Company(code=code, name=name))
 
-        # Seed Locations
         for code, name in LOCATIONS:
             stmt = select(Location).where(Location.code == code)
             res = await session.execute(stmt)
             if not res.scalar_one_or_none():
                 session.add(Location(code=code, name=name))
 
-        # Seed Departments
         for code, name in DEPARTMENTS:
-            stmt = select(Department).where(Department.code ==
-code)
+            stmt = select(Department).where(Department.code == code)
             res = await session.execute(stmt)
             if not res.scalar_one_or_none():
                 session.add(Department(code=code, name=name))
 
         await session.commit()
 
-        # Seed Baseline Employees
-        res_fs = await session.execute(select(Company).
-where(Company.code == "FS"))
+        res_fs = await session.execute(select(Company).where(Company.code == "FS"))
         fs_comp = res_fs.scalar_one()
-        res_psy = await session.execute(select(Location).
-where(Location.code == "PSY"))
+        res_psy = await session.execute(select(Location).where(Location.code == "PSY"))
         psy_loc = res_psy.scalar_one()
-        res_cash = await session.execute(select(Department).
-where(Department.code == "CASH"))
+        res_cash = await session.execute(select(Department).where(Department.code == "CASH"))
         cash_dept = res_cash.scalar_one()
 
-        emp_stmt = select(Employee).where(Employee.employee_id ==
-"FS-1042")
-        if not (await session.execute(emp_stmt)).
-scalar_one_or_none():
+        emp_stmt = select(Employee).where(Employee.employee_id == "FS-1042")
+        emp_res = await session.execute(emp_stmt)
+        if not emp_res.scalar_one_or_none():
             session.add(Employee(
                 employee_id="FS-1042",
                 full_name="Maria Santos",
@@ -107,8 +98,8 @@ scalar_one_or_none():
                 department_id=cash_dept.id
             ))
             await session.commit()
-        print("✓ Dictionary and initial employee seeding completed
-successfully.")
+
+        print("✓ Dictionary and initial employee seeding completed successfully.")
 
 if __name__ == "__main__":
     asyncio.run(seed())
