@@ -1,7 +1,7 @@
-# Tiketa 2.0 — Frontend Engineering Sprint Plan (Strict TypeScript + Solution 4 Device Access)
+# Tiketa 2.0 — Frontend Engineering Sprint Plan (Strict TypeScript + Pure Employee ID Intake)
 
 ## Goal Description
-Formulate a dedicated, production-grade **Frontend Sprint Plan** for **Tiketa 2.0**, strictly synchronized with the **Backend Sprint Plan ([`backend_sprint_plan_docker.md`](file:///C:/Users/Kanor/.gemini/antigravity-cli/brain/3ed00225-4d3a-4947-92b2-b423ca9042b5/backend_sprint_plan_docker.md))** and grounded on the management-approved **Solution 4: Automatic Department Access on Company PCs** from [`Tiketa-Employee-Access-Decision-Report.pdf`](file:///C:/Users/Kanor/Documents/ARCH/01-Projects/Tiketa/Tiketa-Employee-Access-Decision-Report.pdf).
+Formulate a dedicated, production-grade **Frontend Sprint Plan** for **Tiketa 2.0**, strictly synchronized with the **Backend Sprint Plan ([`BACKEND-SPRINT-PLAN.md`](file:///C:/Users/Kanor/Documents/FS_Projects/Tiketa/docs/04-Sprints/BACKEND-SPRINT-PLAN.md))** and grounded on the refined **Pure Employee ID Validated Intake** model (zero workforce accounts, zero device tokens, zero client-side setup).
 
 **Lead**: Rafael Emmanuel Codiñera (Frontend)  
 **Peer Reviewer**: Jefferson Lopez (Backend & DevOps)  
@@ -10,14 +10,16 @@ Formulate a dedicated, production-grade **Frontend Sprint Plan** for **Tiketa 2.
 
 ---
 
-## 1. User Interaction Models: Solution 4 PC Kiosk vs. IT Queue
+## 1. User Interaction Models: Employee Web Kiosk vs. IT Queue
 
 ```mermaid
 flowchart LR
-    subgraph Flow1 ["Terminal Staff Flow (Solution 4 - Zero Login)"]
-        Icon["Double-Click Desktop Shortcut<br/>'🚨 Report IT Problem.url'"] --> Screen["Kiosk Report Screen (/report)<br/>Banner: 🏢 Pasay Terminal - Ticketing Booth"]
-        Screen --> Input["Employee types:<br/>- Your Name (Declared)<br/>- Issue Description"]
-        Input --> Submit["Click: 'Submit Ticket' 🚀<br/>(Attaches verified device session cookie)"]
+    subgraph Flow1 ["Terminal Staff Flow (Pure Employee ID - Zero Accounts, Zero Tokens)"]
+        Browser["Open Browser $\to$ /report"] --> Screen["Web Kiosk Screen (/report)<br/>• Enters Employee ID (e.g. FS-1042)"]
+        Screen --> Lock["Auto-Locks Profile Banner in <100ms:<br/>🏢 Five Star Pasay - Cash Management"]
+        Lock --> Buttons["Tap 1 of 6 Big Visual Category Buttons<br/>(Printer, PC/Monitor, Network, Access, Hardware, Other)"]
+        Buttons --> Input["Brief Issue Description"]
+        Input --> Submit["Click: 'Submit Ticket' 🚀"]
     end
 
     subgraph Flow2 ["IT Technician Flow (High-Velocity Queue)"]
@@ -31,29 +33,27 @@ flowchart LR
 
 ## 2. Phased Frontend Sprint Breakdown
 
-### Sprint 1: Second Brain Alignment, Scaffolding & Strict Typing (Weeks 1–2)
-* **F1.0 (In-Repo Second Brain Sync)**: Read `docs/AI-CONTEXT.md` and `docs/01-Architecture/DEVICE-ACCESS-SOLUTION4.md`. Confirm non-goals: zero `.jsx`/`.js` files, zero drag-and-drop Excel uploaders.
+### Sprint 1: Second Brain Alignment, Scaffolding & Strict Typing (Completed ✅)
+* **F1.0 (In-Repo Second Brain Sync)**: Read `docs/AI-CONTEXT.md` and `docs/01-Architecture/SYSTEM-ARCHITECTURE.md`. Enforce non-goals: zero `.jsx`/`.js` files, zero drag-and-drop Excel uploaders.
 * **F1.1 (Vite & Strict TS Tooling)**: Vite React SPA with `"strict": true`, `"noImplicitAny": true`. Verified by `npm.cmd run type-check`.
-* **F1.2 (Tailwind Corporate Tokens)**: Five Star Blue (`#1E3A8A`), Emerald Green (`#059669`), Amber Warning (`#D97706`), Crimson Alert (`#DC2626`).
-* **F1.3 (TypeScript Domain Models)**: Author interfaces matching backend models (`types/auth.ts`, `types/ticket.ts`, `types/device.ts`, `types/reports.ts`).
-* **F1.4 (Axios HTTP Client Core)**: Base Axios instance with `withCredentials: true` to send device cookies.
-* **F1.5 (Shell Layout)**: `AppLayout.tsx`, `Sidebar.tsx`, `Navbar.tsx`.
+* **F1.2 (Tailwind Corporate Tokens)**: Five Star Red (`#DC2626`), Amber Warning (`#FBBF24`), Slate Dark (`#0F172A`, `#1E293B`).
+* **F1.3 (TypeScript Domain Models)**: Author interfaces matching backend models (`types/index.ts`).
+* **F1.4 (Axios HTTP Client Core)**: Base Axios instance configured for API communication.
+* **F1.5 (Foundation View)**: Verified initial paint via `src/App.tsx`.
 
 ---
 
-### Sprint 2: IT Authentication, Solution 4 Kiosk Route & Device Admin (Weeks 3–4)
-* **F2.1 (Zustand In-Memory Store `useAuthStore.ts`)**: Access token in RAM for IT technicians; tracks authenticated role.
-* **F2.2 (IT Login Page `src/pages/LoginPage.tsx`)**: Secure login form for IT Technicians and Administrators redirecting to `/queue` and `/admin`.
-* **F2.3 (Solution 4 Kiosk Reporting Page `src/pages/ReportIssuePage.tsx`)**:
-  - Accessible directly at `/report` via desktop shortcut.
-  - Automatically fetches provisioned department context from backend (`GET /api/v1/auth/device-session`).
-  - Displays prominent terminal hub banner: e.g. `🏢 Pasay Terminal — Dispatch Office`.
-  - Clean, distraction-free input: *Your Name* (`requester_name`), *Task Category* dropdown, *Description*, optional photo.
-  - Zero password prompts, zero account registration forms (ADR-002, Solution 4).
-* **F2.4 (IT Device Provisioning Modal `src/components/admin/EnrollDeviceModal.tsx`)**:
-  - Modal accessible only to IT technicians in `/admin` to enroll a newly deployed terminal PC.
-  - Generates desktop shortcut template file (`Report-IT-Problem.url`).
-* **F2.5 (Axios 401 Interceptor)**: Transparent silent token refresh for IT technician sessions.
+### Sprint 2: IT Authentication, Employee ID Kiosk Route & Auth Guards (Weeks 3–4)
+* **F2.1 (Zustand In-Memory Store `useAuthStore.ts`)**: Access token in RAM for IT technicians (`role: 'it' | 'admin'`).
+* **F2.2 (IT Login Page `src/pages/LoginPage.tsx`)**: Secure login form for IT Technicians and Administrators redirecting to `/queue` and `/reports`.
+* **F2.3 (Employee Validated Kiosk Page `src/pages/ReportIssuePage.tsx`)**:
+  - Accessible directly at `/report` from any terminal browser or phone.
+  - As-you-type Employee ID debounced lookup (`GET /api/v1/employees/lookup?q={id}`).
+  - Displays prominent verified employee card: *Maria Santos — Five Star Pasay (Cash Management)* with locked fields.
+  - 6 Big Visual Category Buttons for instant selection without cognitive friction.
+  - Brief description input and submit button.
+  - Zero password prompts, zero account registration forms (ADR-002).
+* **F2.4 (Axios 401 Interceptor)**: Transparent silent token refresh for IT technician sessions via HTTP-Only cookie.
 
 ---
 
