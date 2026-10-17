@@ -30,10 +30,15 @@ docker run -d --name "$container" --mount "type=volume,src=$archive,dst=/backup"
   -e POSTGRES_PASSWORD=disposable-recovery-password -e POSTGRES_DB=recovery_source \
   --mount "type=bind,src=$root/deploy,dst=/scripts,readonly" postgres:16-alpine >/dev/null
 for attempt in {1..60}; do
-  if docker exec "$container" pg_isready -U postgres >/dev/null 2>&1; then break; fi
+  if docker exec "$container" psql -U postgres -d recovery_source -c "SELECT 1" >/dev/null 2>&1; then
+    sleep 2
+    if docker exec "$container" psql -U postgres -d recovery_source -c "SELECT 1" >/dev/null 2>&1; then
+      break
+    fi
+  fi
   sleep 1
 done
-docker exec "$container" pg_isready -U postgres
+docker exec "$container" psql -U postgres -d recovery_source -c "SELECT 1"
 docker exec -u 0 "$container" chmod 777 /backup
 docker exec "$container" psql -U postgres -d recovery_source -v ON_ERROR_STOP=1 -c \
   "CREATE TABLE recovery_probe (id integer PRIMARY KEY, content text NOT NULL); INSERT INTO recovery_probe VALUES (1, 'restore verified');"
