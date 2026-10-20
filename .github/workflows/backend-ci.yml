@@ -4,6 +4,7 @@ on:
     branches: [develop, 'feat/backend-*']
   pull_request:
     branches: [develop]
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:
