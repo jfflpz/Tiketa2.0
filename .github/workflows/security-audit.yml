@@ -2,7 +2,7 @@ name: Security & Vulnerability Audit
 
 on:
   push:
-    branches: [develop, 'feat/security-*', 'feat/ci-*']
+    branches: [develop, 'feat/security-*', 'feat/frontend-*', 'feat/ci-*']
   pull_request:
     branches: [develop]
   schedule:
