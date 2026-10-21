@@ -20,15 +20,14 @@ import {
   MessageSquare,
   UserCheck,
   Clock,
+  Eye,
   KeyRound,
   Lock,
   Unlock,
   Copy,
   Check,
   AlertCircle,
-  FileText,
-  HelpCircle,
-  ChevronRight,
+  Loader2,
 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { VERIFIED_EMPLOYEES, LOCATIONS } from '../../data/mockTicketsData';
@@ -36,28 +35,11 @@ import { TaskCategoryCode, Ticket } from '../../types/ticket';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { BarcodeDivider } from '../../components/common/TickMeter';
 
-
-// Priority Classification Badge Helper
-const getPriorityBadgeClass = (priority?: string) => {
-  switch (priority) {
-    case 'Critical':
-      return 'bg-rose-50 text-rose-700 border-rose-200';
-    case 'High':
-      return 'bg-orange-50 text-orange-700 border-orange-200';
-    case 'Medium':
-      return 'bg-sky-50 text-sky-700 border-sky-200';
-    case 'Low':
-      return 'bg-zinc-100 text-zinc-700 border-zinc-200';
-    default:
-      return 'bg-sky-50 text-sky-700 border-sky-200';
-  }
-};
 export const EmployeeTicketScreen: React.FC = () => {
   const {
     tickets,
     activeOfficeLocationCode,
     setActiveOfficeLocationCode,
-    createTicket,
     confirmClosure,
     reopenTicket,
     sendTicketMessage,
@@ -67,14 +49,31 @@ export const EmployeeTicketScreen: React.FC = () => {
     unlockedTicketCodes,
     unlockTicketVerification,
     copyTicketShareLink,
+    submitTicketApi,
+    lookupEmployeeApi,
   } = useAppStore();
 
   const [tab, setTab] = useState<'create' | 'my_tickets' | 'lookup'>('create');
-  const [employeeId, setEmployeeId] = useState('FS-1088');
-  const [declaredName, setDeclaredName] = useState('J. Dela Cruz');
+  const [employeeId, setEmployeeId] = useState('FS-1042');
+  const [declaredName, setDeclaredName] = useState('Maria Santos');
   const [selectedTask, setSelectedTask] = useState<TaskCategoryCode>('PRN-TS');
   const [description, setDescription] = useState('');
   const [submittedTicket, setSubmittedTicket] = useState<Ticket | null>(null);
+
+  // Live Employee ID Lookup & Form Submission States
+  const [isSearchingEmployee, setIsSearchingEmployee] = useState(false);
+  const [employeeVerified, setEmployeeVerified] = useState(true);
+  const [lookupError, setLookupError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [employeeDetails, setEmployeeDetails] = useState<{
+    company?: string;
+    location?: string;
+    department?: string;
+  }>({
+    company: 'Five Star Bus Co.',
+    location: 'Pasay Terminal',
+    department: 'Operations',
+  });
 
   // Selected ticket ID inside "My Tickets" for viewing full details & live chat
   const [detailTicketId, setDetailTicketId] = useState<string | null>(null);
@@ -85,7 +84,6 @@ export const EmployeeTicketScreen: React.FC = () => {
   const [verifyError, setVerifyError] = useState<string | null>(null);
   const [lookupTicketCodeInput, setLookupTicketCodeInput] = useState('');
   const [copiedTicketId, setCopiedTicketId] = useState<string | null>(null);
-  const [closureModalTicketId, setClosureModalTicketId] = useState<string | null>(null);
 
   const activeHub =
     LOCATIONS.find((l) => l.code === activeOfficeLocationCode) ?? LOCATIONS[5];
@@ -110,13 +108,62 @@ export const EmployeeTicketScreen: React.FC = () => {
     }
   }, [targetVerifyTicket, isCurrentVerifyUnlocked]);
 
+  // 300ms Debounced Employee ID Lookup against live FastAPI directory
+  useEffect(() => {
+    const cleanId = employeeId.trim().toUpperCase();
+    if (!cleanId || cleanId.length < 2) {
+      setEmployeeVerified(false);
+      setLookupError(null);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearchingEmployee(true);
+      setLookupError(null);
+
+      try {
+        // Query live backend endpoint: GET /api/v1/employees/lookup?q=...
+        const liveEmp = await lookupEmployeeApi(cleanId);
+        if (liveEmp && liveEmp.full_name) {
+          setDeclaredName(liveEmp.full_name);
+          setEmployeeVerified(true);
+          setEmployeeDetails({
+            company: liveEmp.company_name,
+            location: liveEmp.location_name,
+            department: liveEmp.department_name,
+          });
+          setIsSearchingEmployee(false);
+          return;
+        }
+
+        // Offline fallback to mock directory
+        const mockFound = VERIFIED_EMPLOYEES[cleanId];
+        if (mockFound) {
+          setDeclaredName(mockFound.full_name);
+          setActiveOfficeLocationCode(mockFound.location_id);
+          setEmployeeVerified(true);
+          setEmployeeDetails({
+            company: mockFound.company_name,
+            location: mockFound.location_id,
+            department: mockFound.department_name,
+          });
+        } else {
+          setEmployeeVerified(false);
+          setLookupError(`Employee ID "${cleanId}" not recognized in active directory.`);
+        }
+      } catch {
+        setEmployeeVerified(false);
+        setLookupError(`Unable to verify Employee ID "${cleanId}".`);
+      } finally {
+        setIsSearchingEmployee(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [employeeId, lookupEmployeeApi, setActiveOfficeLocationCode]);
+
   const handleEmployeeChange = (val: string) => {
     setEmployeeId(val);
-    const found = VERIFIED_EMPLOYEES[val.trim().toUpperCase()];
-    if (found) {
-      setDeclaredName(found.full_name);
-      setActiveOfficeLocationCode(found.location_id);
-    }
   };
 
   const handleVerifySubmit = (e: React.FormEvent, targetTicket: Ticket) => {
@@ -206,26 +253,28 @@ export const EmployeeTicketScreen: React.FC = () => {
     },
   ];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const created = createTicket({
-      company: matchedEmployee?.company_name ?? 'Pangasinan Five Star Bus Co.',
-      companyCode: matchedEmployee?.company_id ?? 'FS',
-      location: activeHub.name,
-      locationCode: activeHub.code,
-      department: matchedEmployee?.department_name ?? 'Operation',
-      departmentCode: matchedEmployee?.department_id ?? 'OPS',
-      requestor: declaredName.trim() || 'Terminal Staff',
+    if (!description.trim() && !selectedTask) return;
+
+    setIsSubmitting(true);
+    const created = await submitTicketApi({
       employeeId: employeeId.trim().toUpperCase(),
       taskCode: selectedTask,
       description:
         description.trim() ||
-        `Reported from ${activeHub.name} employee helpdesk screen.`,
-      mode: 'SITE',
-      intakeSource: 'PC Kiosk',
+        `Reported from ${employeeDetails.location || activeHub.name} employee helpdesk screen.`,
+      companyName: employeeDetails.company ?? matchedEmployee?.company_name ?? 'Pangasinan Five Star Bus Co.',
+      locationName: employeeDetails.location ?? activeHub.name,
+      departmentName: employeeDetails.department ?? matchedEmployee?.department_name ?? 'Operation',
+      requestorName: declaredName.trim() || 'Terminal Staff',
     });
-    setSubmittedTicket(created);
-    setDescription('');
+
+    setIsSubmitting(false);
+    if (created) {
+      setSubmittedTicket(created);
+      setDescription('');
+    }
   };
 
   const detailTicket = tickets.find((t) => t.id === detailTicketId) ?? null;
@@ -257,42 +306,44 @@ export const EmployeeTicketScreen: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-canvas text-ink flex flex-col justify-between">
-      {/* Signature Nexora Header matching Dashboard */}
-      <header className="h-16 bg-white border-b border-[#ECEEF2] px-6 flex items-center justify-between">
+      {/* Minimal, Calm Top Bar with Staff Login Buttons */}
+      <header className="h-16 bg-surface border-b border-line px-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-orange-500 text-white flex items-center justify-center font-black text-sm shadow-sm tracking-wider">
-            T
+          <div className="w-8 h-8 rounded-xl bg-zinc-900 text-white flex items-center justify-center font-bold text-sm shadow-sm">
+            T<span className="text-emerald-400 text-xs">•</span>
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-extrabold text-sm tracking-tight text-ink">
-                TIKETA
+              <span className="font-bold text-sm tracking-tight text-ink">
+                Tiketa
               </span>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-200">
-                Terminal Helpdesk
+              <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-brand border border-emerald-200/70">
+                Employee Helpdesk
               </span>
             </div>
-            <p className="text-[11px] text-zinc-400 hidden sm:block">
-              Five Star Transit Fleet &bull; Enterprise IT Service Desk
+            <p className="text-[11px] text-ink-subtle hidden sm:block">
+              Five Star Bus Co. &amp; Affiliate Terminals — Fast IT Support Request
             </p>
           </div>
         </div>
 
-        {/* Dedicated Staff Login Buttons */}
+        {/* Dedicated Staff Login Buttons (IT Support & Admin) */}
         <div className="flex items-center gap-2.5">
           <button
             onClick={() => openLoginModal('it')}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white hover:bg-[#F4F6F9] text-zinc-700 border border-[#ECEEF2] text-xs font-semibold shadow-2xs transition-colors press-fx"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-surface hover:bg-zinc-50 text-ink border border-line text-xs font-
+semibold shadow-card transition-colors press-fx"
           >
-            <WrenchIcon className="w-3.5 h-3.5 text-orange-500" />
+            <WrenchIcon className="w-3.5 h-3.5 text-ink-subtle" />
             <span>IT Support Login</span>
           </button>
 
           <button
             onClick={() => openLoginModal('admin')}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#111315] hover:bg-zinc-800 text-white text-xs font-semibold shadow-sm transition-colors press-fx"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-semibold shadow-sm
+transition-colors press-fx"
           >
-            <ShieldCheck className="w-3.5 h-3.5 text-orange-400" />
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
             <span>Admin Dashboard</span>
           </button>
         </div>
@@ -304,14 +355,15 @@ export const EmployeeTicketScreen: React.FC = () => {
           {/* ============================================================
               CASE 1: TICKET CONFIRMATION & EMPLOYEE ID VERIFICATION GATE
               (Shown when user opens ?verifyTicket=T-XXXXXX and hasn't unlocked yet)
-             ============================================================ */}
+              ============================================================ */}
           {targetVerifyTicket && !isCurrentVerifyUnlocked ? (
             <div className="bg-surface border border-line rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 animate-fade-in">
               <div className="text-center space-y-2">
                 <div className="w-12 h-12 rounded-2xl bg-orange-100 text-orange-600 flex items-center justify-center mx-auto shadow-sm">
                   <Lock className="w-6 h-6" />
                 </div>
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-50 text-orange-700 border border-orange-200 text-xs font-mono font-bold">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-50 text-orange-700 border border-orange-200 text-xs
+font-mono font-bold">
                   <span>Ticket Confirmation Gate</span>
                   <span>•</span>
                   <span>{targetVerifyTicket.ticketCode}</span>
@@ -394,7 +446,8 @@ export const EmployeeTicketScreen: React.FC = () => {
                     placeholder={`e.g. ${targetVerifyTicket.employeeId || 'FS-1042'}`}
                     autoFocus
                     required
-                    className="w-full px-4 py-3 bg-canvas border border-line rounded-2xl text-base font-mono font-bold text-ink focus:outline-none focus:border-zinc-500 uppercase tracking-wider"
+                    className="w-full px-4 py-3 bg-canvas border border-line rounded-2xl text-base font-mono font-bold text-ink focus:outline-none
+focus:border-zinc-500 uppercase tracking-wider"
                   />
                 </div>
 
@@ -405,14 +458,16 @@ export const EmployeeTicketScreen: React.FC = () => {
                       setVerifyTicketCode(null);
                       setVerifyError(null);
                     }}
-                    className="px-4 py-2.5 rounded-xl border border-line text-xs font-medium text-ink-subtle hover:text-ink transition-colors press-fx"
+                    className="px-4 py-2.5 rounded-xl border border-line text-xs font-medium text-ink-subtle hover:text-ink transition-colors press-
+fx"
                   >
                     Cancel / Back to Kiosk
                   </button>
 
                   <button
                     type="submit"
-                    className="px-6 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-bold inline-flex items-center gap-2 shadow-sm transition-colors press-fx"
+                    className="px-6 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-bold inline-flex items-center gap-2
+shadow-sm transition-colors press-fx"
                   >
                     <Unlock className="w-4 h-4 text-emerald-400" />
                     <span>Verify &amp; Open Ticket</span>
@@ -422,8 +477,8 @@ export const EmployeeTicketScreen: React.FC = () => {
             </div>
           ) : (
             /* ============================================================
-               NORMAL KIOSK FLOW: + Create Ticket, My Tickets, or Lookup
-               ============================================================ */
+                NORMAL KIOSK FLOW: + Create Ticket, My Tickets, or Lookup
+                ============================================================ */
             <>
               {/* Greeting & Mode Switcher */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -475,7 +530,7 @@ export const EmployeeTicketScreen: React.FC = () => {
                       setTab('lookup');
                       setDetailTicketId(null);
                     }}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1 press-fx ${
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1 press-fx ${
                       tab === 'lookup'
                         ? 'bg-zinc-900 text-white shadow-sm'
                         : 'text-ink-subtle hover:text-ink'
@@ -513,11 +568,13 @@ export const EmployeeTicketScreen: React.FC = () => {
                         onChange={(e) => setLookupTicketCodeInput(e.target.value)}
                         placeholder="e.g. T-261042, T-261054"
                         required
-                        className="flex-1 px-3.5 py-2.5 bg-canvas border border-line rounded-xl text-xs font-mono uppercase font-bold text-ink focus:outline-none focus:border-zinc-500"
+                        className="flex-1 px-3.5 py-2.5 bg-canvas border border-line rounded-xl text-xs font-mono uppercase font-bold text-ink
+focus:outline-none focus:border-zinc-500"
                       />
                       <button
                         type="submit"
-                        className="px-5 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-sm transition-colors press-fx"
+                        className="px-5 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-bold inline-flex items-center gap-1.5
+shadow-sm transition-colors press-fx"
                       >
                         <span>Open &amp; Confirm</span>
                         <ArrowRight className="w-3.5 h-3.5" />
@@ -531,7 +588,8 @@ export const EmployeeTicketScreen: React.FC = () => {
                           key={t.id}
                           type="button"
                           onClick={() => setVerifyTicketCode(t.ticketCode)}
-                          className="font-mono text-[11px] px-2 py-0.5 rounded-lg bg-canvas border border-line hover:bg-zinc-100 font-semibold text-ink"
+                          className="font-mono text-[11px] px-2 py-0.5 rounded-lg bg-canvas border border-line hover:bg-zinc-100 font-semibold text-
+ink"
                         >
                           {t.ticketCode}
                         </button>
@@ -555,7 +613,7 @@ export const EmployeeTicketScreen: React.FC = () => {
                       </span>
                       <div className="flex items-center gap-1.5 text-[11px] text-ink-subtle">
                         <span>Quick fill:</span>
-                        {(['FS-1088', 'FS-1042', 'BTCI-2019'] as const).map((id) => (
+                        {(['FS-1042', 'FS-1088', 'BTCI-2019'] as const).map((id) => (
                           <button
                             key={id}
                             type="button"
@@ -574,16 +632,25 @@ export const EmployeeTicketScreen: React.FC = () => {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-xs font-medium text-ink-subtle mb-1">
-                          Employee ID No.
-                        </label>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-xs font-medium text-ink-subtle">
+                            Employee ID No.
+                          </label>
+                          {isSearchingEmployee && (
+                            <div className="flex items-center gap-1 text-[11px] text-ink-subtle">
+                              <Loader2 className="w-3 h-3 animate-spin text-brand" />
+                              <span>Checking directory...</span>
+                            </div>
+                          )}
+                        </div>
                         <input
                           type="text"
                           value={employeeId}
                           onChange={(e) => handleEmployeeChange(e.target.value)}
-                          placeholder="e.g. FS-1088"
+                          placeholder="e.g. FS-1042"
                           required
-                          className="w-full px-3.5 py-2.5 bg-canvas border border-line rounded-xl text-sm font-mono font-semibold text-ink focus:outline-none focus:border-zinc-500"
+                          className="w-full px-3.5 py-2.5 bg-canvas border border-line rounded-xl text-sm font-mono font-semibold text-ink
+focus:outline-none focus:border-zinc-500"
                         />
                       </div>
                       <div>
@@ -594,30 +661,47 @@ export const EmployeeTicketScreen: React.FC = () => {
                           type="text"
                           value={declaredName}
                           onChange={(e) => setDeclaredName(e.target.value)}
-                          placeholder="e.g. Juan Dela Cruz (Booth #3)"
+                          placeholder="e.g. Maria Santos (Booth #3)"
                           required
-                          className="w-full px-3.5 py-2.5 bg-canvas border border-line rounded-xl text-sm text-ink focus:outline-none focus:border-zinc-500"
+                          className="w-full px-3.5 py-2.5 bg-canvas border border-line rounded-xl text-sm text-ink focus:outline-none focus:border-
+zinc-500"
                         />
                       </div>
                     </div>
 
+                    {/* Lookup Error / Success Indicator */}
+                    {lookupError && (
+                      <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
+                        <span>{lookupError}</span>
+                      </div>
+                    )}
+
                     {/* Reassuring Auto-Bound Location Pill */}
-                    <div className="px-3.5 py-2.5 rounded-2xl bg-emerald-50/70 border border-emerald-200/80 flex items-center justify-between text-xs text-emerald-950">
+                    <div className={`px-3.5 py-2.5 rounded-2xl border flex items-center justify-between text-xs transition-colors ${
+                      employeeVerified
+                        ? 'bg-emerald-50/70 border-emerald-200/80 text-emerald-950'
+                        : 'bg-canvas border-line text-ink-subtle'
+                    }`}>
                       <div className="flex items-center gap-2">
                         <MapPin className="w-4 h-4 text-brand shrink-0" />
                         <span>
                           Terminal Location:{' '}
                           <strong>
-                            {activeHub.name} ({activeHub.code})
+                            {employeeDetails.location ?? activeHub.name}
                           </strong>{' '}
                           • Department:{' '}
                           <strong>
-                            {matchedEmployee?.department_name ?? 'Operation'}
+                            {employeeDetails.department ?? matchedEmployee?.department_name ?? 'Operation'}
                           </strong>
                         </span>
                       </div>
-                      <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-white text-brand border border-emerald-200">
-                        Auto-Bound
+                      <span className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full border ${
+                        employeeVerified
+                          ? 'bg-white text-brand border-emerald-200'
+                          : 'bg-canvas text-ink-faint border-line'
+                      }`}>
+                        {employeeVerified ? 'Verified Profile' : 'Pending Verification'}
                       </span>
                     </div>
                   </div>
@@ -677,17 +761,29 @@ export const EmployeeTicketScreen: React.FC = () => {
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                       placeholder="Type details or leave blank if issue is straightforward..."
-                      className="w-full px-3.5 py-2.5 bg-canvas border border-line rounded-xl text-xs text-ink focus:outline-none focus:border-zinc-500"
+                      className="w-full px-3.5 py-2.5 bg-canvas border border-line rounded-xl text-xs text-ink focus:outline-none focus:border-zinc-
+500"
                     />
                   </div>
 
                   {/* Submit Button */}
                   <button
                     type="submit"
-                    className="w-full py-3.5 rounded-2xl bg-zinc-900 hover:bg-zinc-800 text-white text-sm font-bold shadow-md transition-all flex items-center justify-center gap-2 press-fx"
+                    disabled={isSubmitting}
+                    className="w-full py-3.5 rounded-2xl bg-zinc-900 hover:bg-zinc-800 text-white text-sm font-bold shadow-md transition-all flex
+items-center justify-center gap-2 press-fx disabled:opacity-60"
                   >
-                    <span>Submit IT Support Ticket</span>
-                    <ArrowRight className="w-4 h-4 text-emerald-400" />
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
+                        <span>Submitting Ticket to Central Server...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Submit IT Support Ticket</span>
+                        <ArrowRight className="w-4 h-4 text-emerald-400" />
+                      </>
+                    )}
                   </button>
                 </form>
               )}
@@ -699,8 +795,9 @@ export const EmployeeTicketScreen: React.FC = () => {
                     <CheckCircle2 className="w-6 h-6" />
                   </div>
                   <div>
-                    <span className="text-xs font-mono font-semibold uppercase px-2.5 py-1 rounded-full bg-emerald-50 text-brand border border-emerald-200">
-                      Ticket Logged Successfully
+                    <span className="text-xs font-mono font-semibold uppercase px-2.5 py-1 rounded-full bg-emerald-50 text-brand border border-
+emerald-200">
+                      Ticket Logged in Central Database
                     </span>
                     <h2 className="text-2xl font-bold text-ink mt-2 font-mono">
                       {submittedTicket.ticketCode}
@@ -746,7 +843,8 @@ export const EmployeeTicketScreen: React.FC = () => {
                           submittedTicket.id
                         )
                       }
-                      className="px-3 py-1.5 rounded-lg bg-surface border border-line text-xs font-semibold inline-flex items-center gap-1.5 text-ink hover:text-orange-600 transition-colors press-fx"
+                      className="px-3 py-1.5 rounded-lg bg-surface border border-line text-xs font-semibold inline-flex items-center gap-1.5 text-ink
+hover:text-orange-600 transition-colors press-fx"
                     >
                       {copiedTicketId === submittedTicket.id ? (
                         <>
@@ -765,7 +863,8 @@ export const EmployeeTicketScreen: React.FC = () => {
                   <div className="flex items-center justify-center gap-3 pt-2">
                     <button
                       onClick={() => setSubmittedTicket(null)}
-                      className="px-4 py-2.5 rounded-xl bg-canvas hover:bg-zinc-200/70 text-ink border border-line text-xs font-semibold transition-colors press-fx"
+                      className="px-4 py-2.5 rounded-xl bg-canvas hover:bg-zinc-200/70 text-ink border border-line text-xs font-semibold transition-
+colors press-fx"
                     >
                       Submit Another Issue
                     </button>
@@ -774,7 +873,8 @@ export const EmployeeTicketScreen: React.FC = () => {
                         setTab('my_tickets');
                         setDetailTicketId(submittedTicket.id);
                       }}
-                      className="px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-semibold inline-flex items-center gap-1.5 transition-colors press-fx"
+                      className="px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-semibold inline-flex items-center gap-1.
+5 transition-colors press-fx"
                     >
                       <span>Open Ticket Details &amp; Chat</span>
                       <ArrowRight className="w-3.5 h-3.5" />
@@ -859,7 +959,8 @@ export const EmployeeTicketScreen: React.FC = () => {
                           <div className="pt-2 border-t border-line/80 flex flex-wrap items-center justify-between gap-3">
                             <div className="flex flex-wrap items-center gap-2 text-xs">
                               {isClaimed ? (
-                                <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-xl bg-emerald-50 border border-emerald-200/80 text-emerald-900">
+                                <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-xl bg-emerald-50 border border-emerald-200/80 text-
+emerald-900">
                                   <img
                                     src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(
                                       t.workedBy!
@@ -873,7 +974,8 @@ export const EmployeeTicketScreen: React.FC = () => {
                                   </span>
                                 </div>
                               ) : (
-                                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-50 border border-amber-200/80 text-amber-800 font-medium">
+                                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-50 border border-amber-200/80 text-
+amber-800 font-medium">
                                   <Clock className="w-3.5 h-3.5 text-amber-600" />
                                   <span>Unclaimed — Waiting for IT Support</span>
                                 </div>
@@ -885,21 +987,26 @@ export const EmployeeTicketScreen: React.FC = () => {
                             </div>
 
                             <div className="flex items-center gap-2">
-                              {/* Classification / Priority Badge */}
-                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${getPriorityBadgeClass(t.priority)}`}>
-                                {t.priority ?? 'Medium'}
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-surface border border-line text-xs font-
+semibold text-ink-subtle">
+                                <MessageSquare className="w-3.5 h-3.5 text-orange-500" />
+                                <span>
+                                  {msgCount} {msgCount === 1 ? 'Message' : 'Messages'}
+                                </span>
                               </span>
 
-                              {/* Message Counter Pill */}
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-surface border border-line text-[11px] font-semibold text-ink-subtle">
-                                <MessageSquare className="w-3 h-3 text-orange-500" />
-                                <span>{msgCount}</span>
-                              </span>
-
-                              {/* Clickable Card Action Indicator */}
-                              <div className="w-7 h-7 rounded-lg bg-surface border border-line flex items-center justify-center text-zinc-400 group-hover:text-orange-500 group-hover:border-orange-200 transition-colors">
-                                <ChevronRight className="w-3.5 h-3.5" />
-                              </div>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDetailTicketId(t.id);
+                                }}
+                                className="px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-semibold inline-flex items-
+center gap-1.5 shadow-sm transition-colors press-fx"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                                <span>View Details &amp; Chat</span>
+                              </button>
                             </div>
                           </div>
 
@@ -914,15 +1021,17 @@ export const EmployeeTicketScreen: React.FC = () => {
                               </span>
                               <div className="flex items-center gap-2">
                                 <button
-                                  onClick={() => setClosureModalTicketId(t.id)}
-                                  className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold inline-flex items-center gap-1.5 shadow-sm press-fx"
+                                  onClick={() => confirmClosure(t.id)}
+                                  className="px-3 py-1.5 rounded-xl bg-brand hover:bg-brand-hover text-white text-xs font-semibold inline-flex items-
+center gap-1.5 shadow-sm press-fx"
                                 >
                                   <CheckCircle2 className="w-3.5 h-3.5" />
                                   Yes, Confirm Closure
                                 </button>
                                 <button
                                   onClick={() => reopenTicket(t.id)}
-                                  className="px-3 py-1.5 rounded-xl bg-surface text-peach-text border border-orange-300 text-xs font-semibold inline-flex items-center gap-1 press-fx"
+                                  className="px-3 py-1.5 rounded-xl bg-surface text-peach-text border border-orange-300 text-xs font-semibold inline-
+flex items-center gap-1 press-fx"
                                 >
                                   <RotateCcw className="w-3.5 h-3.5" />
                                   Still Broken
@@ -947,7 +1056,8 @@ export const EmployeeTicketScreen: React.FC = () => {
                         setDetailTicketId(null);
                         setVerifyTicketCode(null);
                       }}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-canvas hover:bg-zinc-200/70 text-ink border border-line text-xs font-semibold transition-colors press-fx"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-canvas hover:bg-zinc-200/70 text-ink border border-line
+text-xs font-semibold transition-colors press-fx"
                     >
                       <ArrowLeft className="w-3.5 h-3.5" />
                       <span>Back to My Tickets</span>
@@ -963,7 +1073,8 @@ export const EmployeeTicketScreen: React.FC = () => {
                         onClick={() =>
                           handleCopyLink(detailTicket.ticketCode, detailTicket.id)
                         }
-                        className="p-1.5 rounded-lg bg-canvas border border-line text-ink-subtle hover:text-ink text-xs font-semibold inline-flex items-center gap-1 transition-colors press-fx"
+                        className="p-1.5 rounded-lg bg-canvas border border-line text-ink-subtle hover:text-ink text-xs font-semibold inline-flex
+items-center gap-1 transition-colors press-fx"
                         title="Copy employee confirmation link"
                       >
                         {copiedTicketId === detailTicket.id ? (
@@ -986,7 +1097,8 @@ export const EmployeeTicketScreen: React.FC = () => {
                   {/* HIGH-VISIBILITY VALIDATION REQUEST CARD (WHEN RESL OR REQUESTED) */}
                   {(detailTicket.status === 'RESL' ||
                     detailTicket.validationRequested) && (
-                    <div className="bg-gradient-to-r from-orange-50 to-amber-50 border-2 border-orange-300 rounded-2xl p-5 shadow-sm space-y-3 animate-fade-in">
+                    <div className="bg-gradient-to-r from-orange-50 to-amber-50 border-2 border-orange-300 rounded-2xl p-5 shadow-sm space-y-3
+animate-fade-in">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-xl bg-orange-500 text-white flex items-center justify-center shrink-0 shadow-sm">
@@ -1002,7 +1114,8 @@ export const EmployeeTicketScreen: React.FC = () => {
                           </div>
                         </div>
 
-                        <span className="text-[11px] font-mono font-semibold px-2.5 py-1 rounded-full bg-white border border-orange-200 text-orange-800">
+                        <span className="text-[11px] font-mono font-semibold px-2.5 py-1 rounded-full bg-white border border-orange-200 text-orange-
+800">
                           {detailTicket.timeFinished?.slice(0, 5) || 'Resolved Today'}
                         </span>
                       </div>
@@ -1023,14 +1136,16 @@ export const EmployeeTicketScreen: React.FC = () => {
                       <div className="flex flex-wrap items-center justify-end gap-2.5 pt-1">
                         <button
                           onClick={() => reopenTicket(detailTicket.id)}
-                          className="px-4 py-2 rounded-xl bg-white hover:bg-orange-100 text-orange-800 border border-orange-300 text-xs font-bold inline-flex items-center gap-1.5 transition-colors press-fx"
+                          className="px-4 py-2 rounded-xl bg-white hover:bg-orange-100 text-orange-800 border border-orange-300 text-xs font-bold
+inline-flex items-center gap-1.5 transition-colors press-fx"
                         >
                           <RotateCcw className="w-4 h-4" />
                           <span>Still Broken (Reopen)</span>
                         </button>
                         <button
-                          onClick={() => setClosureModalTicketId(detailTicket.id)}
-                          className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center gap-2 shadow-sm transition-colors press-fx"
+                          onClick={() => confirmClosure(detailTicket.id)}
+                          className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center
+gap-2 shadow-sm transition-colors press-fx"
                         >
                           <CheckCircle2 className="w-4 h-4" />
                           <span>Yes, Confirm Closure</span>
@@ -1041,7 +1156,8 @@ export const EmployeeTicketScreen: React.FC = () => {
 
                   {/* SUCCESS SIGN-OFF BANNER WHEN CLSD */}
                   {detailTicket.status === 'CLSD' && (
-                    <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-center justify-between text-xs text-emerald-900">
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-center justify-between text-xs text-emerald-
+900">
                       <div className="flex items-center gap-2.5">
                         <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
                         <div>
@@ -1171,12 +1287,6 @@ export const EmployeeTicketScreen: React.FC = () => {
                       <span className="text-[11px] font-bold uppercase tracking-wider text-ink-subtle block mb-1">
                         Ticket Information
                       </span>
-                      <div className="flex justify-between items-center">
-                        <span className="text-ink-subtle">Classification:</span>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${getPriorityBadgeClass(detailTicket.priority)}`}>
-                          {detailTicket.priority ?? 'Medium'} Priority
-                        </span>
-                      </div>
                       <div className="flex justify-between">
                         <span className="text-ink-subtle">Issue Category:</span>
                         <span className="font-bold text-ink">
@@ -1203,22 +1313,6 @@ export const EmployeeTicketScreen: React.FC = () => {
                         </span>
                       </div>
                     </div>
-                  </div>
-
-                  {/* Dedicated Reported Problem Description Card */}
-                  <div className="bg-[#FAFBFD] border border-[#E2E5EA] rounded-2xl p-4 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-1.5">
-                        <FileText className="w-3.5 h-3.5 text-orange-500" />
-                        Reported Problem Description
-                      </span>
-                      <span className="text-[10px] font-mono text-zinc-500 bg-zinc-100 px-2 py-0.5 rounded">
-                        Original Intake
-                      </span>
-                    </div>
-                    <p className="text-xs text-ink leading-relaxed whitespace-pre-wrap bg-white p-3 rounded-xl border border-[#ECEEF2] shadow-2xs font-normal">
-                      {detailTicket.description}
-                    </p>
                   </div>
 
                   {/* LIVE CHAT BOX BETWEEN EMPLOYEE & IT SUPPORT */}
@@ -1307,7 +1401,8 @@ export const EmployeeTicketScreen: React.FC = () => {
                               preset
                             )
                           }
-                          className="text-[11px] px-2.5 py-1 rounded-full bg-surface hover:bg-zinc-100 text-ink-subtle hover:text-ink border border-line transition-colors press-fx"
+                          className="text-[11px] px-2.5 py-1 rounded-full bg-surface hover:bg-zinc-100 text-ink-subtle hover:text-ink border border-
+line transition-colors press-fx"
                         >
                           {preset}
                         </button>
@@ -1324,11 +1419,13 @@ export const EmployeeTicketScreen: React.FC = () => {
                         value={chatInput}
                         onChange={(e) => setChatInput(e.target.value)}
                         placeholder="Type a message or answer IT Support..."
-                        className="flex-1 px-3.5 py-2 bg-canvas border border-line rounded-xl text-xs text-ink focus:outline-none focus:border-zinc-500"
+                        className="flex-1 px-3.5 py-2 bg-canvas border border-line rounded-xl text-xs text-ink focus:outline-none focus:border-zinc-
+500"
                       />
                       <button
                         type="submit"
-                        className="px-4 py-2 rounded-xl bg-brand hover:bg-brand-hover text-white text-xs font-semibold inline-flex items-center gap-1.5 shadow-sm transition-colors press-fx"
+                        className="px-4 py-2 rounded-xl bg-brand hover:bg-brand-hover text-white text-xs font-semibold inline-flex items-center gap-1.
+5 shadow-sm transition-colors press-fx"
                       >
                         <Send className="w-3.5 h-3.5" />
                         <span>Send</span>
@@ -1341,84 +1438,6 @@ export const EmployeeTicketScreen: React.FC = () => {
           )}
         </div>
       </main>
-
-      {/* Safety Closure Confirmation Modal */}
-      {closureModalTicketId && (() => {
-        const modalTicket = tickets.find((t) => t.id === closureModalTicketId);
-        return (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
-            <div className="bg-white border border-[#ECEEF2] rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-2xl bg-orange-100 flex items-center justify-center text-orange-600 shrink-0">
-                  <HelpCircle className="w-6 h-6 text-orange-600" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-ink">
-                    Confirm Issue Resolution
-                  </h3>
-                  <p className="text-xs text-zinc-500">
-                    Is the problem completely resolved?
-                  </p>
-                </div>
-              </div>
-
-              <div className="p-3.5 rounded-2xl bg-[#F7F8FA] border border-[#ECEEF2] space-y-1.5 text-xs">
-                <div className="flex justify-between text-zinc-500">
-                  <span>Ticket Code:</span>
-                  <span className="font-mono font-bold text-ink">{modalTicket?.ticketCode}</span>
-                </div>
-                <div className="flex justify-between text-zinc-500">
-                  <span>Equipment / Task:</span>
-                  <span className="font-semibold text-ink">{modalTicket?.task}</span>
-                </div>
-                <div className="flex justify-between text-zinc-500">
-                  <span>Terminal Location:</span>
-                  <span className="font-semibold text-ink">{modalTicket?.location}</span>
-                </div>
-              </div>
-
-              <p className="text-xs text-zinc-600 leading-relaxed">
-                Please verify that your booth terminal, printer, or application is functioning properly. Confirming closure will validate this repair and record your sign-off in the 15-column master job log.
-              </p>
-
-              <div className="flex flex-col sm:flex-row items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setClosureModalTicketId(null)}
-                  className="w-full sm:w-auto px-4 py-2 rounded-xl bg-white hover:bg-zinc-100 text-zinc-700 text-xs font-semibold border border-[#ECEEF2] transition-colors press-fx"
-                >
-                  Cancel / Keep Open
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (closureModalTicketId) {
-                      reopenTicket(closureModalTicketId);
-                      setClosureModalTicketId(null);
-                    }
-                  }}
-                  className="w-full sm:w-auto px-3.5 py-2 rounded-xl bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 text-xs font-semibold transition-colors press-fx"
-                >
-                  Still Broken
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (closureModalTicketId) {
-                      confirmClosure(closureModalTicketId);
-                      setClosureModalTicketId(null);
-                    }
-                  }}
-                  className="w-full sm:w-auto px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center justify-center gap-1.5 shadow-sm transition-colors press-fx"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  Yes, Problem is Resolved
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
 
       {/* Subtle Footer */}
       <footer className="py-4 px-6 text-center text-[11px] text-ink-faint flex items-center justify-center gap-2">

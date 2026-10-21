@@ -1,5 +1,15 @@
 // @spec FR-AUTH-02: Dual-mode state separating Public Employee Intake from Authenticated Nexora IT/Admin Workspace
 import { create } from 'zustand';
+
+import {
+  authApi,
+  directoryApi,
+  ticketsApi,
+  setAccessToken,
+  USE_MOCK,
+  EmployeeLookupResult,
+} from '../api/client';
+
 import {
   Ticket,
   NewTicketInput,
@@ -156,6 +166,22 @@ const INITIAL_SAVED_REPAIR_NOTES: SavedRepairNote[] = [
 ];
 
 interface AppState {
+
+    // Live API Integration
+  isAuthenticating: boolean;
+  authError: string | null;
+  loginWithApi: (credentials: { username: string; password: string }) => Promise<boolean>;
+  lookupEmployeeApi: (query: string) => Promise<EmployeeLookupResult | null>;
+  submitTicketApi: (input: {
+    employeeId: string;
+    taskCode: TaskCategoryCode;
+    description: string;
+    companyName?: string;
+    locationName?: string;
+    departmentName?: string;
+    requestorName?: string;
+  }) => Promise<Ticket | null>;
+
   // Auth & Flow State: null = Public Employee Ticket Creation Screen
   currentUser: AuthenticatedUser | null;
   loginModalRole: StaffRole | null;
@@ -281,6 +307,145 @@ const getInitialVerifyCode = (): string | null => {
 };
 
 export const useAppStore = create<AppState>((set, get) => ({
+  isAuthenticating: false,
+  authError: null,
+
+  loginWithApi: async ({ username, password }) => {
+    set({ isAuthenticating: true, authError: null });
+    try {
+      if (USE_MOCK) {
+        get().loginAsStaff('admin');
+        set({ isAuthenticating: false });
+        return true;
+      }
+
+      const data = await authApi.login({ username, password });
+      setAccessToken(data.access_token);
+
+      const userRole: StaffRole = data.user.role === 'admin' ? 'admin' : 'it';
+      set({
+        currentUser: {
+          id: data.user.id,
+          name: data.user.full_name,
+          email: data.user.email,
+          role: userRole,
+          title: userRole === 'admin' ? 'IT Administrator' : 'Senior IT Support Specialist',
+          avatar: data.user.full_name
+            .split(' ')
+            .map((n: string) => n[0])
+            .join('')
+            .slice(0, 2)
+            .toUpperCase(),
+        },
+        loginModalRole: null,
+        activeView: userRole === 'admin' ? 'overview' : 'workbench',
+        isAuthenticating: false,
+      });
+
+      get().addToast(
+        `Welcome, ${data.user.full_name}!`,
+        'Signed into IT Operations Workspace',
+        'success'
+      );
+      return true;
+    } catch (err: any) {
+      const msg = err.response?.data?.detail || 'Invalid username or password';
+      set({ authError: msg, isAuthenticating: false });
+      get().addToast('Authentication Failed', msg, 'warning');
+      return false;
+    }
+  },
+
+  lookupEmployeeApi: async (query: string) => {
+    try {
+      if (USE_MOCK) {
+        return null;
+      }
+      return await directoryApi.lookupEmployee(query);
+    } catch {
+      return null;
+    }
+  },
+
+  submitTicketApi: async (input) => {
+    const taskMeta = TASK_CATEGORIES.find((c) => c.code === input.taskCode);
+    const now = new Date();
+
+    if (USE_MOCK) {
+      return get().createTicket({
+        company: input.companyName ?? 'Five Star Bus Co.',
+        companyCode: 'FS',
+        location: input.locationName ?? 'Pasay Terminal',
+        locationCode: 'PSY',
+        department: input.departmentName ?? 'Operations',
+        departmentCode: 'OPS',
+        requestor: input.requestorName ?? 'Terminal Staff',
+        employeeId: input.employeeId,
+        taskCode: input.taskCode,
+        description: input.description,
+        mode: 'SITE',
+        intakeSource: 'PC Kiosk',
+      });
+    }
+
+    try {
+      const res = await ticketsApi.submitPublicTicket({
+        employee_id: input.employeeId,
+        task_code: input.taskCode,
+        description: input.description,
+      });
+
+      const newTicket: Ticket = {
+        id: 't-' + Date.now(),
+        ticketCode: res.ticket_code,
+        company: input.companyName ?? 'Five Star Bus Co.',
+        companyCode: 'FS',
+        mode: 'SITE',
+        department: input.departmentName ?? 'Operations',
+        departmentCode: 'OPS',
+        requestor: input.requestorName ?? 'Terminal Staff',
+        employeeId: input.employeeId,
+        task: taskMeta ? taskMeta.name : input.taskCode,
+        taskCode: input.taskCode,
+        description: input.description,
+        month: now.toLocaleString('default', { month: 'long', year: 'numeric' }),
+        dateStarted: now.toISOString().split('T')[0],
+        timeStarted: now.toTimeString().split(' ')[0],
+        status: 'OPEN',
+        location: input.locationName ?? 'Pasay Terminal',
+        locationCode: 'PSY',
+        priority: taskMeta ? taskMeta.defaultPriority : 'Medium',
+        intakeSource: 'PC Kiosk',
+        createdAt: res.created_at || now.toISOString(),
+        messages: [
+          {
+            id: 'msg-init-' + Date.now(),
+            senderRole: 'employee',
+            senderName: input.requestorName ?? 'Terminal Staff',
+            message: input.description,
+            timestamp: formatTimeAmPm(now),
+          },
+        ],
+      };
+
+      set((state) => ({
+        tickets: [newTicket, ...state.tickets],
+      }));
+
+      get().addToast(
+        `Ticket ${newTicket.ticketCode} Submitted!`,
+        `Saved to central IT database (${newTicket.location})`,
+        'success'
+      );
+
+      return newTicket;
+    } catch (err: any) {
+      const msg = err.response?.data?.detail || 'Failed to submit ticket to server';
+      get().addToast('Submission Error', msg, 'warning');
+      return null;
+    }
+  },
+
   currentUser: null,
   loginModalRole: null,
 

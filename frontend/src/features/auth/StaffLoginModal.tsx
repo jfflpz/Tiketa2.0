@@ -1,57 +1,52 @@
 // @spec FR-AUTH-02: Staff Authentication Modal for IT Support and Administrators
 import React, { useState, useEffect } from 'react';
-import { X, ShieldCheck, Wrench, Lock, ArrowRight } from 'lucide-react';
+import { X, ShieldCheck, Wrench, Lock, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
 import { useAppStore, StaffRole } from '../../store/useAppStore';
 
 export const StaffLoginModal: React.FC = () => {
-  const { loginModalRole, closeLoginModal, loginAsStaff } = useAppStore();
+  const { loginModalRole, closeLoginModal, loginWithApi, isAuthenticating, authError } = useAppStore();
 
   const [role, setRole] = useState<StaffRole>('admin');
-  const [username, setUsername] = useState('stephen@fivestarbus.com');
-  const [password, setPassword] = useState('••••••••••••');
+  const [username, setUsername] = useState('admin');
+  const [password, setPassword] = useState('');
 
   useEffect(() => {
     if (loginModalRole) {
       setRole(loginModalRole);
-      setUsername(
-        loginModalRole === 'admin'
-          ? 'stephen@fivestarbus.com'
-          : 'nathaniel@fivestarbus.com'
-      );
+      setUsername(loginModalRole === 'admin' ? 'admin' : 'technician');
     }
   }, [loginModalRole]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && loginModalRole) {
+      if (e.key === 'Escape' && loginModalRole && !isAuthenticating) {
         closeLoginModal();
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [loginModalRole, closeLoginModal]);
+  }, [loginModalRole, closeLoginModal, isAuthenticating]);
 
   if (!loginModalRole) return null;
 
   const handleRoleSwitch = (newRole: StaffRole) => {
     setRole(newRole);
-    setUsername(
-      newRole === 'admin'
-        ? 'stephen@fivestarbus.com'
-        : 'nathaniel@fivestarbus.com'
-    );
+    setUsername(newRole === 'admin' ? 'admin' : 'technician');
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    loginAsStaff(role);
+    const success = await loginWithApi({ username, password });
+    if (success) {
+      setPassword('');
+    }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/35 backdrop-blur-[2px]">
       <div
         className="fixed inset-0"
-        onClick={closeLoginModal}
+        onClick={() => !isAuthenticating && closeLoginModal()}
         aria-hidden="true"
       />
       <div className="relative z-10 w-full max-w-md bg-surface border border-line rounded-3xl shadow-2xl overflow-hidden">
@@ -66,19 +61,28 @@ export const StaffLoginModal: React.FC = () => {
                 Staff Workspace Sign In
               </h3>
               <p className="text-[11px] text-ink-subtle">
-                2-Tier Authenticated Access (Argon2id + JWT)
+                2-Tier Authenticated Access (Argon2id + Dual-Token JWT)
               </p>
             </div>
           </div>
           <button
             onClick={closeLoginModal}
-            className="p-1.5 rounded-xl bg-surface border border-line text-ink-subtle hover:text-ink press-fx"
+            disabled={isAuthenticating}
+            className="p-1.5 rounded-xl bg-surface border border-line text-ink-subtle hover:text-ink press-fx disabled:opacity-50"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {/* Error Banner */}
+          {authError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-xs text-red-700">
+              <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+              <span>{authError}</span>
+            </div>
+          )}
+
           {/* Role Switcher Pill */}
           <div className="grid grid-cols-2 gap-1.5 bg-canvas p-1 rounded-2xl border border-line">
             <button
@@ -118,7 +122,9 @@ export const StaffLoginModal: React.FC = () => {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
-                className="w-full px-3.5 py-2.5 bg-canvas border border-line rounded-xl text-xs font-medium text-ink focus:outline-none focus:border-zinc-500"
+                disabled={isAuthenticating}
+                className="w-full px-3.5 py-2.5 bg-canvas border border-line rounded-xl text-xs font-medium text-ink focus:outline-none focus:border-
+zinc-500 disabled:opacity-60"
               />
             </div>
             <div>
@@ -129,8 +135,11 @@ export const StaffLoginModal: React.FC = () => {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter password (min 12 characters)"
                 required
-                className="w-full px-3.5 py-2.5 bg-canvas border border-line rounded-xl text-xs font-medium text-ink focus:outline-none focus:border-zinc-500"
+                disabled={isAuthenticating}
+                className="w-full px-3.5 py-2.5 bg-canvas border border-line rounded-xl text-xs font-medium text-ink focus:outline-none focus:border-
+zinc-500 disabled:opacity-60"
               />
             </div>
           </div>
@@ -152,14 +161,25 @@ export const StaffLoginModal: React.FC = () => {
 
           <button
             type="submit"
-            className="w-full py-3 px-4 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-semibold flex items-center justify-center gap-2 shadow-sm transition-colors press-fx"
+            disabled={isAuthenticating}
+            className="w-full py-3 px-4 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-semibold flex items-center justify-center
+gap-2 shadow-sm transition-colors press-fx disabled:opacity-50"
           >
-            <span>
-              {role === 'admin'
-                ? 'Launch Admin Dashboard'
-                : 'Launch IT Support Workbench'}
-            </span>
-            <ArrowRight className="w-4 h-4" />
+            {isAuthenticating ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Authenticating with Argon2id...</span>
+              </>
+            ) : (
+              <>
+                <span>
+                  {role === 'admin'
+                    ? 'Launch Admin Dashboard'
+                    : 'Launch IT Support Workbench'}
+                </span>
+                <ArrowRight className="w-4 h-4" />
+              </>
+            )}
           </button>
         </form>
       </div>
