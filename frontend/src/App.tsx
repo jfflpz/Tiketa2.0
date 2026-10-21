@@ -1,19 +1,71 @@
+// @spec UI-SHELL-01: Role-Separated Application Flow (Employee Screen -> Staff Login -> Role-Isolated Workspace)
+import { Sidebar } from './components/layout/Sidebar';
+import { TopHeader } from './components/layout/TopHeader';
+import { ITOverviewDashboard } from './features/overview/ITOverviewDashboard';
+import { ITWorkbenchBoardView } from './features/workbench/ITWorkbenchBoardView';
+import { RepairNotesLibraryView } from './features/notes/RepairNotesLibraryView';
+import { JobLogSheetView } from './features/joblogs/JobLogSheetView';
+import { TerminalHubsView } from './features/terminals/TerminalHubsView';
+import { TeamWorkbenchView } from './features/workbench/TeamWorkbenchView';
+import { ExecutiveAnalyticsView } from './features/analytics/ExecutiveAnalyticsView';
+import { EmployeeTicketScreen } from './features/kiosk/EmployeeTicketScreen';
+import { StaffLoginModal } from './features/auth/StaffLoginModal';
+import { JobLogDrawer } from './components/tickets/JobLogDrawer';
+import { QuickIntakeModal } from './components/tickets/QuickIntakeModal';
+import { ToastContainer } from './components/common/ToastContainer';
+import { useAppStore } from './store/useAppStore';
+
 export default function App() {
+  const { currentUser, activeView, verifyTicketCode } = useAppStore();
+
+  // Public / Terminal Employee View or Direct Confirmation Link View
+  if (!currentUser || verifyTicketCode) {
+    return (
+      <>
+        <EmployeeTicketScreen />
+        <StaffLoginModal />
+        <ToastContainer />
+      </>
+    );
+  }
+
+  const isAdmin = currentUser.role === 'admin';
+
+  // Enforce strict role isolation so IT Support only accesses the 5 IT Support screens
+  const resolvedView =
+    !isAdmin && (activeView === 'analytics' || activeView === 'team')
+      ? 'overview'
+      : activeView;
+
+  // Authenticated Staff Workspace: Nexora Categorized Dark Sidebar + Role-Isolated Screens
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-6">
-      <div className="max-w-md w-full bg-slate-800 border border-slate-700 rounded-xl p-8 text-center shadow-xl">
-        <div className="inline-block px-3 py-1 bg-red-600/20 text-red-400 border border-red-500/30 rounded-full text-xs font-semibold mb-4 tracking-wider uppercase">
-          Tiketa 2.0 Foundation
-        </div>
-        <h1 className="text-2xl font-bold text-white mb-2">Five Star Bus Co.</h1>
-        <p className="text-slate-400 text-sm mb-6">Internal IT Service & Terminal Dispatch Engine</p>
-        <div className="p-4 bg-slate-900/60 rounded-lg border border-slate-700/50 text-left text-xs font-mono text-emerald-400">
-          <div>✓ PostgreSQL 16 (tiketa-postgres)</div>
-          <div>✓ Redis 7 (tiketa-redis)</div>
-          <div>✓ FastAPI 0.110 (tiketa-backend)</div>
-          <div>✓ Strict TypeScript 5+ (tiketa-frontend)</div>
-        </div>
+    <div className="flex h-screen w-screen overflow-hidden bg-[#F4F6F9] text-ink font-sans">
+      <Sidebar />
+
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <TopHeader />
+
+        <main className="flex-1 overflow-y-auto px-6 py-5">
+          <div className="max-w-[1440px] mx-auto">
+            {resolvedView === 'overview' && <ITOverviewDashboard />}
+            {resolvedView === 'workbench' && <ITWorkbenchBoardView />}
+            {resolvedView === 'notes' && <RepairNotesLibraryView />}
+            {resolvedView === 'joblogs' && <JobLogSheetView />}
+            {resolvedView === 'terminals' && <TerminalHubsView />}
+            {isAdmin && resolvedView === 'analytics' && <ExecutiveAnalyticsView />}
+            {isAdmin && resolvedView === 'team' && <TeamWorkbenchView />}
+          </div>
+        </main>
       </div>
+
+      {/* Global Slide-Out 15-Column Job Log & Live Chat Drawer */}
+      <JobLogDrawer />
+
+      {/* Global Walk-In & Viber Quick Intake Modal */}
+      <QuickIntakeModal />
+
+      {/* Sub-100ms Tactile Toast Notification Container */}
+      <ToastContainer />
     </div>
   );
 }
