@@ -1,20 +1,22 @@
-// @spec UI-LAYOUT-01: Nexora Categorized Dark Sidebar (#111315) with Role Isolation, Saved Repair Notes & Clean Logo
+// @spec UI-LAYOUT-01: Nexora Categorized Dark Sidebar (#111315) with Separated Staff & Knowledge Governance & Active Orange Highlights
 import React, { useState } from 'react';
 import {
   Home,
   ChevronDown,
   ChevronRight,
+  Inbox,
   Wrench,
   BookOpen,
   FileSpreadsheet,
   Building2,
   LineChart,
   Users,
-  ShieldCheck,
+  BarChart3,
+  Layers,
   LogOut,
   Box,
 } from 'lucide-react';
-import { useAppStore, ActiveView } from '../../store/useAppStore';
+import { useAppStore } from '../../store/useAppStore';
 
 export const Sidebar: React.FC = () => {
   const {
@@ -23,11 +25,19 @@ export const Sidebar: React.FC = () => {
     activeView,
     setActiveView,
     sidebarCollapsed,
-    addToast,
+    tickets,
   } = useAppStore();
 
   const [mainOpen, setMainOpen] = useState(true);
+  const [adminAnalyticsOpen, setAdminAnalyticsOpen] = useState(true);
   const isAdmin = currentUser?.role === 'admin';
+
+  // Badge count for active tickets
+  const activeTicketsCount = tickets.filter((t) => t.status !== 'CLSD').length;
+
+  const isOverviewGroupActive = activeView === 'overview' || activeView === 'joblogs';
+  const isAnalyticsGroupActive =
+    activeView === 'analytics' || activeView === 'reports' || activeView === 'joblogs';
 
   return (
     <aside
@@ -37,7 +47,7 @@ export const Sidebar: React.FC = () => {
     >
       {/* Top Brand & Categorized Navigation */}
       <div className="p-4 space-y-6 overflow-y-auto flex-1">
-        {/* Nexora-Style Brand Header (Clean TIKETA logo without 2.0 or IT Support text) */}
+        {/* Nexora-Style Brand Header */}
         <div
           onClick={() => setActiveView(isAdmin ? 'analytics' : 'overview')}
           className="flex items-center gap-3 px-2 pt-1 cursor-pointer group"
@@ -58,16 +68,17 @@ export const Sidebar: React.FC = () => {
            ============================================================ */}
         {!isAdmin && (
           <>
-            {/* CATEGORY 1: MAIN (Personal KPI & Dispatch Dashboard) */}
+            {/* CATEGORY 1: MY DASHBOARD */}
             <div className="space-y-2">
               {!sidebarCollapsed && (
                 <div className="px-2.5 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-                  MAIN
+                  MY DASHBOARD
                 </div>
               )}
 
               <div>
                 <button
+                  type="button"
                   onClick={() => {
                     if (sidebarCollapsed) {
                       setActiveView('overview');
@@ -76,12 +87,16 @@ export const Sidebar: React.FC = () => {
                       setActiveView('overview');
                     }
                   }}
-                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold text-xs shadow-md shadow-orange-950/40 transition-all press-fx"
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-semibold text-xs transition-all press-fx ${
+                    (mainOpen ? activeView === 'overview' : isOverviewGroupActive)
+                      ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-md shadow-orange-950/40'
+                      : 'text-zinc-400 hover:text-white hover:bg-white/5'
+                  }`}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <Home className="w-4 h-4 shrink-0" />
                     {!sidebarCollapsed && (
-                      <span className="truncate">My Dashboard</span>
+                      <span className="truncate">KPI Overview</span>
                     )}
                   </div>
                   {!sidebarCollapsed && (
@@ -96,8 +111,9 @@ export const Sidebar: React.FC = () => {
                 </button>
 
                 {!sidebarCollapsed && mainOpen && (
-                  <div className="mt-2 ml-2 pl-2 border-l border-zinc-800 space-y-1">
+                  <div className="mt-1 ml-2 pl-2 border-l border-zinc-800 space-y-1">
                     <button
+                      type="button"
                       onClick={() => setActiveView('overview')}
                       className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-all press-fx ${
                         activeView === 'overview'
@@ -113,7 +129,27 @@ export const Sidebar: React.FC = () => {
                               : 'bg-zinc-600'
                           }`}
                         />
-                        <span className="truncate">My KPI &amp; Ticket Queue</span>
+                        <span className="truncate">Personal KPIs</span>
+                      </div>
+                    </button>
+
+                    {/* Job Logs is under MY DASHBOARD */}
+                    <button
+                      type="button"
+                      onClick={() => setActiveView('joblogs')}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-all press-fx ${
+                        activeView === 'joblogs'
+                          ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold shadow-md shadow-orange-950/40'
+                          : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/5 font-medium'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <FileSpreadsheet
+                          className={`w-3.5 h-3.5 shrink-0 ${
+                            activeView === 'joblogs' ? 'text-white' : 'text-emerald-400'
+                          }`}
+                        />
+                        <span className="truncate">15-Col Job Logs</span>
                       </div>
                     </button>
                   </div>
@@ -129,93 +165,116 @@ export const Sidebar: React.FC = () => {
                 </div>
               )}
 
+              {/* 1. Dedicated Active Ticket Lists Screen Button */}
               <button
-                onClick={() => setActiveView('workbench')}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-colors press-fx ${
-                  activeView === 'workbench'
-                    ? 'bg-white/10 text-white font-semibold border border-orange-500/40'
+                type="button"
+                onClick={() => setActiveView('tickets')}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all press-fx ${
+                  activeView === 'tickets'
+                    ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold shadow-md shadow-orange-950/40'
                     : 'text-zinc-400 hover:text-white hover:bg-white/5 font-medium'
                 }`}
-                title="My Active Workbench (Kanban, Checklist & Live Chat)"
+                title="Active Ticket Lists (Table & 3-Col Kanban)"
               >
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <Wrench className="w-4 h-4 text-orange-400 shrink-0" />
+                  <Inbox
+                    className={`w-4 h-4 shrink-0 ${
+                      activeView === 'tickets' ? 'text-white' : 'text-sky-400'
+                    }`}
+                  />
+                  {!sidebarCollapsed && (
+                    <span className="truncate">Active Ticket Lists</span>
+                  )}
+                </div>
+                {!sidebarCollapsed && (
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      activeView === 'tickets'
+                        ? 'bg-black/25 text-white'
+                        : 'bg-zinc-800 text-zinc-300'
+                    }`}
+                  >
+                    {activeTicketsCount}
+                  </span>
+                )}
+              </button>
+
+              {/* 2. My Active Workbench Screen Button */}
+              <button
+                type="button"
+                onClick={() => setActiveView('workbench')}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all press-fx ${
+                  activeView === 'workbench'
+                    ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold shadow-md shadow-orange-950/40'
+                    : 'text-zinc-400 hover:text-white hover:bg-white/5 font-medium'
+                }`}
+                title="My Active Workbench (Focused Ticket & Live Chat)"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Wrench
+                    className={`w-4 h-4 shrink-0 ${
+                      activeView === 'workbench' ? 'text-white' : 'text-orange-400'
+                    }`}
+                  />
                   {!sidebarCollapsed && (
                     <span className="truncate">My Active Workbench</span>
                   )}
                 </div>
-                {!sidebarCollapsed && (
-                  <ChevronRight className="w-3.5 h-3.5 text-zinc-600" />
-                )}
               </button>
 
+              {/* 3. Terminal Hubs Screen Button */}
               <button
+                type="button"
                 onClick={() => setActiveView('terminals')}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-colors press-fx ${
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all press-fx ${
                   activeView === 'terminals'
-                    ? 'bg-white/10 text-white font-semibold border border-orange-500/40'
+                    ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold shadow-md shadow-orange-950/40'
                     : 'text-zinc-400 hover:text-white hover:bg-white/5 font-medium'
                 }`}
-                title="Terminal Hubs & PMS Tracker"
+                title="15 Bus Terminal Hubs Monitor"
               >
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <Building2 className="w-4 h-4 text-sky-400 shrink-0" />
+                  <Building2
+                    className={`w-4 h-4 shrink-0 ${
+                      activeView === 'terminals' ? 'text-white' : 'text-teal-400'
+                    }`}
+                  />
                   {!sidebarCollapsed && (
-                    <span className="truncate">Terminal Hubs &amp; PMS</span>
+                    <span className="truncate">Terminal Hubs</span>
                   )}
                 </div>
-                {!sidebarCollapsed && (
-                  <ChevronRight className="w-3.5 h-3.5 text-zinc-600" />
-                )}
               </button>
             </div>
 
-            {/* CATEGORY 3: KNOWLEDGE & JOB LOGS */}
+            {/* CATEGORY 3: KNOWLEDGE BASE */}
             <div className="space-y-1.5">
               {!sidebarCollapsed && (
                 <div className="px-2.5 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-                  KNOWLEDGE &amp; JOB LOGS
+                  KNOWLEDGE BASE
                 </div>
               )}
 
+              {/* Saved Repair Notes */}
               <button
+                type="button"
                 onClick={() => setActiveView('notes')}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-colors press-fx ${
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all press-fx ${
                   activeView === 'notes'
-                    ? 'bg-white/10 text-white font-semibold border border-orange-500/40'
+                    ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold shadow-md shadow-orange-950/40'
                     : 'text-zinc-400 hover:text-white hover:bg-white/5 font-medium'
                 }`}
-                title="Saved Repair Notes & Troubleshooting Checklists"
+                title="Saved Repair Notes & Troubleshooting Guides"
               >
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <BookOpen className="w-4 h-4 text-amber-400 shrink-0" />
+                  <BookOpen
+                    className={`w-4 h-4 shrink-0 ${
+                      activeView === 'notes' ? 'text-white' : 'text-amber-400'
+                    }`}
+                  />
                   {!sidebarCollapsed && (
                     <span className="truncate">Saved Repair Notes</span>
                   )}
                 </div>
-                {!sidebarCollapsed && (
-                  <ChevronRight className="w-3.5 h-3.5 text-zinc-600" />
-                )}
-              </button>
-
-              <button
-                onClick={() => setActiveView('joblogs')}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-colors press-fx ${
-                  activeView === 'joblogs'
-                    ? 'bg-white/10 text-white font-semibold border border-orange-500/40'
-                    : 'text-zinc-400 hover:text-white hover:bg-white/5 font-medium'
-                }`}
-                title="My Personal Job Logs"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <FileSpreadsheet className="w-4 h-4 text-emerald-400 shrink-0" />
-                  {!sidebarCollapsed && (
-                    <span className="truncate">My Job Logs</span>
-                  )}
-                </div>
-                {!sidebarCollapsed && (
-                  <ChevronRight className="w-3.5 h-3.5 text-zinc-600" />
-                )}
               </button>
             </div>
           </>
@@ -226,113 +285,230 @@ export const Sidebar: React.FC = () => {
            ============================================================ */}
         {isAdmin && (
           <>
-            {/* ADMIN CATEGORY 1: REPORTS & GOVERNANCE */}
-            <div className="space-y-1.5">
+            {/* ADMIN CATEGORY 1: EXECUTIVE ANALYTICS (With Dropdown Accordion) */}
+            <div className="space-y-2">
               {!sidebarCollapsed && (
                 <div className="px-2.5 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-                  REPORTS &amp; GOVERNANCE
+                  EXECUTIVE ANALYTICS
                 </div>
               )}
 
-              {(
-                [
-                  {
-                    id: 'analytics' as ActiveView,
-                    label: 'Executive Analytics',
-                    icon: <LineChart className="w-4 h-4 text-orange-400" />,
-                  },
-                  {
-                    id: 'team' as ActiveView,
-                    label: 'IT Team Roster',
-                    icon: <Users className="w-4 h-4 text-emerald-400" />,
-                  },
-                ] as const
-              ).map((item) => {
-                const isActive = activeView === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => setActiveView(item.id)}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-colors press-fx ${
-                      isActive
-                        ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold shadow-md'
-                        : 'text-zinc-400 hover:text-white hover:bg-white/5 font-medium'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      {item.icon}
-                      {!sidebarCollapsed && <span>{item.label}</span>}
-                    </div>
+              <div>
+                {/* Primary Orange Header with Dropdown Accordion */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (sidebarCollapsed) {
+                      setActiveView('analytics');
+                    } else {
+                      setAdminAnalyticsOpen((prev) => !prev);
+                      setActiveView('analytics');
+                    }
+                  }}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-semibold text-xs transition-all press-fx ${
+                    (adminAnalyticsOpen ? activeView === 'analytics' : isAnalyticsGroupActive)
+                      ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-md shadow-orange-950/40'
+                      : 'text-zinc-400 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <LineChart className="w-4 h-4 shrink-0" />
                     {!sidebarCollapsed && (
-                      <ChevronRight className="w-3.5 h-3.5 text-white/70" />
+                      <span className="truncate">Executive Analytics</span>
                     )}
-                  </button>
-                );
-              })}
+                  </div>
+                  {!sidebarCollapsed && (
+                    <div className="flex items-center gap-1.5">
+                      {adminAnalyticsOpen ? (
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      ) : (
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      )}
+                    </div>
+                  )}
+                </button>
 
+                {!sidebarCollapsed && adminAnalyticsOpen && (
+                  <div className="mt-1 ml-2 pl-2 border-l border-zinc-800 space-y-1">
+                    {/* Sub-item 1: Overview & KPIs */}
+                    <button
+                      type="button"
+                      onClick={() => setActiveView('analytics')}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-all press-fx ${
+                        activeView === 'analytics'
+                          ? 'text-white font-semibold bg-white/10'
+                          : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/5 font-medium'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                            activeView === 'analytics'
+                              ? 'bg-orange-500 ring-4 ring-orange-500/20'
+                              : 'bg-zinc-600'
+                          }`}
+                        />
+                        <span className="truncate">Overview &amp; KPIs</span>
+                      </div>
+                    </button>
+
+                    {/* Sub-item 2: 8 Standardized Reports Suite */}
+                    <button
+                      type="button"
+                      onClick={() => setActiveView('reports')}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-all press-fx ${
+                        activeView === 'reports'
+                          ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold shadow-md shadow-orange-950/40'
+                          : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/5 font-medium'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <BarChart3
+                          className={`w-3.5 h-3.5 shrink-0 ${
+                            activeView === 'reports' ? 'text-white' : 'text-amber-400'
+                          }`}
+                        />
+                        <span className="truncate">8 Standard Reports</span>
+                      </div>
+                    </button>
+
+                    {/* Sub-item 3: 15-Col Master Sheet (Included in analytics category) */}
+                    <button
+                      type="button"
+                      onClick={() => setActiveView('joblogs')}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-all press-fx ${
+                        activeView === 'joblogs'
+                          ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold shadow-md shadow-orange-950/40'
+                          : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/5 font-medium'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <FileSpreadsheet
+                          className={`w-3.5 h-3.5 shrink-0 ${
+                            activeView === 'joblogs' ? 'text-white' : 'text-emerald-400'
+                          }`}
+                        />
+                        <span className="truncate">15-Col Master Sheet</span>
+                      </div>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* ADMIN CATEGORY 2: OPERATIONS & FLEET TRIAGE */}
+            <div className="space-y-1.5">
+              {!sidebarCollapsed && (
+                <div className="px-2.5 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                  OPERATIONS &amp; FLEET TRIAGE
+                </div>
+              )}
+
+              {/* Active Ticket Lists & Triage */}
               <button
-                onClick={() =>
-                  addToast(
-                    '2-Tier RBAC Security Active',
-                    'Argon2id + AES-256-GCM verified for Five Star Bus Co.',
-                    'info'
-                  )
-                }
-                className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs text-zinc-400 hover:text-white hover:bg-white/5 font-medium transition-colors press-fx"
+                type="button"
+                onClick={() => setActiveView('tickets')}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all press-fx ${
+                  activeView === 'tickets'
+                    ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold shadow-md shadow-orange-950/40'
+                    : 'text-zinc-400 hover:text-white hover:bg-white/5 font-medium'
+                }`}
               >
                 <div className="flex items-center gap-2.5">
-                  <ShieldCheck className="w-4 h-4 text-zinc-400 shrink-0" />
-                  {!sidebarCollapsed && <span>Security &amp; Audit</span>}
+                  <Layers
+                    className={`w-4 h-4 shrink-0 ${
+                      activeView === 'tickets' ? 'text-white' : 'text-sky-400'
+                    }`}
+                  />
+                  {!sidebarCollapsed && <span>Active Ticket Lists</span>}
+                </div>
+                {!sidebarCollapsed && (
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      activeView === 'tickets'
+                        ? 'bg-black/25 text-white'
+                        : 'bg-zinc-800 text-zinc-300'
+                    }`}
+                  >
+                    {activeTicketsCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Terminal Hubs Monitor */}
+              <button
+                type="button"
+                onClick={() => setActiveView('terminals')}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all press-fx ${
+                  activeView === 'terminals'
+                    ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold shadow-md shadow-orange-950/40'
+                    : 'text-zinc-400 hover:text-white hover:bg-white/5 font-medium'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Building2
+                    className={`w-4 h-4 shrink-0 ${
+                      activeView === 'terminals' ? 'text-white' : 'text-teal-400'
+                    }`}
+                  />
+                  {!sidebarCollapsed && <span>Terminal Hubs Monitor</span>}
                 </div>
               </button>
             </div>
 
-            {/* ADMIN CATEGORY 2: OPERATIONS & AUDIT LEDGERS */}
+            {/* ADMIN CATEGORY 3: STAFF GOVERNANCE */}
             <div className="space-y-1.5">
               {!sidebarCollapsed && (
                 <div className="px-2.5 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-                  OPERATIONS &amp; AUDIT LEDGERS
+                  STAFF GOVERNANCE
                 </div>
               )}
 
+              {/* IT Team & Accounts */}
               <button
-                onClick={() => setActiveView('joblogs')}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-colors press-fx ${
-                  activeView === 'joblogs'
-                    ? 'bg-white/10 text-white font-semibold'
+                type="button"
+                onClick={() => setActiveView('team')}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all press-fx ${
+                  activeView === 'team'
+                    ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold shadow-md shadow-orange-950/40'
                     : 'text-zinc-400 hover:text-white hover:bg-white/5 font-medium'
                 }`}
               >
                 <div className="flex items-center gap-2.5">
-                  <FileSpreadsheet className="w-4 h-4 text-emerald-400 shrink-0" />
-                  {!sidebarCollapsed && <span>15-Col Master Sheet</span>}
+                  <Users
+                    className={`w-4 h-4 shrink-0 ${
+                      activeView === 'team' ? 'text-white' : 'text-emerald-400'
+                    }`}
+                  />
+                  {!sidebarCollapsed && <span>IT Team &amp; Accounts</span>}
                 </div>
               </button>
+            </div>
 
-              <button
-                onClick={() => setActiveView('terminals')}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-colors press-fx ${
-                  activeView === 'terminals'
-                    ? 'bg-white/10 text-white font-semibold'
-                    : 'text-zinc-400 hover:text-white hover:bg-white/5 font-medium'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <Building2 className="w-4 h-4 text-sky-400 shrink-0" />
-                  {!sidebarCollapsed && <span>Terminal Hubs &amp; PMS</span>}
+            {/* ADMIN CATEGORY 4: KNOWLEDGE BASE */}
+            <div className="space-y-1.5">
+              {!sidebarCollapsed && (
+                <div className="px-2.5 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                  KNOWLEDGE BASE
                 </div>
-              </button>
+              )}
 
+              {/* Saved Repair Notes */}
               <button
+                type="button"
                 onClick={() => setActiveView('notes')}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-colors press-fx ${
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all press-fx ${
                   activeView === 'notes'
-                    ? 'bg-white/10 text-white font-semibold'
+                    ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold shadow-md shadow-orange-950/40'
                     : 'text-zinc-400 hover:text-white hover:bg-white/5 font-medium'
                 }`}
               >
                 <div className="flex items-center gap-2.5">
-                  <BookOpen className="w-4 h-4 text-amber-400 shrink-0" />
+                  <BookOpen
+                    className={`w-4 h-4 shrink-0 ${
+                      activeView === 'notes' ? 'text-white' : 'text-amber-400'
+                    }`}
+                  />
                   {!sidebarCollapsed && <span>Saved Repair Notes</span>}
                 </div>
               </button>
@@ -366,6 +542,7 @@ export const Sidebar: React.FC = () => {
           </div>
           {!sidebarCollapsed && (
             <button
+              type="button"
               onClick={logoutToKiosk}
               className="p-1.5 rounded-lg text-zinc-400 hover:text-orange-400 hover:bg-white/5 transition-colors press-fx"
               title="Sign Out to Employee Ticket Screen"

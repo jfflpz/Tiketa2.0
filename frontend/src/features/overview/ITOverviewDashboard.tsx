@@ -1,5 +1,5 @@
-// @spec UI-OVERVIEW-01: 1:1 Nexora Reference UI Bento Dashboard tailored to the Logged-In IT Specialist's Personal KPIs
-import React, { useState } from 'react';
+// @spec UI-OVERVIEW-01: Personal IT Specialist KPI Scorecard & Fleet Operational Health Bento Grid
+import React from 'react';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -13,21 +13,12 @@ import {
   Cell,
 } from 'recharts';
 import {
-  Award,
   Wrench,
-  Timer,
   CheckCircle2,
   ArrowRight,
-  Search,
-  Plus,
-  UserCheck,
-  MessageSquare,
-  Download,
   BookOpen,
-  Copy,
 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
-import { TicketStatus } from '../../types/ticket';
 import { StatusBadge } from '../../components/common/StatusBadge';
 
 const MY_PERSONAL_MONTHLY_OUTPUT = [
@@ -48,7 +39,7 @@ const MY_PERSONAL_MONTHLY_OUTPUT = [
 const MY_MODE_DONUT_DATA = [
   { name: 'My Remote (AnyDesk)', value: 18, color: '#F97316' },
   { name: 'My On-Site Repairs', value: 11, color: '#FB923C' },
-  { name: 'My Routine PMS', value: 6, color: '#FDBA74' },
+  { name: 'Terminal Maintenance', value: 6, color: '#FDBA74' },
   { name: 'Saved SOP Guides', value: 5, color: '#E4E4E7' },
 ];
 
@@ -67,22 +58,12 @@ export const ITOverviewDashboard: React.FC = () => {
     currentUser,
     tickets,
     savedRepairNotes,
-    searchQuery,
-    setSearchQuery,
-    claimTicket,
-    resolveTicket,
-    confirmClosure,
     setSelectedTicketId,
-    setQuickIntakeOpen,
     setActiveView,
-    copyTicketShareLink,
   } = useAppStore();
 
   const techName = currentUser?.name ?? 'Nathaniel D. Esguerra';
   const techFirstName = techName.split(' ')[0];
-
-  const [queueScope, setQueueScope] = useState<'MY_TICKETS' | 'OPEN_POOL' | 'ALL'>('ALL');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | TicketStatus>('ALL');
 
   // Personal KPI calculations for the logged-in IT Specialist
   const myTickets = tickets.filter(
@@ -95,50 +76,6 @@ export const ITOverviewDashboard: React.FC = () => {
     myTickets.filter((t) => t.status === 'RESL' || t.status === 'CLSD').length + 16;
   const openPoolCount = tickets.filter((t) => t.status === 'OPEN').length;
 
-  // Personal daily quota progress (e.g. 5 of 6 daily target repairs completed = 83%)
-  const myDailyQuotaPct = Math.min(98, 72 + myTickets.length * 6);
-
-  const filteredTickets = tickets.filter((t) => {
-    if (queueScope === 'MY_TICKETS') {
-      const isMine =
-        t.workedBy?.toLowerCase().includes(techFirstName.toLowerCase()) ||
-        t.workedBy === techName;
-      if (!isMine) return false;
-    } else if (queueScope === 'OPEN_POOL') {
-      if (t.status !== 'OPEN') return false;
-    }
-
-    if (statusFilter !== 'ALL' && t.status !== statusFilter) return false;
-
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return true;
-    return (
-      t.ticketCode.toLowerCase().includes(q) ||
-      t.requestor.toLowerCase().includes(q) ||
-      t.task.toLowerCase().includes(q) ||
-      t.location.toLowerCase().includes(q) ||
-      t.department.toLowerCase().includes(q)
-    );
-  });
-
-  const getLocationPillStyle = (locCode: string) => {
-    switch (locCode) {
-      case 'PSY':
-        return 'bg-orange-50 text-orange-600 border-orange-200/60';
-      case 'CUB':
-      case 'CMA':
-        return 'bg-amber-50 text-amber-700 border-amber-200/60';
-      case 'CAL':
-        return 'bg-emerald-50 text-emerald-700 border-emerald-200/60';
-      case 'MRV':
-        return 'bg-sky-50 text-sky-700 border-sky-200/60';
-      case 'DAU':
-        return 'bg-purple-50 text-purple-700 border-purple-200/60';
-      default:
-        return 'bg-zinc-100 text-zinc-700 border-zinc-200/60';
-    }
-  };
-
   return (
     <div className="space-y-5 pb-8">
       {/* Personal Technician Greeting Header */}
@@ -148,26 +85,27 @@ export const ITOverviewDashboard: React.FC = () => {
             Welcome back, {techName} !
           </h1>
           <p className="text-xs text-zinc-500 mt-0.5">
-            Personal IT Specialist KPI Scorecard, Daily Quota Progress, and Assigned Repair Queue.
+            Personal IT Specialist KPI Scorecard, Repair Durations, and Fleet Service Health.
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           <button
+            type="button"
             onClick={() => setActiveView('notes')}
             className="px-3.5 py-2 rounded-xl bg-white hover:bg-zinc-50 text-ink border border-[#ECEEF2] text-xs font-semibold inline-flex items-center gap-1.5 shadow-card transition-colors press-fx"
           >
             <BookOpen className="w-3.5 h-3.5 text-orange-500" />
-            <span>My Saved Repair Notes ({savedRepairNotes.length})</span>
+            <span>Saved Repair Notes ({savedRepairNotes.length})</span>
           </button>
         </div>
       </div>
 
       {/* Main 12-Column Nexora Personal KPI Bento Grid */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
-        {/* LEFT COLUMN (3 Cols): My Daily Target Ring + My Claimed Tickets + My Weekly Bench Hours */}
+        {/* LEFT COLUMN (3 Cols): Fleet SLA Card + Claimed Tickets + Weekly Bench Hours */}
         <div className="xl:col-span-3 space-y-5">
-          {/* 1. Orange Gradient Personal Daily Target Card */}
+          {/* 1. Orange Gradient Card: Repurposed into Fleet SLA Compliance Rate */}
           <div className="rounded-2xl bg-gradient-to-br from-orange-500 via-orange-500 to-orange-600 text-white p-5 shadow-md relative overflow-hidden">
             <div className="w-36 h-36 rounded-full bg-white/10 absolute -right-10 -bottom-10 pointer-events-none" />
             <div className="w-20 h-20 rounded-full bg-white/5 absolute right-12 -top-6 pointer-events-none" />
@@ -175,19 +113,20 @@ export const ITOverviewDashboard: React.FC = () => {
             <div className="relative z-10 flex items-center justify-between gap-3">
               <div className="space-y-2 max-w-[63%]">
                 <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-black/20 text-orange-100">
-                  My Personal Quota
+                  Fleet Service Metric
                 </span>
                 <h2 className="text-base font-bold leading-snug">
-                  My Daily SLA Target
+                  Fleet SLA Compliance
                 </h2>
                 <p className="text-[11px] text-orange-100 leading-relaxed">
-                  You have achieved <strong>{myDailyQuotaPct}%</strong> of your personal daily ticket resolution goal.
+                  <strong>98.4%</strong> of terminal dispatch issues resolved within SLA across 15 hubs.
                 </p>
                 <button
-                  onClick={() => setActiveView('workbench')}
+                  type="button"
+                  onClick={() => setActiveView('tickets')}
                   className="inline-flex items-center gap-1 text-xs font-bold text-white underline underline-offset-4 hover:text-orange-100 pt-1 press-fx"
                 >
-                  <span>Go to My Workbench</span>
+                  <span>View Ticket Lists</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -212,13 +151,11 @@ export const ITOverviewDashboard: React.FC = () => {
                     strokeWidth="6"
                     strokeLinecap="round"
                     strokeDasharray={2 * Math.PI * 32}
-                    strokeDashoffset={
-                      2 * Math.PI * 32 * (1 - myDailyQuotaPct / 100)
-                    }
+                    strokeDashoffset={2 * Math.PI * 32 * (1 - 0.984)}
                   />
                 </svg>
                 <span className="absolute text-sm font-extrabold text-white tabular-nums">
-                  {myDailyQuotaPct}%
+                  98.4%
                 </span>
               </div>
             </div>
@@ -317,7 +254,7 @@ export const ITOverviewDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* CENTER COLUMN (6 Cols): 4 Personal KPI Sparkline Cards + My Personal Output Area Chart */}
+        {/* CENTER COLUMN (6 Cols): 4 Personal KPI Cards + Output Area Chart */}
         <div className="xl:col-span-6 space-y-5">
           {/* 2x2 Grid of Personal Technician KPI Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -400,152 +337,146 @@ export const ITOverviewDashboard: React.FC = () => {
                     25 mins
                   </h3>
                 </div>
-                <div className="w-10 h-10 rounded-full bg-orange-500 text-white flex items-center justify-center shadow-sm shrink-0">
-                  <Timer className="w-4 h-4" />
+                <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200/60 flex items-center justify-center shrink-0">
+                  <span className="font-mono text-xs font-extrabold">#11</span>
                 </div>
               </div>
               <div className="flex items-end justify-between pt-1">
                 <svg className="w-24 h-7 overflow-visible" viewBox="0 0 100 30">
                   <path
-                    d="M 2 22 Q 22 8, 48 16 T 76 10 T 98 4"
+                    d="M 2 6 Q 25 20, 50 12 T 80 24 T 98 22"
                     fill="none"
-                    stroke="#F97316"
+                    stroke="#10B981"
                     strokeWidth="2.2"
                     strokeLinecap="round"
                   />
                 </svg>
                 <div className="text-right">
                   <span className="text-xs font-bold text-emerald-600">
-                    12 mins faster
+                    -12 min faster
                   </span>
-                  <p className="text-[11px] text-zinc-400">than team target</p>
+                  <p className="text-[11px] text-zinc-400">vs 45 min target</p>
                 </div>
               </div>
             </div>
 
-            {/* Personal KPI 4: My First-Time Fix / Employee Sign-Off Score */}
+            {/* Personal KPI 4: My Employee Satisfaction */}
             <div className="bg-white border border-[#ECEEF2] rounded-2xl p-5 shadow-card flex flex-col justify-between space-y-3">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-xs font-medium text-zinc-400">
-                    My First-Time Fix Rate
+                    Employee Sign-Off Rate
                   </p>
                   <h3 className="text-2xl font-extrabold text-ink mt-1 tabular-nums">
-                    96.8%
+                    99.1%
                   </h3>
                 </div>
-                <div className="w-10 h-10 rounded-full bg-orange-500 text-white flex items-center justify-center shadow-sm shrink-0">
-                  <Award className="w-4 h-4" />
+                <div className="w-10 h-10 rounded-full bg-sky-50 text-sky-600 border border-sky-200/60 flex items-center justify-center shrink-0">
+                  <span className="font-mono text-xs font-extrabold">#13</span>
                 </div>
               </div>
               <div className="flex items-end justify-between pt-1">
                 <svg className="w-24 h-7 overflow-visible" viewBox="0 0 100 30">
                   <path
-                    d="M 2 25 Q 25 18, 50 12 T 80 14 T 98 5"
+                    d="M 2 24 Q 25 10, 50 14 T 75 8 T 98 6"
                     fill="none"
-                    stroke="#F97316"
+                    stroke="#0284C7"
                     strokeWidth="2.2"
                     strokeLinecap="round"
                   />
                 </svg>
                 <div className="text-right">
-                  <span className="text-xs font-bold text-emerald-600">
-                    0 Reopened
+                  <span className="text-xs font-bold text-sky-600">
+                    Verified First-Time
                   </span>
-                  <p className="text-[11px] text-zinc-400">verified by booth staff</p>
+                  <p className="text-[11px] text-zinc-400">terminal approval</p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Center Area Chart: My Personal Monthly Repair Output */}
+          {/* Area Chart: My Personal Monthly Ticket Output */}
           <div className="bg-white border border-[#ECEEF2] rounded-2xl p-5 shadow-card space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="w-1 h-4 rounded-full bg-orange-500" />
-                <h3 className="text-sm font-bold text-ink">
-                  My Personal Repair Output ({techName})
-                </h3>
+                <div>
+                  <h3 className="text-sm font-bold text-ink">
+                    My Monthly Output Trend (2026)
+                  </h3>
+                  <p className="text-[11px] text-zinc-400">
+                    Resolved terminal tickets split between Remote AnyDesk and On-Site
+                  </p>
+                </div>
               </div>
-
-              <div className="flex items-center gap-4 text-[11px] font-semibold text-zinc-500">
-                <span className="inline-flex items-center gap-1.5">
+              <div className="flex items-center gap-4 text-xs">
+                <span className="flex items-center gap-1.5 font-medium text-ink">
                   <span className="w-2.5 h-2.5 rounded-full bg-orange-500" />
-                  My Total Resolved
+                  Remote AnyDesk
                 </span>
-                <span className="inline-flex items-center gap-1.5">
+                <span className="flex items-center gap-1.5 font-medium text-ink">
                   <span className="w-2.5 h-2.5 rounded-full bg-orange-300" />
-                  My Remote Fixes
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-zinc-300" />
-                  My On-Site Visits
+                  On-Site
                 </span>
               </div>
             </div>
 
-            <div className="h-[265px] w-full">
+            <div className="h-60 w-full pt-2">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart
                   data={MY_PERSONAL_MONTHLY_OUTPUT}
                   margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
                 >
                   <defs>
-                    <linearGradient id="myResolvedGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#F97316" stopOpacity={0.28} />
+                    <linearGradient id="colorRemote" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#F97316" stopOpacity={0.25} />
                       <stop offset="95%" stopColor="#F97316" stopOpacity={0.0} />
+                    </linearGradient>
+                    <linearGradient id="colorOnsite" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#FDBA74" stopOpacity={0.25} />
+                      <stop offset="95%" stopColor="#FDBA74" stopOpacity={0.0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid
                     strokeDasharray="3 3"
                     vertical={false}
-                    stroke="#F1F5F9"
+                    stroke="#F4F6F9"
                   />
                   <XAxis
                     dataKey="month"
-                    axisLine={false}
                     tickLine={false}
-                    tick={{ fontSize: 11, fill: '#94A3B8' }}
+                    axisLine={false}
+                    tick={{ fontSize: 11, fill: '#71717A' }}
                   />
                   <YAxis
-                    axisLine={false}
                     tickLine={false}
-                    tick={{ fontSize: 11, fill: '#94A3B8' }}
+                    axisLine={false}
+                    tick={{ fontSize: 11, fill: '#71717A' }}
                   />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: '#111315',
+                      backgroundColor: '#18181B',
+                      borderRadius: '8px',
                       border: 'none',
-                      borderRadius: '12px',
-                      color: '#fff',
-                      fontSize: '12px',
+                      color: '#FFF',
+                      fontSize: '11px',
                     }}
                   />
                   <Area
                     type="monotone"
-                    dataKey="resolved"
-                    name="My Total Resolved"
-                    stroke="#F97316"
-                    strokeWidth={2.5}
-                    fillOpacity={1}
-                    fill="url(#myResolvedGrad)"
-                  />
-                  <Area
-                    type="monotone"
                     dataKey="remote"
-                    name="My Remote (REM)"
-                    stroke="#FB923C"
+                    stroke="#F97316"
                     strokeWidth={2}
-                    strokeDasharray="4 4"
-                    fill="none"
+                    fillOpacity={1}
+                    fill="url(#colorRemote)"
                   />
                   <Area
                     type="monotone"
                     dataKey="onsite"
-                    name="My On-Site (SITE)"
-                    stroke="#CBD5E1"
+                    stroke="#FB923C"
                     strokeWidth={2}
-                    fill="none"
+                    fillOpacity={1}
+                    fill="url(#colorOnsite)"
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -553,80 +484,78 @@ export const ITOverviewDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* RIGHT COLUMN (3 Cols): My Support Mode Donut + My Saved Checklists Summary + My Recent Actions */}
+        {/* RIGHT COLUMN (3 Cols): Support Mode Donut + Saved Notes Library Shortcut */}
         <div className="xl:col-span-3 space-y-5">
-          {/* 1. My Support Mode Breakdown Donut */}
+          {/* Donut Chart: My Support Mode Breakdown */}
           <div className="bg-white border border-[#ECEEF2] rounded-2xl p-5 shadow-card space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="w-1 h-4 rounded-full bg-orange-500" />
-                <h3 className="text-sm font-bold text-ink">My Work Mode Split</h3>
-              </div>
-              <span className="text-[11px] font-semibold text-zinc-400">
-                REM vs SITE
-              </span>
+            <div className="flex items-center gap-2">
+              <span className="w-1 h-4 rounded-full bg-orange-500" />
+              <h3 className="text-sm font-bold text-ink">My Support Mode (#02)</h3>
             </div>
 
-            <div className="relative h-44 flex items-center justify-center">
+            <div className="h-44 w-full relative flex items-center justify-center">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={MY_MODE_DONUT_DATA}
-                    cx="50%"
-                    cy="50%"
                     innerRadius={52}
                     outerRadius={72}
-                    paddingAngle={3}
+                    paddingAngle={4}
                     dataKey="value"
-                    stroke="none"
                   >
-                    {MY_MODE_DONUT_DATA.map((entry, idx) => (
-                      <Cell key={idx} fill={entry.color} />
+                    {MY_MODE_DONUT_DATA.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#18181B',
+                      borderRadius: '8px',
+                      border: 'none',
+                      color: '#FFF',
+                      fontSize: '11px',
+                    }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span className="text-[11px] font-medium text-zinc-400">
-                  My Total
-                </span>
+              <div className="absolute flex flex-col items-center justify-center pointer-events-none">
                 <span className="text-xl font-extrabold text-ink tabular-nums">
-                  {myResolvedCount}
+                  35
                 </span>
+                <span className="text-[10px] text-zinc-400">Total Logged</span>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#ECEEF2] text-center">
-              {MY_MODE_DONUT_DATA.map((item) => (
-                <div key={item.name} className="p-1.5 rounded-lg bg-[#F4F6F9]">
-                  <div className="flex items-center justify-center gap-1 text-[10px] text-zinc-500 font-medium">
+            {/* Donut Legend */}
+            <div className="space-y-2 pt-1 border-t border-[#ECEEF2]">
+              {MY_MODE_DONUT_DATA.map((item, idx) => (
+                <div key={idx} className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
                     <span
-                      className="w-2 h-2 rounded-full shrink-0"
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
                       style={{ backgroundColor: item.color }}
                     />
-                    <span className="truncate">{item.name}</span>
+                    <span className="text-zinc-600 font-medium">{item.name}</span>
                   </div>
-                  <p className="text-xs font-extrabold text-ink mt-0.5 tabular-nums">
-                    {item.value}
-                  </p>
+                  <span className="font-bold text-ink tabular-nums">
+                    {item.value} ({Math.round((item.value / 40) * 100)}%)
+                  </span>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* 2. Quick Saved Repair Notes & Checklists Preview */}
+          {/* Quick Saved Repair Notes Shortcut Card */}
           <div className="bg-white border border-[#ECEEF2] rounded-2xl p-5 shadow-card space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="w-1 h-4 rounded-full bg-orange-500" />
-                <h3 className="text-sm font-bold text-ink">
-                  Saved Repair Notes
-                </h3>
+                <h3 className="text-sm font-bold text-ink">My Saved Repair SOPs</h3>
               </div>
               <button
+                type="button"
                 onClick={() => setActiveView('notes')}
-                className="text-[11px] font-semibold text-orange-600 hover:underline inline-flex items-center gap-1"
+                className="text-[11px] font-bold text-orange-600 hover:text-orange-700 inline-flex items-center gap-1"
               >
                 <span>Browse All</span>
                 <ArrowRight className="w-3 h-3" />
@@ -634,7 +563,7 @@ export const ITOverviewDashboard: React.FC = () => {
             </div>
 
             <p className="text-[11px] text-zinc-500">
-              Quick-reference troubleshooting checklists &amp; past repair notes if you need a reminder:
+              Quick-reference troubleshooting checklists &amp; past repair notes:
             </p>
 
             <div className="space-y-2">
@@ -659,230 +588,6 @@ export const ITOverviewDashboard: React.FC = () => {
               ))}
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* BOTTOM FULL-WIDTH TABLE: My Assigned Tickets & General Dispatch Pool */}
-      <div className="bg-white border border-[#ECEEF2] rounded-2xl p-5 shadow-card space-y-4">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2">
-              <span className="w-1 h-4 rounded-full bg-orange-500" />
-              <h3 className="text-sm font-bold text-ink">
-                IT Support Ticket Queue &amp; Live Chat
-              </h3>
-            </div>
-
-            {/* Scope Toggle: All vs My Claimed Tickets vs Unassigned Open Pool */}
-            <div className="inline-flex items-center bg-[#F4F6F9] p-1 rounded-xl border border-[#ECEEF2]">
-              {(
-                [
-                  { id: 'ALL', label: `All Tickets (${tickets.length})` },
-                  { id: 'MY_TICKETS', label: `My Claimed (${myTickets.length})` },
-                  { id: 'OPEN_POOL', label: `Unassigned Pool (${openPoolCount})` },
-                ] as const
-              ).map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setQueueScope(tab.id)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all press-fx ${
-                    queueScope === tab.id
-                      ? 'bg-[#111315] text-white shadow-xs'
-                      : 'text-zinc-500 hover:text-ink'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2.5">
-            {/* Search Here Input */}
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search ticket, terminal, requestor..."
-                className="pl-8 pr-3 py-1.5 bg-[#F4F6F9] border border-[#ECEEF2] focus:border-orange-400 focus:bg-white rounded-lg text-xs text-ink placeholder:text-zinc-400 focus:outline-none w-52 transition-all"
-              />
-            </div>
-
-            {/* Status Filter Pills */}
-            <div className="inline-flex items-center bg-[#F4F6F9] p-1 rounded-lg border border-[#ECEEF2]">
-              {(['ALL', 'OPEN', 'PROG', 'RESL'] as const).map((st) => (
-                <button
-                  key={st}
-                  onClick={() => setStatusFilter(st)}
-                  className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-colors press-fx ${
-                    statusFilter === st
-                      ? 'bg-orange-500 text-white shadow-xs'
-                      : 'text-zinc-500 hover:text-ink'
-                  }`}
-                >
-                  {st === 'ALL' ? 'All' : st}
-                </button>
-              ))}
-            </div>
-
-            {/* SINGLE Log Walk-In / Viber Action Button */}
-            <button
-              onClick={() => setQuickIntakeOpen(true)}
-              className="px-3.5 py-1.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-sm transition-colors press-fx"
-            >
-              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-              <span>Log Walk-In / Viber</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Clean Responsive Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-[#ECEEF2] text-[11px] font-bold uppercase tracking-wider text-zinc-400">
-                <th className="py-3 px-3">Ticket ID</th>
-                <th className="py-3 px-3">Requestor &amp; Dept</th>
-                <th className="py-3 px-3">Task &amp; Symptom (#05 / #06)</th>
-                <th className="py-3 px-3">Terminal Hub (#14)</th>
-                <th className="py-3 px-3">Mode (#02)</th>
-                <th className="py-3 px-3">Status (#13)</th>
-                <th className="py-3 px-3">Claimed By (#15)</th>
-                <th className="py-3 px-3 text-right">Actions &amp; Chat</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#ECEEF2] text-xs">
-              {filteredTickets.map((t) => {
-                const msgCount = t.messages?.length ?? 0;
-                return (
-                  <tr
-                    key={t.id}
-                    onClick={() => setSelectedTicketId(t.id)}
-                    className="hover:bg-orange-50/30 transition-colors cursor-pointer group"
-                  >
-                    <td className="py-3.5 px-3 font-mono font-bold text-ink whitespace-nowrap">
-                      {t.ticketCode}
-                    </td>
-
-                    <td className="py-3.5 px-3 whitespace-nowrap">
-                      <div>
-                        <p className="font-bold text-ink">{t.requestor}</p>
-                        <p className="text-[11px] text-zinc-400">
-                          {t.department} ({t.companyCode})
-                        </p>
-                      </div>
-                    </td>
-
-                    <td className="py-3.5 px-3 max-w-xs">
-                      <p className="font-bold text-ink truncate">{t.task}</p>
-                      <p className="text-[11px] text-zinc-400 truncate">
-                        {t.description}
-                      </p>
-                    </td>
-
-                    <td className="py-3.5 px-3 whitespace-nowrap">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-bold border ${getLocationPillStyle(
-                          t.locationCode
-                        )}`}
-                      >
-                        {t.location}
-                      </span>
-                    </td>
-
-                    <td className="py-3.5 px-3 whitespace-nowrap">
-                      <span className="font-mono text-[11px] font-semibold px-2 py-0.5 rounded bg-[#F4F6F9] text-zinc-700 border border-[#ECEEF2]">
-                        {t.mode === 'SITE' ? 'On-Site' : 'Remote'}
-                      </span>
-                    </td>
-
-                    <td className="py-3.5 px-3 whitespace-nowrap">
-                      <StatusBadge status={t.status} size="sm" />
-                    </td>
-
-                    <td className="py-3.5 px-3 whitespace-nowrap">
-                      {t.workedBy ? (
-                        <span className="font-semibold text-ink">
-                          {t.workedBy}
-                        </span>
-                      ) : (
-                        <span className="text-zinc-400 italic">
-                          Unclaimed Pool
-                        </span>
-                      )}
-                    </td>
-
-                    <td
-                      className="py-3.5 px-3 whitespace-nowrap text-right"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div className="inline-flex items-center justify-end gap-1.5">
-                        {t.status === 'OPEN' && (
-                          <button
-                            onClick={() => claimTicket(t.id)}
-                            className="px-2.5 py-1 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-[11px] font-bold inline-flex items-center gap-1 shadow-xs transition-colors press-fx"
-                          >
-                            <UserCheck className="w-3 h-3" />
-                            <span>Claim</span>
-                          </button>
-                        )}
-                        {t.status === 'PROG' && (
-                          <button
-                            onClick={() => resolveTicket(t.id)}
-                            className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold inline-flex items-center gap-1 shadow-xs transition-colors press-fx"
-                          >
-                            <CheckCircle2 className="w-3 h-3" />
-                            <span>Resolve</span>
-                          </button>
-                        )}
-                        {t.status === 'RESL' && (
-                          <button
-                            onClick={() => confirmClosure(t.id)}
-                            className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-bold inline-flex items-center gap-1 shadow-xs transition-colors press-fx"
-                          >
-                            <span>Sign-Off</span>
-                          </button>
-                        )}
-                        <button
-                          onClick={() => setSelectedTicketId(t.id)}
-                          className="px-2.5 py-1 rounded-lg bg-[#F4F6F9] hover:bg-orange-100 text-zinc-700 hover:text-orange-600 text-[11px] font-semibold inline-flex items-center gap-1 transition-colors press-fx"
-                          title="Open Chat & 15-Column Job Log"
-                        >
-                          <MessageSquare className="w-3 h-3 text-orange-500" />
-                          <span>Chat ({msgCount})</span>
-                        </button>
-
-                        <button
-                          onClick={() => copyTicketShareLink(t.ticketCode)}
-                          className="p-1.5 rounded-lg bg-[#F4F6F9] hover:bg-zinc-200 text-zinc-600 hover:text-ink text-[11px] font-semibold transition-colors press-fx"
-                          title="Copy employee confirmation link to send via Viber/Chat"
-                        >
-                          <Copy className="w-3 h-3" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Table Footer */}
-        <div className="pt-3 border-t border-[#ECEEF2] flex items-center justify-between text-xs text-zinc-400">
-          <span>
-            Showing <strong className="text-ink">{filteredTickets.length}</strong> of{' '}
-            <strong className="text-ink">{tickets.length}</strong> tickets
-          </span>
-          <button
-            onClick={() => setActiveView('joblogs')}
-            className="text-orange-600 font-semibold hover:underline inline-flex items-center gap-1"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Open My Job Logs</span>
-          </button>
         </div>
       </div>
     </div>

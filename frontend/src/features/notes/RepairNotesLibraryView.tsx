@@ -9,10 +9,8 @@ import {
   Trash2,
   Save,
   X,
-  Wrench,
   Clock,
   User,
-  ArrowUpRight,
 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { TASK_CATEGORIES } from '../../data/mockTicketsData';
@@ -21,13 +19,10 @@ import { TaskCategoryCode, SavedRepairNote } from '../../types/ticket';
 export const RepairNotesLibraryView: React.FC = () => {
   const {
     currentUser,
-    tickets,
     savedRepairNotes,
     saveRepairNoteAndChecklist,
     updateSavedRepairNote,
     deleteSavedRepairNote,
-    applySavedNoteToTicket,
-    setActiveView,
   } = useAppStore();
 
   const [search, setSearch] = useState('');
@@ -45,8 +40,6 @@ export const RepairNotesLibraryView: React.FC = () => {
     'Run diagnostic test and apply configuration fix',
   ]);
   const [newStepInput, setNewStepInput] = useState('');
-
-  const progTickets = tickets.filter((t) => t.status === 'PROG');
 
   const filteredNotes = savedRepairNotes.filter((n) => {
     if (categoryFilter !== 'ALL' && n.taskCode !== categoryFilter) return false;
@@ -145,6 +138,7 @@ export const RepairNotesLibraryView: React.FC = () => {
         </div>
 
         <button
+          type="button"
           onClick={startCreateNew}
           className="px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-sm transition-colors press-fx self-start"
         >
@@ -337,6 +331,7 @@ export const RepairNotesLibraryView: React.FC = () => {
           ).map((cat) => (
             <button
               key={cat.code}
+              type="button"
               onClick={() => setCategoryFilter(cat.code)}
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all press-fx ${
                 categoryFilter === cat.code
@@ -381,6 +376,7 @@ export const RepairNotesLibraryView: React.FC = () => {
 
                 <div className="flex items-center gap-1 shrink-0">
                   <button
+                    type="button"
                     onClick={() => startEditNote(note)}
                     className="p-1.5 rounded-lg bg-[#F4F6F9] hover:bg-orange-50 text-zinc-500 hover:text-orange-600 border border-[#ECEEF2] transition-colors press-fx"
                     title="Edit Repair Note & Checklist"
@@ -388,6 +384,7 @@ export const RepairNotesLibraryView: React.FC = () => {
                     <Edit3 className="w-3.5 h-3.5" />
                   </button>
                   <button
+                    type="button"
                     onClick={() => deleteSavedRepairNote(note.id)}
                     className="p-1.5 rounded-lg bg-[#F4F6F9] hover:bg-rose-50 text-zinc-500 hover:text-rose-600 border border-[#ECEEF2] transition-colors press-fx"
                     title="Delete Repair Note"
@@ -435,8 +432,8 @@ export const RepairNotesLibraryView: React.FC = () => {
               </div>
             </div>
 
-            {/* Card Footer: Author, Timestamp & Apply to Active Ticket Button */}
-            <div className="pt-3 border-t border-[#ECEEF2] flex flex-wrap items-center justify-between gap-2 text-[11px] text-zinc-400">
+            {/* Card Footer: Author & Timestamp (Load into Active Workbench removed!) */}
+            <div className="pt-3 border-t border-[#ECEEF2] flex items-center justify-between gap-2 text-[11px] text-zinc-400">
               <div className="flex items-center gap-3">
                 <span className="inline-flex items-center gap-1 text-zinc-600 font-medium">
                   <User className="w-3.5 h-3.5 text-orange-500" />
@@ -447,20 +444,6 @@ export const RepairNotesLibraryView: React.FC = () => {
                   {note.updatedAt}
                 </span>
               </div>
-
-              {progTickets.length > 0 && (
-                <button
-                  onClick={() => {
-                    applySavedNoteToTicket(progTickets[0].id, note.id);
-                    setActiveView('workbench');
-                  }}
-                  className="px-3 py-1.5 rounded-lg bg-[#111315] hover:bg-zinc-800 text-white text-xs font-semibold inline-flex items-center gap-1.5 transition-colors press-fx"
-                >
-                  <Wrench className="w-3 h-3 text-orange-400" />
-                  <span>Load into Active Workbench ({progTickets[0].ticketCode})</span>
-                  <ArrowUpRight className="w-3 h-3" />
-                </button>
-              )}
             </div>
           </div>
         ))}

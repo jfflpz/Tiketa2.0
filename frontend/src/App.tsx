@@ -2,12 +2,14 @@
 import { Sidebar } from './components/layout/Sidebar';
 import { TopHeader } from './components/layout/TopHeader';
 import { ITOverviewDashboard } from './features/overview/ITOverviewDashboard';
+import { TicketListsView } from './features/tickets/TicketListsView';
 import { ITWorkbenchBoardView } from './features/workbench/ITWorkbenchBoardView';
 import { RepairNotesLibraryView } from './features/notes/RepairNotesLibraryView';
 import { JobLogSheetView } from './features/joblogs/JobLogSheetView';
 import { TerminalHubsView } from './features/terminals/TerminalHubsView';
 import { TeamWorkbenchView } from './features/workbench/TeamWorkbenchView';
 import { ExecutiveAnalyticsView } from './features/analytics/ExecutiveAnalyticsView';
+import { StandardizedReportsView } from './features/reports/StandardizedReportsView';
 import { EmployeeTicketScreen } from './features/kiosk/EmployeeTicketScreen';
 import { StaffLoginModal } from './features/auth/StaffLoginModal';
 import { JobLogDrawer } from './components/tickets/JobLogDrawer';
@@ -31,9 +33,9 @@ export default function App() {
 
   const isAdmin = currentUser.role === 'admin';
 
-  // Enforce strict role isolation so IT Support only accesses the 5 IT Support screens
+  // Enforce strict role isolation so IT Support only accesses designated screens
   const resolvedView =
-    !isAdmin && (activeView === 'analytics' || activeView === 'team')
+    !isAdmin && (activeView === 'analytics' || activeView === 'team' || activeView === 'reports')
       ? 'overview'
       : activeView;
 
@@ -48,11 +50,13 @@ export default function App() {
         <main className="flex-1 overflow-y-auto px-6 py-5">
           <div className="max-w-[1440px] mx-auto">
             {resolvedView === 'overview' && <ITOverviewDashboard />}
+            {resolvedView === 'tickets' && <TicketListsView />}
             {resolvedView === 'workbench' && <ITWorkbenchBoardView />}
             {resolvedView === 'notes' && <RepairNotesLibraryView />}
             {resolvedView === 'joblogs' && <JobLogSheetView />}
             {resolvedView === 'terminals' && <TerminalHubsView />}
             {isAdmin && resolvedView === 'analytics' && <ExecutiveAnalyticsView />}
+            {isAdmin && resolvedView === 'reports' && <StandardizedReportsView />}
             {isAdmin && resolvedView === 'team' && <TeamWorkbenchView />}
           </div>
         </main>

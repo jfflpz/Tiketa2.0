@@ -14,7 +14,7 @@ from app.api.deps import DB, CurrentUser
 from app.core.cache import cache, rate_limit
 from app.core.config import settings
 from app.core.security import decrypt, decrypt_bytes, digest, encrypt, encrypt_bytes
-from app.models import Ticket, TicketAttachment, TicketComment
+from app.models import TaskCategory, Ticket, TicketAttachment, TicketComment
 from app.schemas import (
     ClosureInput,
     CommentInput,
@@ -99,9 +99,17 @@ async def claim_ticket(ticket_id: UUID, db: DB, user: CurrentUser):
 @router.patch("/{ticket_id}/status", response_model=TicketOut)
 async def status_ticket(ticket_id: UUID, body: StatusInput, db: DB, user: CurrentUser):
     row = await get_ticket(db, ticket_id, lock=True)
+    if body.task_code:
+        cat = await db.get(TaskCategory, body.task_code)
+        if not cat:
+            raise HTTPException(422, "Invalid task category code")
+        row.task_code = body.task_code
     if row.status == "OPEN" and body.status == "PROG":
         await claim(db, row, user)
         row.mode = body.mode
+    elif row.status == "PROG" and body.status == "PROG":
+        if body.mode:
+            row.mode = body.mode
     elif row.status == "PROG" and body.status == "RESL":
         if not (body.mode or row.mode):
             raise HTTPException(422, "Support mode is required at resolution")
