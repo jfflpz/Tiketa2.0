@@ -11,7 +11,7 @@ import {
   Area,
   CartesianGrid,
 } from 'recharts';
-import { Download, FileSpreadsheet, Layers, ShieldAlert, CheckCircle2 } from 'lucide-react';
+import { Download, FileSpreadsheet, Layers, ShieldAlert, CheckCircle2, ArrowRight, Clock, Building2 } from 'lucide-react';
 import {
   REPORT_1_MONTHLY_SLA,
   REPORT_2_STAFF_UTILIZATION,
@@ -23,12 +23,11 @@ import {
   REPORT_8_CHRONIC_REQUESTORS,
   HOURLY_PEAK_DEMAND_DATA,
 } from '../../data/mockAnalyticsData';
-import { MetricCard } from '../../components/common/MetricCard';
 import { BarcodeDivider } from '../../components/common/TickMeter';
 import { useAppStore } from '../../store/useAppStore';
 
 export const ExecutiveAnalyticsView: React.FC = () => {
-  const { addToast } = useAppStore();
+  const { addToast, setActiveView, setActiveReportId } = useAppStore();
   const [activeReport, setActiveReport] = useState<number>(1);
 
   const reportTabs = [
@@ -85,13 +84,205 @@ export const ExecutiveAnalyticsView: React.FC = () => {
         </div>
       </div>
 
-      {/* Top 5 KPI Cards (FR-DASH-01) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-        <MetricCard label="Total Tickets (Q3-Q4)" value="391" subLabel="11 Companies" />
-        <MetricCard label="Same-Day Resolution" value="84.8%" subLabel="Target >80%" />
-        <MetricCard label="Mean Hands-On Labor" value="41 mins" subLabel="Excludes transit" />
-        <MetricCard label="Remote vs On-Site" value="69% / 31%" subLabel="REM vs SITE" />
-        <MetricCard label="PMS Compliance" value="87.5%" subLabel="15 Terminal Hubs" />
+      {/* 4 Executive Summary Cards (FR-DASH-01: Synchronized with the 8 Standard Reports) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Card 1: Report 1 - Monthly SLA Compliance */}
+        <div
+          onClick={() => {
+            setActiveReportId(1);
+            setActiveView('reports');
+          }}
+          className="bg-surface border border-line rounded-2xl p-4 shadow-card hover:border-orange-500/50 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+          title="Click to view Report 1: Monthly SLA & Volume Summary"
+        >
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 flex items-center justify-center">
+                <CheckCircle2 className="w-4 h-4" />
+              </div>
+              <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200/60">
+                Target: &gt;80%
+              </span>
+            </div>
+            <p className="text-xs font-semibold text-ink-subtle uppercase tracking-wider">
+              Fleet SLA Compliance
+            </p>
+            <div className="flex items-baseline gap-2 mt-1">
+              <span className="text-2xl font-bold tracking-tight text-ink tabular-nums">
+                84.8%
+              </span>
+              <span className="text-xs text-emerald-600 font-semibold">
+                155 / 165 Done
+              </span>
+            </div>
+            <p className="text-[11px] text-ink-subtle mt-1.5 line-clamp-2">
+              Monthly resolution rate across 15 transit terminals. 71% remote-first delivery.
+            </p>
+          </div>
+          <div className="mt-3 pt-2.5 border-t border-line/60 flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-zinc-500">
+              Report 1: Monthly SLA
+            </span>
+            <span className="text-[11px] font-bold text-orange-600 group-hover:translate-x-0.5 transition-transform">
+              View Report &rarr;
+            </span>
+          </div>
+        </div>
+
+        {/* Card 2: Report 2 & 5 - Mean Active Labor */}
+        <div
+          onClick={() => {
+            setActiveReportId(2);
+            setActiveView('reports');
+          }}
+          className="bg-surface border border-line rounded-2xl p-4 shadow-card hover:border-orange-500/50 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+          title="Click to view Report 2 & 5: Staff Labor & Transit Disaggregation"
+        >
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-8 h-8 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-600 flex items-center justify-center">
+                <Clock className="w-4 h-4" />
+              </div>
+              <span className="px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 text-[10px] font-bold border border-sky-200/60">
+                Avg Bench Labor
+              </span>
+            </div>
+            <p className="text-xs font-semibold text-ink-subtle uppercase tracking-wider">
+              Mean Active Labor Time
+            </p>
+            <div className="flex items-baseline gap-2 mt-1">
+              <span className="text-2xl font-bold tracking-tight text-ink tabular-nums">
+                41 mins
+              </span>
+              <span className="text-xs text-ink-subtle font-medium">
+                Hands-on repair
+              </span>
+            </div>
+            <p className="text-[11px] text-ink-subtle mt-1.5 line-clamp-2">
+              Technician bench time per incident, disaggregated from inter-depot courier transit lag.
+            </p>
+          </div>
+          <div className="mt-3 pt-2.5 border-t border-line/60 flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-zinc-500">
+              Report 2 &amp; 5: Labor &amp; Transit
+            </span>
+            <span className="text-[11px] font-bold text-orange-600 group-hover:translate-x-0.5 transition-transform">
+              View Report &rarr;
+            </span>
+          </div>
+        </div>
+
+        {/* Card 3: Report 4 - Critical Aging Backlog */}
+        <div
+          onClick={() => {
+            setActiveReportId(4);
+            setActiveView('reports');
+          }}
+          className="bg-surface border border-line rounded-2xl p-4 shadow-card hover:border-orange-500/50 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+          title="Click to view Report 4: Critical Aging Backlog Exception Report"
+        >
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-8 h-8 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 flex items-center justify-center">
+                <ShieldAlert className="w-4 h-4" />
+              </div>
+              <span className="px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 text-[10px] font-bold border border-rose-200/60">
+                SLA Breach &gt;48h
+              </span>
+            </div>
+            <p className="text-xs font-semibold text-ink-subtle uppercase tracking-wider">
+              Critical Aging Backlog
+            </p>
+            <div className="flex items-baseline gap-2 mt-1">
+              <span className="text-2xl font-bold tracking-tight text-ink tabular-nums">
+                4 Tickets
+              </span>
+              <span className="text-xs text-rose-600 font-semibold">
+                Requires escalation
+              </span>
+            </div>
+            <p className="text-[11px] text-ink-subtle mt-1.5 line-clamp-2">
+              Stalled tickets exceeding 48-hour resolution threshold awaiting parts or supervisor sign-off.
+            </p>
+          </div>
+          <div className="mt-3 pt-2.5 border-t border-line/60 flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-zinc-500">
+              Report 4: Aging Exceptions
+            </span>
+            <span className="text-[11px] font-bold text-orange-600 group-hover:translate-x-0.5 transition-transform">
+              View Report &rarr;
+            </span>
+          </div>
+        </div>
+
+        {/* Card 4: Report 7 - Fleet PMS Hardware Coverage */}
+        <div
+          onClick={() => {
+            setActiveReportId(7);
+            setActiveView('reports');
+          }}
+          className="bg-surface border border-line rounded-2xl p-4 shadow-card hover:border-orange-500/50 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+          title="Click to view Report 7: Fleet PMS Compliance Audit"
+        >
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 flex items-center justify-center">
+                <Building2 className="w-4 h-4" />
+              </div>
+              <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[10px] font-bold border border-amber-200/60">
+                15 Hubs Audited
+              </span>
+            </div>
+            <p className="text-xs font-semibold text-ink-subtle uppercase tracking-wider">
+              Fleet PMS Compliance
+            </p>
+            <div className="flex items-baseline gap-2 mt-1">
+              <span className="text-2xl font-bold tracking-tight text-ink tabular-nums">
+                87.5%
+              </span>
+              <span className="text-xs text-amber-700 font-semibold">
+                POS &amp; Printer PMS
+              </span>
+            </div>
+            <p className="text-[11px] text-ink-subtle mt-1.5 line-clamp-2">
+              Preventive maintenance audit compliance across terminal workstations ahead of peak rush.
+            </p>
+          </div>
+          <div className="mt-3 pt-2.5 border-t border-line/60 flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-zinc-500">
+              Report 7: PMS Compliance
+            </span>
+            <span className="text-[11px] font-bold text-orange-600 group-hover:translate-x-0.5 transition-transform">
+              View Report &rarr;
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Direct Link Banner to Dedicated 8 Reports Suite */}
+      <div className="bg-gradient-to-r from-orange-500 to-amber-600 rounded-3xl p-5 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg shadow-orange-950/20">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="px-2 py-0.5 rounded-full bg-white/20 text-white text-[10px] font-bold uppercase tracking-wider">
+              Audit Standard Suite
+            </span>
+            <span className="text-xs text-white/80 font-medium">8 Tailored Visual Reports</span>
+          </div>
+          <h3 className="text-base font-bold">
+            Dedicated 8 Standardized Operational &amp; Strategic Reports Suite
+          </h3>
+          <p className="text-xs text-white/90">
+            Inspect individual departmental charts, staff labor distributions, aging backlogs, and hardware vulnerability matrices.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setActiveView('reports')}
+          className="py-2.5 px-5 rounded-xl bg-white text-orange-700 hover:bg-orange-50 font-bold text-xs shrink-0 shadow-md transition-all press-fx inline-flex items-center gap-1.5"
+        >
+          <span>Open 8 Standard Reports</span>
+          <ArrowRight className="w-3.5 h-3.5" />
+        </button>
       </div>
 
       {/* Visual Recharts Widgets Row (FR-DASH-02..04) */}

@@ -7,17 +7,23 @@ import {
   TicketChatMessage,
   ChecklistStep,
   SavedRepairNote,
+  TaskCategoryCode,
 } from '../types/ticket';
-import { INITIAL_TICKETS, TASK_CATEGORIES } from '../data/mockTicketsData';
+import { INITIAL_TICKETS, TASK_CATEGORIES, VERIFIED_EMPLOYEES } from '../data/mockTicketsData';
+import { TeamMember, TeamRole, TeamMemberStatus } from '../types/team';
+import { EmployeeProfile } from '../types';
+import { TEAM_ROSTER } from '../data/mockTeamData';
 
 export type ActiveView =
-  | 'overview'    // IT Screen 1: Personal Technician KPI Overview + Active Ticket Queue
-  | 'workbench'   // IT Screen 2: My Active Workbench (Active Focus Repair + Live Chat + Editable Checklist + 3-Col Kanban)
-  | 'notes'       // IT Screen 3: Saved Repair Notes & Troubleshooting Checklists Library
-  | 'joblogs'     // IT Screen 4: 15-Column Master Job Log Spreadsheet & AI Importer
-  | 'terminals'   // IT Screen 5: 15 Bus Terminal Hubs Health & PMS Tracker
+  | 'overview'    // IT Screen 1: Personal Technician KPI Overview
+  | 'tickets'     // Screen 2: Active Ticket Lists (Table View & 3-Col Kanban Board)
+  | 'workbench'   // IT Screen 3: My Active Workbench (Active Focus Repair & Live Chat)
+  | 'notes'       // Screen 4: Saved Repair Notes Library
+  | 'joblogs'     // Screen 5: 15-Column Master Job Log Spreadsheet & AI Importer
+  | 'terminals'   // Screen 6: 15 Bus Terminal Hubs Monitor
   | 'team'        // Admin Screen: IT Team Roster & Governance
-  | 'analytics';  // Admin Screen: 8 Standardized Executive Reports
+  | 'analytics'   // Admin Screen: Executive Analytics Overview
+  | 'reports';    // Admin Screen: Dedicated 8 Standardized Reports Suite
 
 export type StaffRole = 'it' | 'admin';
 export type QueueFilterTab = 'ALL' | 'OPEN' | 'MY_ACTIVE' | 'RESL' | 'CLSD';
@@ -174,6 +180,10 @@ interface AppState {
   tickets: Ticket[];
   selectedTicketId: string | null;
   setSelectedTicketId: (id: string | null) => void;
+  activeWorkbenchTicketId: string | null;
+  activeReportId: number;
+  setActiveReportId: (id: number) => void;
+  setActiveWorkbenchTicketId: (id: string | null) => void;
 
   isQuickIntakeOpen: boolean;
   setQuickIntakeOpen: (open: boolean) => void;
@@ -207,6 +217,7 @@ interface AppState {
   // Ticket Actions & Two-Way Chat
   claimTicket: (ticketId: string, techName?: string, techId?: string) => void;
   updateTicketMode: (ticketId: string, mode: SupportMode) => void;
+  updateTicketTask: (ticketId: string, taskCode: TaskCategoryCode) => void;
   updateTicketDescription: (ticketId: string, description: string) => void;
   sendTicketMessage: (
     ticketId: string,
@@ -219,6 +230,34 @@ interface AppState {
   confirmClosure: (ticketId: string) => void;
   reopenTicket: (ticketId: string) => void;
   createTicket: (input: NewTicketInput) => Ticket;
+  assignTicket: (ticketId: string, technicianName: string, technicianId: string) => void;
+
+  // IT Team Specialist & Account Management
+  itTeamMembers: TeamMember[];
+  createITMember: (member: {
+    name: string;
+    email: string;
+    role: TeamRole;
+    department: string;
+    status: TeamMemberStatus;
+    primaryLocation: string;
+  }) => void;
+  deleteITMember: (id: string) => void;
+
+  // Verified Employees Directory
+  verifiedEmployeesList: EmployeeProfile[];
+  createEmployee: (emp: {
+    employee_id: string;
+    full_name: string;
+    email: string;
+    company_id: string;
+    company_name: string;
+    location_id: string;
+    location_name: string;
+    department_id: string;
+    department_name: string;
+  }) => void;
+  deleteEmployee: (employeeId: string) => void;
 
   // Direct Ticket Confirmation & Employee ID Verification Flow
   verifyTicketCode: string | null;
@@ -289,6 +328,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({
       currentUser: null,
       selectedTicketId: null,
+      activeWorkbenchTicketId: null,
       isQuickIntakeOpen: false,
     });
     get().addToast(
@@ -313,6 +353,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   tickets: INITIAL_TICKETS,
   selectedTicketId: null,
   setSelectedTicketId: (id) => set({ selectedTicketId: id }),
+  activeWorkbenchTicketId: null,
+  setActiveWorkbenchTicketId: (id) => set({ activeWorkbenchTicketId: id }),
+  activeReportId: 1,
+  setActiveReportId: (id) => set({ activeReportId: id }),
 
   isQuickIntakeOpen: false,
   setQuickIntakeOpen: (open) => set({ isQuickIntakeOpen: open }),
@@ -529,6 +573,23 @@ export const useAppStore = create<AppState>((set, get) => ({
     );
   },
 
+  updateTicketTask: (ticketId, taskCode) => {
+    const category = TASK_CATEGORIES.find((c) => c.code === taskCode);
+    const target = get().tickets.find((t) => t.id === ticketId);
+    if (!target) return;
+    const taskName = category?.name ?? target.task;
+    set((state) => ({
+      tickets: state.tickets.map((t) =>
+        t.id === ticketId ? { ...t, taskCode, task: taskName } : t
+      ),
+    }));
+    get().addToast(
+      'Diagnosed Task Updated',
+      `Reclassified to ${taskName} (${taskCode})`,
+      'success'
+    );
+  },
+
   updateTicketDescription: (ticketId, description) => {
     set((state) => ({
       tickets: state.tickets.map((t) =>
@@ -725,6 +786,98 @@ export const useAppStore = create<AppState>((set, get) => ({
     );
 
     return newTicket;
+  },
+
+  assignTicket: (ticketId, technicianName, technicianId) => {
+    const target = get().tickets.find((t) => t.id === ticketId);
+    const assignMsg: TicketChatMessage = {
+      id: 'msg-' + Date.now(),
+      senderRole: 'it',
+      senderName: 'Dispatch Admin',
+      message: `Ticket (${target?.ticketCode ?? ''}) has been assigned to ${technicianName} by Administrator.`,
+      timestamp: formatTimeAmPm(new Date()),
+    };
+    set((state) => ({
+      tickets: state.tickets.map((t) =>
+        t.id === ticketId
+          ? {
+              ...t,
+              status: t.status === 'OPEN' ? 'PROG' : t.status,
+              workedBy: technicianName,
+              workedById: technicianId,
+              messages: [...(t.messages ?? []), assignMsg],
+            }
+          : t
+      ),
+    }));
+    get().addToast(
+      `Assigned ${target?.ticketCode ?? 'Ticket'} to ${technicianName}`,
+      'Dispatch assignment updated successfully.',
+      'success'
+    );
+  },
+
+  // IT Team Specialist & Account Management
+  itTeamMembers: TEAM_ROSTER,
+  createITMember: (memberData) => {
+    const newMember: TeamMember = {
+      id: 'tm-' + Date.now(),
+      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(
+        memberData.name
+      )}&backgroundColor=b6e3f4`,
+      ticketsClosed: 0,
+      activeTickets: 0,
+      flameScore: 10,
+      ...memberData,
+    };
+    set((state) => ({
+      itTeamMembers: [newMember, ...state.itTeamMembers],
+    }));
+    get().addToast(
+      'IT Specialist Account Created',
+      `${newMember.name} added to Five Star IT staff.`,
+      'success'
+    );
+  },
+  deleteITMember: (id) => {
+    const member = get().itTeamMembers.find((m) => m.id === id);
+    set((state) => ({
+      itTeamMembers: state.itTeamMembers.filter((m) => m.id !== id),
+    }));
+    get().addToast(
+      'Account Removed',
+      `${member?.name ?? 'Specialist'} removed from active IT staff.`,
+      'info'
+    );
+  },
+
+  // Verified Employees Directory
+  verifiedEmployeesList: Object.values(VERIFIED_EMPLOYEES),
+  createEmployee: (empData) => {
+    const newEmp: EmployeeProfile = {
+      id: 'emp-' + Date.now(),
+      ...empData,
+    };
+    set((state) => ({
+      verifiedEmployeesList: [newEmp, ...state.verifiedEmployeesList],
+    }));
+    get().addToast(
+      'Employee Profile Created',
+      `${newEmp.full_name} (${newEmp.employee_id}) added to company directory.`,
+      'success'
+    );
+  },
+  deleteEmployee: (employeeId) => {
+    set((state) => ({
+      verifiedEmployeesList: state.verifiedEmployeesList.filter(
+        (e) => e.employee_id !== employeeId
+      ),
+    }));
+    get().addToast(
+      'Employee Removed',
+      `Employee ID ${employeeId} removed from directory.`,
+      'info'
+    );
   },
 
   verifyTicketCode: getInitialVerifyCode(),

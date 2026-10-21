@@ -19,6 +19,7 @@ import {
 import { useAppStore } from '../../store/useAppStore';
 import { SupportMode } from '../../types/ticket';
 import { StatusBadge } from '../common/StatusBadge';
+import { DiagnosedTaskSelector } from './DiagnosedTaskSelector';
 
 const IT_QUICK_REPLIES = [
   'Can you share your AnyDesk ID so I can connect remotely?',
@@ -34,6 +35,8 @@ export const JobLogDrawer: React.FC = () => {
     setSelectedTicketId,
     currentUser,
     claimTicket,
+    assignTicket,
+    itTeamMembers,
     updateTicketMode,
     updateTicketDescription,
     resolveTicket,
@@ -42,6 +45,9 @@ export const JobLogDrawer: React.FC = () => {
     reopenTicket,
     sendTicketMessage,
     copyTicketShareLink,
+    setActiveWorkbenchTicketId,
+    setActiveView,
+    addToast,
   } = useAppStore();
 
   const ticket = tickets.find((t) => t.id === selectedTicketId);
@@ -164,6 +170,23 @@ export const JobLogDrawer: React.FC = () => {
               </p>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  if (ticket.status === 'OPEN') {
+                    claimTicket(ticket.id, currentUser?.name, currentUser?.id);
+                  }
+                  setActiveWorkbenchTicketId(ticket.id);
+                  setSelectedTicketId(null);
+                  setActiveView('workbench');
+                  addToast('Opened in Workbench', `Switched to ${ticket.ticketCode} workbench`, 'success');
+                }}
+                className="px-2.5 py-1.5 rounded-xl bg-orange-500 hover:bg-orange-600 active:scale-95 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-sm transition-all press-fx"
+                title="Open this ticket in Active Workbench"
+              >
+                <Wrench className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Active Workbench</span>
+              </button>
               <button
                 type="button"
                 onClick={() => copyTicketShareLink(ticket.ticketCode)}
@@ -490,7 +513,7 @@ export const JobLogDrawer: React.FC = () => {
                   {issueFields.map((f) => (
                     <div
                       key={f.no}
-                      className="px-3.5 py-2 flex items-start justify-between gap-4 text-xs"
+                      className="px-3.5 py-2 flex items-center justify-between gap-4 text-xs"
                     >
                       <span className="text-ink-subtle font-medium shrink-0">
                         <span className="font-mono text-[10px] text-ink-faint mr-1.5">
@@ -498,9 +521,36 @@ export const JobLogDrawer: React.FC = () => {
                         </span>
                         {f.label}
                       </span>
-                      <span className="font-semibold text-ink text-right max-w-[65%]">
-                        {f.value}
-                      </span>
+                      {f.no === '05' ? (
+                        <div className="w-60">
+                          <DiagnosedTaskSelector
+                            ticketId={ticket.id}
+                            currentTaskCode={ticket.taskCode}
+                            currentTaskName={ticket.task}
+                            compact
+                          />
+                        </div>
+                      ) : f.no === '15' && currentUser?.role === 'admin' ? (
+                        <select
+                          value={ticket.workedById ?? ''}
+                          onChange={(e) => {
+                            const tech = itTeamMembers.find((m) => m.id === e.target.value);
+                            if (tech) assignTicket(ticket.id, tech.name, tech.id);
+                          }}
+                          className="px-2.5 py-1 bg-surface border border-line rounded-lg text-xs font-semibold text-ink focus:border-orange-500 focus:outline-none"
+                        >
+                          <option value="" disabled>Assign Tech...</option>
+                          {itTeamMembers.map((m) => (
+                            <option key={m.id} value={m.id}>
+                              {m.name} ({m.primaryLocation.split(' ')[0]})
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span className="font-semibold text-ink text-right max-w-[65%]">
+                          {f.value}
+                        </span>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -541,6 +591,22 @@ export const JobLogDrawer: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (ticket.status === 'OPEN') {
+                  claimTicket(ticket.id, currentUser?.name, currentUser?.id);
+                }
+                setActiveWorkbenchTicketId(ticket.id);
+                setSelectedTicketId(null);
+                setActiveView('workbench');
+                addToast('Opened in Workbench', `Switched to ${ticket.ticketCode} workbench`, 'success');
+              }}
+              className="px-3.5 py-2 bg-orange-500 hover:bg-orange-600 active:scale-95 text-white text-xs font-bold rounded-xl inline-flex items-center gap-1.5 transition-all shadow-sm"
+            >
+              <Wrench className="w-4 h-4" />
+              <span>Go to Active Workbench</span>
+            </button>
             {ticket.status === 'OPEN' && (
               <button
                 onClick={() => claimTicket(ticket.id)}

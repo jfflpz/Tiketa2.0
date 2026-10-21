@@ -70,6 +70,7 @@ class TicketInput(Input):
 class StatusInput(Input):
     status: Literal["PROG", "RESL", "CLSD"]
     mode: Literal["REM", "SITE"] | None = None
+    task_code: str | None = None
 
 
 class ClosureInput(Input):

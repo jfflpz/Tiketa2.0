@@ -261,6 +261,17 @@
             ],
             "title": "Status",
             "type": "string"
+          },
+          "task_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Code"
           }
         },
         "required": [
