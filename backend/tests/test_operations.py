@@ -1,14 +1,17 @@
+import runpy
+import sys
 from unittest.mock import MagicMock
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.core.config import settings
 from app.db.session import AsyncSessionLocal
-from app.models import User
+from app.models import Ticket, User
 from app.schemas import UserCreate
 from app.services.mail import send_closure
 from scripts.bootstrap_admin import bootstrap
+from scripts.seed_demo_operations import seed as seed_demo_ops
 
 
 async def test_bootstrap_is_once_and_hashes_password():
@@ -43,3 +46,16 @@ async def test_smtp_uses_verified_recipient_and_tls(monkeypatch):
     assert message["To"] == "verified@example.com"
     assert "single-use-token" in message.get_content()
     assert "confirm-closure" in message.get_content()
+
+
+async def test_seed_demo_operations_idempotent():
+    await seed_demo_ops()
+    await seed_demo_ops()
+    async with AsyncSessionLocal() as db:
+        tickets_count = await db.scalar(select(func.count()).select_from(Ticket))
+        assert tickets_count > 0
+
+
+def test_export_openapi_check(monkeypatch):
+    monkeypatch.setattr(sys, "argv", ["export_openapi.py", "--check"])
+    runpy.run_module("scripts.export_openapi", run_name="__main__")
