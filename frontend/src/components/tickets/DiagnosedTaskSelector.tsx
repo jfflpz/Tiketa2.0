@@ -93,7 +93,7 @@ export const DiagnosedTaskSelector: React.FC<DiagnosedTaskSelectorProps> = ({
   currentTaskName,
   compact = false,
 }) => {
-  const { updateTicketTask } = useAppStore();
+  const updateTicketTask = useAppStore((state) => state.updateTicketTask);
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);

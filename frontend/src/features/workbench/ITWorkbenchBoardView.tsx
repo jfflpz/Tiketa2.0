@@ -29,30 +29,23 @@ const WORKBENCH_QUICK_REPLIES = [
 ];
 
 export const ITWorkbenchBoardView: React.FC = () => {
-  const {
-    currentUser,
-    tickets,
-    activeWorkbenchTicketId,
-    setActiveWorkbenchTicketId,
-    updateTicketMode,
-    resolveTicket,
-    requestValidation,
-    setSelectedTicketId,
-    setActiveView,
-    copyTicketShareLink,
-    sendTicketMessage,
-    claimTicket,
-    addToast,
-  } = useAppStore();
+  const tickets = useAppStore((state) => state.tickets);
+  const activeWorkbenchTicketId = useAppStore((state) => state.activeWorkbenchTicketId);
+  const setActiveWorkbenchTicketId = useAppStore((state) => state.setActiveWorkbenchTicketId);
+  const updateTicketMode = useAppStore((state) => state.updateTicketMode);
+  const resolveTicket = useAppStore((state) => state.resolveTicket);
+  const requestValidation = useAppStore((state) => state.requestValidation);
+  const setSelectedTicketId = useAppStore((state) => state.setSelectedTicketId);
+  const setActiveView = useAppStore((state) => state.setActiveView);
+  const copyTicketShareLink = useAppStore((state) => state.copyTicketShareLink);
+  const sendTicketMessageApi = useAppStore((state) => state.sendTicketMessageApi);
+  const updateTicketStatusApi = useAppStore((state) => state.updateTicketStatusApi);
+  const claimTicketApi = useAppStore((state) => state.claimTicketApi);
+  const addToast = useAppStore((state) => state.addToast);
 
-  const currentTechName = currentUser?.name ?? 'Nathaniel D. Esguerra';
-
-  // In-progress tickets assigned to technician
   const progTickets = tickets.filter((t) => t.status === 'PROG');
-  // Open pool tickets ready to claim
   const openTickets = tickets.filter((t) => t.status === 'OPEN');
 
-  // Currently focused ticket (State 2)
   const focusedTicket = activeWorkbenchTicketId
     ? tickets.find((t) => t.id === activeWorkbenchTicketId) ?? null
     : null;
@@ -61,15 +54,13 @@ export const ITWorkbenchBoardView: React.FC = () => {
   const [copiedLink, setCopiedLink] = useState(false);
 
   const messages = focusedTicket?.messages ?? [];
-  const techSenderName =
-    focusedTicket?.workedBy ??
-    currentTechName;
 
-  const handleSendWorkbenchChat = (e: React.FormEvent) => {
+  const handleSendWorkbenchChat = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!focusedTicket || !chatDraft.trim()) return;
-    sendTicketMessage(focusedTicket.id, 'it', techSenderName, chatDraft);
+    const msg = chatDraft.trim();
     setChatDraft('');
+    await sendTicketMessageApi(focusedTicket.id, msg, false);
   };
 
   const handleCopyLink = async () => {
@@ -80,10 +71,9 @@ export const ITWorkbenchBoardView: React.FC = () => {
     setTimeout(() => setCopiedLink(false), 2000);
   };
 
-  const handleClaimAndFocus = (ticket: Ticket) => {
-    claimTicket(ticket.id, currentUser?.name, currentUser?.id);
+  const handleClaimAndFocus = async (ticket: Ticket) => {
+    await claimTicketApi(ticket.id);
     setActiveWorkbenchTicketId(ticket.id);
-    addToast('Ticket Claimed', `Assigned ${ticket.ticketCode} to your active workbench`, 'success');
   };
 
   const getPriorityBadge = (priority: Ticket['priority']) => {
@@ -99,10 +89,6 @@ export const ITWorkbenchBoardView: React.FC = () => {
     }
   };
 
-  // =========================================================================
-  // STATE 1: ACTIVE BENCH HUB (TICKET PICKER)
-  // Displayed when no specific ticket has been selected by the technician
-  // =========================================================================
   if (!focusedTicket) {
     return (
       <div className="space-y-6 pb-8">
@@ -397,7 +383,10 @@ export const ITWorkbenchBoardView: React.FC = () => {
                   <button
                     key={m}
                     type="button"
-                    onClick={() => updateTicketMode(focusedTicket.id, m)}
+                    onClick={async () => {
+                        updateTicketMode(focusedTicket.id, m);
+                        await updateTicketStatusApi(focusedTicket.id, 'PROG', m);
+                    }}
                     className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all press-fx ${
                       focusedTicket.mode === m
                         ? 'bg-orange-500 text-white shadow-sm'
@@ -430,7 +419,10 @@ export const ITWorkbenchBoardView: React.FC = () => {
 
               <button
                 type="button"
-                onClick={() => resolveTicket(focusedTicket.id)}
+                    onClick={async () => {
+                    resolveTicket(focusedTicket.id);
+                    await updateTicketStatusApi(focusedTicket.id, 'RESL', focusedTicket.mode);
+                }}
                 className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-sm transition-colors press-fx"
               >
                 <CheckCircle2 className="w-4 h-4" />
@@ -625,14 +617,9 @@ export const ITWorkbenchBoardView: React.FC = () => {
               <button
                 key={preset}
                 type="button"
-                onClick={() =>
-                  sendTicketMessage(
-                    focusedTicket.id,
-                    'it',
-                    techSenderName,
-                    preset
-                  )
-                }
+                  onClick={() =>
+                    sendTicketMessageApi(focusedTicket.id, preset, false)
+                  }
                 className="text-[11px] px-2.5 py-1 rounded-lg bg-white hover:bg-orange-50 text-zinc-600 hover:text-orange-600 border border-[#ECEEF2] transition-colors press-fx"
               >
                 + {preset}

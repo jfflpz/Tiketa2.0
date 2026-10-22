@@ -13,17 +13,15 @@ import {
   User,
 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
-import { TASK_CATEGORIES } from '../../data/mockTicketsData';
+import { TASK_CATEGORIES } from '../../constants/domain';
 import { TaskCategoryCode, SavedRepairNote } from '../../types/ticket';
 
 export const RepairNotesLibraryView: React.FC = () => {
-  const {
-    currentUser,
-    savedRepairNotes,
-    saveRepairNoteAndChecklist,
-    updateSavedRepairNote,
-    deleteSavedRepairNote,
-  } = useAppStore();
+  const currentUser = useAppStore((state) => state.currentUser);
+  const savedRepairNotes = useAppStore((state) => state.savedRepairNotes);
+  const saveRepairNoteAndChecklist = useAppStore((state) => state.saveRepairNoteAndChecklist);
+  const updateSavedRepairNote = useAppStore((state) => state.updateSavedRepairNote);
+  const deleteSavedRepairNote = useAppStore((state) => state.deleteSavedRepairNote);
 
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<'ALL' | TaskCategoryCode>('ALL');

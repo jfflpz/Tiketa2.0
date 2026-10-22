@@ -19,14 +19,12 @@ import {
 import { useAppStore } from '../../store/useAppStore';
 
 export const Sidebar: React.FC = () => {
-  const {
-    currentUser,
-    logoutToKiosk,
-    activeView,
-    setActiveView,
-    sidebarCollapsed,
-    tickets,
-  } = useAppStore();
+  const currentUser = useAppStore((state) => state.currentUser);
+  const logoutToKiosk = useAppStore((state) => state.logoutToKiosk);
+  const activeView = useAppStore((state) => state.activeView);
+  const setActiveView = useAppStore((state) => state.setActiveView);
+  const sidebarCollapsed = useAppStore((state) => state.sidebarCollapsed);
+  const tickets = useAppStore((state) => state.tickets);
 
   const [mainOpen, setMainOpen] = useState(true);
   const [adminAnalyticsOpen, setAdminAnalyticsOpen] = useState(true);

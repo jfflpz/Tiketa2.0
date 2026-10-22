@@ -7,11 +7,14 @@ import {
   UserCheck,
 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
-import { COMPANIES } from '../../data/mockTicketsData';
+import { COMPANIES } from '../../constants/domain';
 import { StatusBadge } from '../../components/common/StatusBadge';
 
 export const JobLogSheetView: React.FC = () => {
-  const { currentUser, tickets, setSelectedTicketId, addToast } = useAppStore();
+  const currentUser = useAppStore((state) => state.currentUser);
+  const tickets = useAppStore((state) => state.tickets);
+  const setSelectedTicketId = useAppStore((state) => state.setSelectedTicketId);
+  const addToast = useAppStore((state) => state.addToast);
 
   const [companyFilter, setCompanyFilter] = useState('ALL');
   const [modeFilter, setModeFilter] = useState<'ALL' | 'SITE' | 'REM'>('ALL');

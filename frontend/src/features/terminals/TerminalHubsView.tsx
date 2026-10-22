@@ -10,7 +10,7 @@ import {
   Info,
 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
-import { LOCATIONS } from '../../data/mockTicketsData';
+import { LOCATIONS } from '../../constants/domain';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { TerminalHubDetailModal, TerminalMeta } from './TerminalHubDetailModal';
 
@@ -35,7 +35,8 @@ const TERMINAL_HUB_METADATA: TerminalMeta[] = LOCATIONS.map((loc, idx) => {
 });
 
 export const TerminalHubsView: React.FC = () => {
-  const { tickets, setSelectedTicketId } = useAppStore();
+  const tickets = useAppStore((state) => state.tickets);
+  const setSelectedTicketId = useAppStore((state) => state.setSelectedTicketId);
   const [hubSearch, setHubSearch] = useState('');
   const [selectedHub, setSelectedHub] = useState<TerminalMeta | null>(null);
 

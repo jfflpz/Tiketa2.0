@@ -107,6 +107,7 @@ async def status_ticket(ticket_id: UUID, body: StatusInput, db: DB, user: Curren
     if row.status == "OPEN" and body.status == "PROG":
         await claim(db, row, user)
         row.mode = body.mode
+
     elif row.status == "PROG" and body.status == "PROG":
         if body.mode:
             row.mode = body.mode
@@ -143,6 +144,16 @@ async def status_ticket(ticket_id: UUID, body: StatusInput, db: DB, user: Curren
             raise HTTPException(409, "Override requires 72 hours of inactivity")
         row.status = "CLSD"
         row.closure_token_hash = None
+    elif row.status in ("RESL", "CLSD") and body.status == "PROG":
+        if row.status == "CLSD" and (now() - row.updated_at > timedelta(hours=72)):
+            raise HTTPException(
+                409,
+                "Tickets closed over 72 hours ago cannot be reopened; create a new linked ticket",
+            )
+        row.status = "PROG"
+        row.closure_token_hash = None
+        row.resolved_at = None
+        row.date_finished = None
     else:
         raise HTTPException(409, "Invalid status transition")
     await db.commit()
