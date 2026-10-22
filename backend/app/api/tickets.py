@@ -147,7 +147,8 @@ async def status_ticket(ticket_id: UUID, body: StatusInput, db: DB, user: Curren
     elif row.status in ("RESL", "CLSD") and body.status == "PROG":
         if row.status == "CLSD" and (now() - row.updated_at > timedelta(hours=72)):
             raise HTTPException(
-                409, "Tickets closed over 72 hours ago cannot be reopened; create a new linked ticket"
+                409,
+                "Tickets closed over 72 hours ago cannot be reopened; create a new linked ticket",
             )
         row.status = "PROG"
         row.closure_token_hash = None
