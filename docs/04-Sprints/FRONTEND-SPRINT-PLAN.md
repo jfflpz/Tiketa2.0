@@ -94,6 +94,36 @@ flowchart LR
 
 ---
 
+### Sprint 6: Modular State Architecture, Monolith Decomposition & Async Race Guards (Completed ✅ — 2026-10-22)
+* **F6.1 (Zustand 9-Slice Decomposition)**:
+  - Decomposed 1,539-line monolith `store/useAppStore.ts` into a concise 44-line root aggregator and 9 isolated domain slices under `src/store/slices/` (`uiSlice`, `authSlice`, `ticketQueueSlice`, `ticketOperationsSlice`, `publicIntakeSlice`, `notesSlice`, `reportsSlice`, `teamSlice`, `ticketVerificationSlice`).
+  - Preserved 100% backward compatibility of exported types (`AppState`, slice interfaces, constants).
+* **F6.2 (Feature View Monolith Partitioning)**:
+  - Decomposed 8 oversized view components into modular sub-components and custom hooks:
+    - `EmployeeTicketScreen.tsx` (1,443L $\to$ 198L) + `useEmployeeIntake.ts` + kiosk component directory.
+    - `ExecutiveAnalyticsView.tsx` (836L $\to$ 175L) + analytics charts/cards sub-components.
+    - `StandardizedReportsView.tsx` (806L $\to$ 157L) + typed mappers and modular tables.
+    - `TeamWorkbenchView.tsx` refactored to `TeamAdministrationView.tsx` (165L) with legacy re-export.
+    - `TopHeader.tsx` (765L $\to$ 115L) + popover sub-components.
+    - `TerminalHubDetailModal.tsx` (752L $\to$ 198L) + tab sub-components.
+    - `TicketListsView.tsx` (747L $\to$ 152L) + toolbar, data table, and kanban components.
+    - `JobLogDrawer.tsx` (692L $\to$ 148L) + header, chat feed, and record form components.
+* **F6.3 (Employee Intake Race & Stale Request Protection)**:
+  - Replaced restarted counter in `useEmployeeIntake.ts` with a persistent request sequence ref (`latestLookupIdRef = useRef(0)`) and effect cleanup cancellation (`isCancelled = true`).
+  - Implemented synchronous invalidation (`setEmployeeVerified(false)`) on keystroke so unverified IDs cannot be submitted during the 300ms debounce.
+  - Hardened form submission invariant: `if (!employeeVerified || isSubmitting) return;`.
+* **F6.4 (Reporting Session Logout Invalidation)**:
+  - Introduced `resetReportsState()` in `reportsSlice.ts` tracking independent sequence counters for reports (`activeReportRequestId`) and KPIs (`activeKpisRequestId`).
+  - Connected `get().resetReportsState?.()` inside `logoutToKiosk` in `authSlice.ts` to invalidate in-flight promises and clear report state upon logout.
+* **F6.5 (Elimination of Whole-Store Subscriptions)**:
+  - Replaced whole-store destructuring (`useAppStore()`) in `useEmployeeIntake.ts` with atomic selectors (`activeOfficeLocationCode`, `submitTicketApi`, `lookupEmployeeApi`).
+  - Confirmed via repository-wide AST audit that 0 whole-store subscriptions remain in Tiketa.
+* **F6.6 (Verification & Build Checks)**:
+  - Strict TypeScript check (`npm run type-check`): **0 errors**.
+  - Production compilation (`npm run build`): **0 errors, clean build**.
+
+---
+
 ## 3. Verification Plan
 
 ```powershell

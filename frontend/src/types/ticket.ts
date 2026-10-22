@@ -26,6 +26,7 @@ export interface TicketChatMessage {
   senderName: string;
   message: string;
   timestamp: string;
+  isInternal?: boolean;
 }
 
 export interface ChecklistStep {

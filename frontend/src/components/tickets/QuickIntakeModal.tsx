@@ -22,16 +22,14 @@ import {
 import { SupportMode, TaskCategoryCode, Ticket } from '../../types/ticket';
 
 export const QuickIntakeModal: React.FC = () => {
-  const {
-    isQuickIntakeOpen,
-    setQuickIntakeOpen,
-    quickIntakeApi,
-    copyTicketShareLink,
-    setActiveView,
-    setSelectedTicketId,
-    setVerifyTicketCode,
-    lookupEmployeeApi,
-  } = useAppStore();
+  const isQuickIntakeOpen = useAppStore((state) => state.isQuickIntakeOpen);
+  const setQuickIntakeOpen = useAppStore((state) => state.setQuickIntakeOpen);
+  const quickIntakeApi = useAppStore((state) => state.quickIntakeApi);
+  const copyTicketShareLink = useAppStore((state) => state.copyTicketShareLink);
+  const setActiveView = useAppStore((state) => state.setActiveView);
+  const setSelectedTicketId = useAppStore((state) => state.setSelectedTicketId);
+  const setVerifyTicketCode = useAppStore((state) => state.setVerifyTicketCode);
+  const lookupEmployeeApi = useAppStore((state) => state.lookupEmployeeApi);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 

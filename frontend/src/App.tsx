@@ -18,19 +18,16 @@ import { ToastContainer } from './components/common/ToastContainer';
 import { useAppStore } from './store/useAppStore';
 import { useEffect } from 'react';
 
-
 export default function App() {
-  const {
-    currentUser,
-    activeView,
-    verifyTicketCode,
-    isHydratingAuth,
-    hydrateAuthApi,
-  } = useAppStore();
+  const currentUser = useAppStore((state) => state.currentUser);
+  const activeView = useAppStore((state) => state.activeView);
+  const verifyTicketCode = useAppStore((state) => state.verifyTicketCode);
+  const isHydratingAuth = useAppStore((state) => state.isHydratingAuth);
+  const hydrateAuthApi = useAppStore((state) => state.hydrateAuthApi);
 
   useEffect(() => {
     hydrateAuthApi();
-  }, []);
+  }, [hydrateAuthApi]);
 
   if (isHydratingAuth) {
     return (

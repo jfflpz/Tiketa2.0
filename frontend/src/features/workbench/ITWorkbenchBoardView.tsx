@@ -29,21 +29,19 @@ const WORKBENCH_QUICK_REPLIES = [
 ];
 
 export const ITWorkbenchBoardView: React.FC = () => {
-  const {
-    tickets,
-    activeWorkbenchTicketId,
-    setActiveWorkbenchTicketId,
-    updateTicketMode,
-    resolveTicket,
-    requestValidation,
-    setSelectedTicketId,
-    setActiveView,
-    copyTicketShareLink,
-    sendTicketMessageApi,
-    updateTicketStatusApi,
-    claimTicketApi,
-    addToast,
-  } = useAppStore();
+  const tickets = useAppStore((state) => state.tickets);
+  const activeWorkbenchTicketId = useAppStore((state) => state.activeWorkbenchTicketId);
+  const setActiveWorkbenchTicketId = useAppStore((state) => state.setActiveWorkbenchTicketId);
+  const updateTicketMode = useAppStore((state) => state.updateTicketMode);
+  const resolveTicket = useAppStore((state) => state.resolveTicket);
+  const requestValidation = useAppStore((state) => state.requestValidation);
+  const setSelectedTicketId = useAppStore((state) => state.setSelectedTicketId);
+  const setActiveView = useAppStore((state) => state.setActiveView);
+  const copyTicketShareLink = useAppStore((state) => state.copyTicketShareLink);
+  const sendTicketMessageApi = useAppStore((state) => state.sendTicketMessageApi);
+  const updateTicketStatusApi = useAppStore((state) => state.updateTicketStatusApi);
+  const claimTicketApi = useAppStore((state) => state.claimTicketApi);
+  const addToast = useAppStore((state) => state.addToast);
 
   const progTickets = tickets.filter((t) => t.status === 'PROG');
   const openTickets = tickets.filter((t) => t.status === 'OPEN');

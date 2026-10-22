@@ -4,7 +4,8 @@ import { CheckCircle2, Info, AlertTriangle, X } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 
 export const ToastContainer: React.FC = () => {
-  const { toasts, removeToast } = useAppStore();
+  const toasts = useAppStore((state) => state.toasts);
+  const removeToast = useAppStore((state) => state.removeToast);
 
   if (toasts.length === 0) return null;
 
@@ -31,8 +32,8 @@ export const ToastContainer: React.FC = () => {
           </div>
           <button
             onClick={() => removeToast(t.id)}
-            className="text-zinc-500 hover:text-zinc-300 p-0.5 rounded transition-colors"
-            aria-label="Close notification"
+            className="text-zinc-500 hover:text-zinc-300 p-0.5 transition-colors"
+            aria-label="Dismiss toast"
           >
             <X className="w-3.5 h-3.5" />
           </button>

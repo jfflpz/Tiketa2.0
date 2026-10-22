@@ -4,7 +4,11 @@ import { X, ShieldCheck, Wrench, Lock, ArrowRight, Loader2, AlertCircle } from '
 import { useAppStore, StaffRole } from '../../store/useAppStore';
 
 export const StaffLoginModal: React.FC = () => {
-  const { loginModalRole, closeLoginModal, loginWithApi, isAuthenticating, authError } = useAppStore();
+  const loginModalRole = useAppStore((state) => state.loginModalRole);
+  const closeLoginModal = useAppStore((state) => state.closeLoginModal);
+  const loginWithApi = useAppStore((state) => state.loginWithApi);
+  const isAuthenticating = useAppStore((state) => state.isAuthenticating);
+  const authError = useAppStore((state) => state.authError);
   const [role, setRole] = useState<StaffRole>('admin');
   const [username, setUsername] = useState('admin');
   const [password, setPassword] = useState('');

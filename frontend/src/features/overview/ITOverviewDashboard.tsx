@@ -55,15 +55,13 @@ const MY_WEEKLY_HOURS_BARS = [
 ];
 
 export const ITOverviewDashboard: React.FC = () => {
-    const {
-      currentUser,
-      tickets,
-      savedRepairNotes,
-      setSelectedTicketId,
-      setActiveView,
-      fetchQueueApi,
-      isFetchingQueue,
-    } = useAppStore();
+    const currentUser = useAppStore((state) => state.currentUser);
+  const tickets = useAppStore((state) => state.tickets);
+  const savedRepairNotes = useAppStore((state) => state.savedRepairNotes);
+  const setSelectedTicketId = useAppStore((state) => state.setSelectedTicketId);
+  const setActiveView = useAppStore((state) => state.setActiveView);
+  const fetchQueueApi = useAppStore((state) => state.fetchQueueApi);
+  const isFetchingQueue = useAppStore((state) => state.isFetchingQueue);
 
   const techName = currentUser?.name ?? 'Nathaniel D. Esguerra';
   const techFirstName = techName.split(' ')[0];
