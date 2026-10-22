@@ -1,7 +1,6 @@
 import asyncio
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-import uuid
 
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
@@ -15,7 +14,6 @@ from app.models import (
     Location,
     LocationDepartment,
     MaintenancePlan,
-    TaskCategory,
     Ticket,
     TicketComment,
     TicketCounter,
@@ -48,20 +46,83 @@ LOCATION_DEPARTMENTS = [
 EMPLOYEES = [
     ("FS-1042", "Maria Santos", "maria.santos@fivestarbus.com", "FS", "PSY", "CASH"),
     ("FS-1088", "Juan Dela Cruz", "juan.delacruz@fivestarbus.com", "FS", "PSY", "OPS"),
-    ("FS-1092", "Roberto D. Garcia", "roberto.garcia@fivestarbus.com", "FS", "PSY", "MAINT"),
+    (
+        "FS-1092",
+        "Roberto D. Garcia",
+        "roberto.garcia@fivestarbus.com",
+        "FS",
+        "PSY",
+        "MAINT",
+    ),
     ("FS-1105", "Elena M. Reyes", "elena.reyes@fivestarbus.com", "FS", "PSY", "ACCT"),
     ("FS-2015", "Ricardo Ramos", "ricardo.ramos@fivestarbus.com", "FS", "CAL", "CASH"),
-    ("FS-2022", "Lorna B. Bautista", "lorna.bautista@fivestarbus.com", "FS", "CAL", "OPS"),
+    (
+        "FS-2022",
+        "Lorna B. Bautista",
+        "lorna.bautista@fivestarbus.com",
+        "FS",
+        "CAL",
+        "OPS",
+    ),
     ("FS-2041", "Danilo Tan", "danilo.tan@fivestarbus.com", "FS", "CAL", "MAINT"),
-    ("FS-3011", "Grace P. Mendoza", "grace.mendoza@fivestarbus.com", "FS", "CMA", "CASH"),
+    (
+        "FS-3011",
+        "Grace P. Mendoza",
+        "grace.mendoza@fivestarbus.com",
+        "FS",
+        "CMA",
+        "CASH",
+    ),
     ("FS-3019", "Ferdinand Cruz", "ferdinand.cruz@fivestarbus.com", "FS", "CMA", "OPS"),
-    ("FS-3044", "Arnel S. Navarro", "arnel.navarro@fivestarbus.com", "FS", "CMA", "BP-GPS"),
-    ("FS-4008", "Teresa G. Aquino", "teresa.aquino@fivestarbus.com", "FS", "AVN", "CASH"),
+    (
+        "FS-3044",
+        "Arnel S. Navarro",
+        "arnel.navarro@fivestarbus.com",
+        "FS",
+        "CMA",
+        "BP-GPS",
+    ),
+    (
+        "FS-4008",
+        "Teresa G. Aquino",
+        "teresa.aquino@fivestarbus.com",
+        "FS",
+        "AVN",
+        "CASH",
+    ),
     ("FS-4015", "Eduardo Lim", "eduardo.lim@fivestarbus.com", "FS", "AVN", "OPS"),
-    ("FS-5012", "Nestor V. Macaraeg", "nestor.macaraeg@fivestarbus.com", "FS", "BTM", "OPS"),
-    ("FS-5020", "Wilfredo Perez", "wilfredo.perez@fivestarbus.com", "FS", "BTM", "MAINT"),
-    ("FS-6018", "Maricel D. Soriano", "maricel.soriano@fivestarbus.com", "FS", "SNC", "OPS"),
-    ("FS-7014", "Benjamin Flores", "benjamin.flores@fivestarbus.com", "FS", "TRL", "OPS"),
+    (
+        "FS-5012",
+        "Nestor V. Macaraeg",
+        "nestor.macaraeg@fivestarbus.com",
+        "FS",
+        "BTM",
+        "OPS",
+    ),
+    (
+        "FS-5020",
+        "Wilfredo Perez",
+        "wilfredo.perez@fivestarbus.com",
+        "FS",
+        "BTM",
+        "MAINT",
+    ),
+    (
+        "FS-6018",
+        "Maricel D. Soriano",
+        "maricel.soriano@fivestarbus.com",
+        "FS",
+        "SNC",
+        "OPS",
+    ),
+    (
+        "FS-7014",
+        "Benjamin Flores",
+        "benjamin.flores@fivestarbus.com",
+        "FS",
+        "TRL",
+        "OPS",
+    ),
 ]
 
 # 3. Comprehensive Seed Ticket Scenarios
@@ -139,7 +200,6 @@ DEMO_TICKETS = [
         "days_ago": 3,
         "mode": None,
     },
-
     # --- ACTIVE: IN PROGRESS (Claimed by Technicians) ---
     {
         "code": "T-2610-0109",
@@ -196,7 +256,6 @@ DEMO_TICKETS = [
         "tech_role": "it",
         "hours_labor": None,
     },
-
     # --- RESOLVED: AWAITING EMPLOYEE CONFIRMATION ---
     {
         "code": "T-2610-0114",
@@ -231,7 +290,6 @@ DEMO_TICKETS = [
         "tech_role": "admin",
         "hours_labor": Decimal("0.75"),
     },
-
     # --- HISTORICAL CLOSED: COMPLETED REPAIRS (For Analytics & SLA Reports) ---
     {
         "code": "T-2610-0117",
@@ -355,7 +413,9 @@ async def seed():
                 if loc and dept:
                     stmt = (
                         insert(LocationDepartment)
-                        .values(location_id=loc.id, department_id=dept.id, is_default=True)
+                        .values(
+                            location_id=loc.id, department_id=dept.id, is_default=True
+                        )
                         .on_conflict_do_nothing()
                     )
                     await session.execute(stmt)
@@ -451,7 +511,9 @@ async def seed():
                 duration = None
 
                 if status in ("RESL", "CLSD"):
-                    res_dt = start_dt + timedelta(minutes=int(float(tdata.get("hours_labor") or 1) * 60))
+                    res_dt = start_dt + timedelta(
+                        minutes=int(float(tdata.get("hours_labor") or 1) * 60)
+                    )
                     date_fin = res_dt.date()
                     duration = tdata.get("hours_labor") or Decimal("1.00")
                 if status == "CLSD":
@@ -499,7 +561,9 @@ async def seed():
                         TicketComment(
                             ticket_id=ticket.id,
                             user_id=tech.id,
-                            body_enc=encrypt(f"Technician acknowledged issue. Support Mode: {tdata.get('mode') or 'SITE'}."),
+                            body_enc=encrypt(
+                                f"Technician acknowledged issue. Support Mode: {tdata.get('mode') or 'SITE'}."
+                            ),
                             is_internal=True,
                         )
                     )
@@ -549,7 +613,9 @@ async def seed():
                 )
                 await session.execute(stmt)
 
-    print("SUCCESS: Demo operational database populated with realistic multi-terminal data.")
+    print(
+        "SUCCESS: Demo operational database populated with realistic multi-terminal data."
+    )
 
 
 if __name__ == "__main__":
