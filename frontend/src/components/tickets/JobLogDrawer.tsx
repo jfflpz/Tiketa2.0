@@ -15,6 +15,7 @@ import {
   Send,
   FileSpreadsheet,
   Copy,
+  Lock,
 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { SupportMode } from '../../types/ticket';
@@ -34,6 +35,10 @@ export const JobLogDrawer: React.FC = () => {
     selectedTicketId,
     setSelectedTicketId,
     currentUser,
+    claimTicketApi,          
+    updateTicketStatusApi,  
+    fetchTicketCommentsApi, 
+    sendTicketMessageApi,
     claimTicket,
     assignTicket,
     itTeamMembers,
@@ -43,7 +48,6 @@ export const JobLogDrawer: React.FC = () => {
     requestValidation,
     confirmClosure,
     reopenTicket,
-    sendTicketMessage,
     copyTicketShareLink,
     setActiveWorkbenchTicketId,
     setActiveView,
@@ -54,6 +58,19 @@ export const JobLogDrawer: React.FC = () => {
   const [notesDraft, setNotesDraft] = useState('');
   const [chatDraft, setChatDraft] = useState('');
   const [drawerTab, setDrawerTab] = useState<'CHAT' | 'JOB_LOG'>('CHAT');
+  const [isInternalNote, setIsInternalNote] = useState(false);
+const [isSavingNotes, setIsSavingNotes] = useState(false);
+
+  useEffect(() => {
+    if (!ticket) return;
+    fetchTicketCommentsApi(ticket.id);
+
+    const interval = setInterval(() => {
+      fetchTicketCommentsApi(ticket.id);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [ticket?.id]);
 
   useEffect(() => {
     if (ticket) {
@@ -66,25 +83,24 @@ export const JobLogDrawer: React.FC = () => {
   const messages = ticket.messages ?? [];
   const techSenderName = ticket.workedBy ?? currentUser?.name ?? 'Christian (IT Specialist)';
 
-  const handleSendITMessage = (e: React.FormEvent) => {
+  const handleSendITMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!chatDraft.trim()) return;
-    sendTicketMessage(
-      ticket.id,
-      'it',
-      techSenderName,
-      chatDraft
-    );
+    const msg = chatDraft.trim();
     setChatDraft('');
+    await sendTicketMessageApi(ticket.id, msg, isInternalNote);
   };
 
   const handleQuickReply = (replyText: string) => {
-    sendTicketMessage(
-      ticket.id,
-      'it',
-      techSenderName,
-      replyText
-    );
+    sendTicketMessageApi(ticket.id, replyText, isInternalNote);
+  };
+
+  const handleSaveJobLog = async () => {
+    if (!ticket) return;
+    setIsSavingNotes(true);
+    updateTicketDescription(ticket.id, notesDraft);
+    await updateTicketStatusApi(ticket.id, ticket.status, ticket.mode);
+    setIsSavingNotes(false);
   };
 
   const orgFields = [
@@ -404,23 +420,56 @@ export const JobLogDrawer: React.FC = () => {
                 </div>
               </div>
 
-              {/* Message Composer */}
-              <form onSubmit={handleSendITMessage} className="flex items-center gap-2 pt-1">
-                <input
-                  type="text"
-                  value={chatDraft}
-                  onChange={(e) => setChatDraft(e.target.value)}
-                  placeholder={`Message ${ticket.requestor} as ${techSenderName}...`}
-                  className="flex-1 px-3.5 py-2.5 bg-canvas border border-line rounded-xl text-xs text-ink placeholder:text-ink-faint focus:outline-none focus:border-zinc-900"
-                />
-                <button
-                  type="submit"
-                  disabled={!chatDraft.trim()}
-                  className="px-4 py-2.5 bg-[#F97316] hover:bg-orange-600 disabled:opacity-40 text-white text-xs font-semibold rounded-xl inline-flex items-center gap-1.5 transition-colors press-fx shrink-0 shadow-xs"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  <span>Send</span>
-                </button>
+          {/* Message Composer */}
+              {/* Message Composer with Internal Note Toggle */}
+              <form onSubmit={handleSendITMessage} className="space-y-2 pt-1">
+                <div className="flex items-center justify-between px-1">
+                  <button
+                    type="button"
+                    onClick={() => setIsInternalNote(!isInternalNote)}
+                    className={`text-[11px] font-semibold inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border transition-colors ${
+                      isInternalNote
+                        ? 'bg-amber-500/10 border-amber-500/30 text-amber-600'
+                        : 'bg-zinc-100 border-zinc-200 text-zinc-500 hover:text-zinc-700'
+                    }`}
+                  >
+                    <Lock className="w-3 h-3" />
+                    <span>{isInternalNote ? 'Internal IT Note (Hidden from Employee)' : 'Message Employee'}</span>
+                  </button>
+                  <span className="text-[10px] text-zinc-400">
+                    {isInternalNote ? 'Private to IT Specialists' : 'Employee sees in My Tickets'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={chatDraft}
+                    onChange={(e) => setChatDraft(e.target.value)}
+                    placeholder={
+                      isInternalNote
+                        ? 'Type private internal note for IT team...'
+                        : `Message ${ticket.requestor} as ${techSenderName}...`
+                    }
+                    className={`flex-1 px-3.5 py-2.5 bg-canvas border rounded-xl text-xs text-ink focus:outline-none ${
+                      isInternalNote
+                        ? 'border-amber-400 focus:border-amber-500 bg-amber-50/20'
+                        : 'border-line focus:border-zinc-900'
+                    }`}
+                  />
+                  <button
+                    type="submit"
+                    disabled={!chatDraft.trim()}
+                    className={`px-4 py-2.5 disabled:opacity-40 text-white text-xs font-semibold rounded-xl inline-flex items-center gap-1.5
+transition-colors press-fx shrink-0 shadow-xs ${
+                      isInternalNote
+                        ? 'bg-amber-600 hover:bg-amber-700'
+                        : 'bg-[#F97316] hover:bg-orange-600'
+                    }`}
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span>Send</span>
+                  </button>
+                </div>
               </form>
             </div>
           ) : (
@@ -459,15 +508,18 @@ export const JobLogDrawer: React.FC = () => {
                       type="text"
                       value={notesDraft}
                       onChange={(e) => setNotesDraft(e.target.value)}
-                      className="flex-1 px-3 py-1.5 bg-surface border border-line rounded-xl text-xs text-ink focus:outline-none focus:border-zinc-500"
+                      className="flex-1 px-3 py-1.5 bg-surface border border-line rounded-xl text-xs text-ink focus:outline-none focus:border-zinc-
+500"
                     />
                     <button
                       type="button"
-                      onClick={() => updateTicketDescription(ticket.id, notesDraft)}
-                      className="px-3 py-1.5 rounded-xl bg-surface hover:bg-zinc-100 text-ink border border-line text-xs font-semibold inline-flex items-center gap-1 transition-colors press-fx"
+                      disabled={isSavingNotes}
+                      onClick={handleSaveJobLog}
+                      className="px-3 py-1.5 rounded-xl bg-surface hover:bg-zinc-100 text-ink border border-line text-xs font-semibold inline-flex
+items-center gap-1 transition-colors press-fx"
                     >
                       <Save className="w-3.5 h-3.5 text-ink-subtle" />
-                      <span>Save</span>
+                      <span>{isSavingNotes ? 'Saving...' : 'Save Job Log'}</span>
                     </button>
                   </div>
                 </div>
@@ -609,8 +661,9 @@ export const JobLogDrawer: React.FC = () => {
             </button>
             {ticket.status === 'OPEN' && (
               <button
-                onClick={() => claimTicket(ticket.id)}
-                className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-colors press-fx"
+                onClick={() => claimTicketApi(ticket.id)}
+                className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-
+colors press-fx"
               >
                 <UserCheck className="w-4 h-4 text-emerald-400" />
                 <span>Claim Ticket</span>

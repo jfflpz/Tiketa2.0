@@ -1,5 +1,5 @@
 // @spec UI-OVERVIEW-01: Personal IT Specialist KPI Scorecard & Fleet Operational Health Bento Grid
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -16,6 +16,7 @@ import {
   Wrench,
   CheckCircle2,
   ArrowRight,
+  RefreshCw,
   BookOpen,
 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
@@ -60,10 +61,20 @@ export const ITOverviewDashboard: React.FC = () => {
     savedRepairNotes,
     setSelectedTicketId,
     setActiveView,
+    fetchQueueApi,
+    isFetchingQueue,
   } = useAppStore();
 
   const techName = currentUser?.name ?? 'Nathaniel D. Esguerra';
   const techFirstName = techName.split(' ')[0];
+
+  useEffect(() => {
+    fetchQueueApi();
+    const interval = setInterval(() => {
+      fetchQueueApi();
+    }, 15000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Personal KPI calculations for the logged-in IT Specialist
   const myTickets = tickets.filter(
@@ -90,6 +101,21 @@ export const ITOverviewDashboard: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            disabled={isFetchingQueue}
+            onClick={() => fetchQueueApi()}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-zinc-50 text-ink border border-[#ECEEF2] text-xs font-bold shadow-card transition-colors press-fx"
+            title="Refresh queue from server"
+          >
+            <RefreshCw
+              className={`w-3.5 h-3.5 text-zinc-500 ${
+                isFetchingQueue ? 'animate-spin text-orange-500' : ''
+              }`}
+            />
+            <span>{isFetchingQueue ? 'Syncing...' : 'Refresh'}</span>
+          </button>
+
           <button
             type="button"
             onClick={() => setActiveView('notes')}
@@ -546,47 +572,27 @@ export const ITOverviewDashboard: React.FC = () => {
           </div>
 
           {/* Quick Saved Repair Notes Shortcut Card */}
-          <div className="bg-white border border-[#ECEEF2] rounded-2xl p-5 shadow-card space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="w-1 h-4 rounded-full bg-orange-500" />
-                <h3 className="text-sm font-bold text-ink">My Saved Repair SOPs</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setActiveView('notes')}
-                className="text-[11px] font-bold text-orange-600 hover:text-orange-700 inline-flex items-center gap-1"
-              >
-                <span>Browse All</span>
-                <ArrowRight className="w-3 h-3" />
-              </button>
-            </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={isFetchingQueue}
+              onClick={() => fetchQueueApi()}
+              className="px-3.5 py-2 rounded-xl bg-white hover:bg-zinc-50 text-ink border border-[#ECEEF2] text-xs font-semibold inline-flex items-
+center gap-1.5 shadow-card transition-colors press-fx"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-zinc-500 ${isFetchingQueue ? 'animate-spin text-orange-500' : ''}`} />
+              <span>{isFetchingQueue ? 'Refreshing...' : 'Refresh'}</span>
+            </button>
 
-            <p className="text-[11px] text-zinc-500">
-              Quick-reference troubleshooting checklists &amp; past repair notes:
-            </p>
-
-            <div className="space-y-2">
-              {savedRepairNotes.slice(0, 3).map((note) => (
-                <div
-                  key={note.id}
-                  onClick={() => setActiveView('notes')}
-                  className="p-2.5 rounded-xl bg-[#F4F6F9] hover:bg-orange-50/50 border border-[#ECEEF2] cursor-pointer transition-colors"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-white border border-zinc-200 text-orange-600">
-                      {note.taskCode}
-                    </span>
-                    <span className="text-[10px] text-zinc-400">
-                      {note.checklistSteps.length} steps
-                    </span>
-                  </div>
-                  <p className="text-xs font-bold text-ink mt-1 line-clamp-1">
-                    {note.title}
-                  </p>
-                </div>
-              ))}
-            </div>
+            <button
+              type="button"
+              onClick={() => setActiveView('notes')}
+              className="px-3.5 py-2 rounded-xl bg-white hover:bg-zinc-50 text-ink border border-[#ECEEF2] text-xs font-semibold inline-flex items-
+center gap-1.5 shadow-card transition-colors press-fx"
+            >
+              <BookOpen className="w-3.5 h-3.5 text-orange-500" />
+              <span>Saved Repair Notes ({savedRepairNotes.length})</span>
+            </button>
           </div>
         </div>
       </div>

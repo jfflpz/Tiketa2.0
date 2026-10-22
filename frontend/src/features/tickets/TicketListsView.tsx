@@ -1,5 +1,5 @@
 // @spec FR-QUEUE-01..04: Unified Ticket Lists Screen with Table View & 3-Column Kanban Switcher
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   List,
   LayoutGrid,
@@ -16,6 +16,7 @@ import {
   Wrench,
   AlertCircle,
   ExternalLink,
+  RefreshCw,
 } from 'lucide-react';
 import { useAppStore, QueueFilterTab } from '../../store/useAppStore';
 import { LOCATIONS } from '../../data/mockTicketsData';
@@ -32,7 +33,9 @@ export const TicketListsView: React.FC = () => {
     setQueueFilter,
     locationFilter,
     setLocationFilter,
-    claimTicket,
+    claimTicketApi,   // <-- REPLACE claimTicket WITH claimTicketApi
+    fetchQueueApi,    // <-- ADD
+    isFetchingQueue,
     assignTicket,
     itTeamMembers,
     resolveTicket,
@@ -98,12 +101,21 @@ export const TicketListsView: React.FC = () => {
     setTimeout(() => setCopiedCode(null), 2000);
   };
 
-  const handleClaimAndWork = (e: React.MouseEvent, ticket: Ticket) => {
+  useEffect(() => {
+    fetchQueueApi();
+    const interval = setInterval(() => {
+      fetchQueueApi();
+    }, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleClaimAndWork = async (e: React.MouseEvent, ticket: Ticket) => {
     e.stopPropagation();
-    claimTicket(ticket.id, currentUser?.name, currentUser?.id);
-    setActiveWorkbenchTicketId(ticket.id);
-    setActiveView('workbench');
-    addToast('Ticket Claimed', `Assigned ${ticket.ticketCode} to your active workbench`, 'success');
+    const success = await claimTicketApi(ticket.id);
+    if (success) {
+      setActiveWorkbenchTicketId(ticket.id);
+      setActiveView('workbench');
+    }
   };
 
   const handleFocusWorkbench = (e: React.MouseEvent, ticket: Ticket) => {
@@ -166,6 +178,18 @@ export const TicketListsView: React.FC = () => {
               <span>3-Col Kanban</span>
             </button>
           </div>
+
+          <button
+            type="button"
+            disabled={isFetchingQueue}
+            onClick={() => fetchQueueApi()}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-zinc-50 text-ink border border-[#ECEEF2] text-xs font-bold
+shadow-xs transition-colors press-fx"
+            title="Refresh queue from server"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 text-zinc-500 ${isFetchingQueue ? 'animate-spin text-orange-500' : ''}`} />
+            <span>{isFetchingQueue ? 'Syncing...' : 'Refresh'}</span>
+          </button>
 
           <button
             type="button"

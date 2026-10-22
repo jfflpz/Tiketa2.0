@@ -107,6 +107,16 @@ export interface PublicTicketResponse {
     created_at: string;
 }
 
+export interface TicketCommentItem {
+    id: string;
+    user_id: string;
+    sender_name?: string;
+    sender_role?: 'employee' | 'it';
+    body: string;
+    is_internal: boolean;
+    created_at: string;
+}
+
 export const authApi = {
     login: async (credentials: { username: string; password: string }) => {
     const res = await apiClient.post('/auth/login', credentials);
@@ -146,6 +156,40 @@ export const ticketsApi = {
     },
     trackTicket: async (code: string) => {
     const res = await apiClient.get(`/tickets/track/${code}`);
+    return res.data;
+    },
+    getQueue: async (params?: { status?: string; offset?: number; limit?: number }) => {
+    const res = await apiClient.get('/tickets', { params });
+    return res.data;
+    },
+    claimTicket: async (ticketId: string) => {
+    const res = await apiClient.patch(`/tickets/${ticketId}/claim`);
+    return res.data;
+    },
+    updateStatus: async (
+    ticketId: string,
+    payload: { status: 'PROG' | 'RESL' | 'CLSD'; mode?: 'REM' | 'SITE' }
+    ) => {
+    const res = await apiClient.patch(`/tickets/${ticketId}/status`, payload);
+    return res.data;
+    },
+    quickIntake: async (payload: {
+    employee_id: string;
+    task_code: string;
+    description: string;
+    }) => {
+    const res = await apiClient.post('/tickets/quick-intake', payload);
+    return res.data;
+    },
+    getComments: async (ticketId: string) => {
+    const res = await apiClient.get<TicketCommentItem[]>(`/tickets/${ticketId}/comments`);
+    return res.data;
+    },
+    addComment: async (
+    ticketId: string,
+    payload: { body: string; is_internal: boolean }
+    ) => {
+    const res = await apiClient.post(`/tickets/${ticketId}/comments`, payload);
     return res.data;
     },
 };

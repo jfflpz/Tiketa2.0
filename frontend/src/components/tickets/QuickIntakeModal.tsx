@@ -26,12 +26,14 @@ export const QuickIntakeModal: React.FC = () => {
   const {
     isQuickIntakeOpen,
     setQuickIntakeOpen,
-    createTicket,
+    quickIntakeApi,
     copyTicketShareLink,
     setActiveView,
     setSelectedTicketId,
     setVerifyTicketCode,
   } = useAppStore();
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [employeeIdInput, setEmployeeIdInput] = useState('FS-1042');
   const [requestor, setRequestor] = useState('Maria Santos');
@@ -72,8 +74,9 @@ export const QuickIntakeModal: React.FC = () => {
     setDescription('');
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     const companyObj =
       COMPANIES.find((c) => c.code === companyCode) ?? COMPANIES[0];
     const locationObj =
@@ -81,24 +84,23 @@ export const QuickIntakeModal: React.FC = () => {
     const deptObj =
       DEPARTMENTS.find((d) => d.code === departmentCode) ?? DEPARTMENTS[0];
 
-    const newTicket = createTicket({
-      company: companyObj.name,
-      companyCode: companyObj.code,
-      location: locationObj.name,
-      locationCode: locationObj.code,
-      department: deptObj.name,
-      departmentCode: deptObj.code,
-      requestor: requestor.trim() || 'Terminal Staff',
-      employeeId: employeeIdInput.trim().toUpperCase() || undefined,
+    const newTicket = await quickIntakeApi({
+      companyName: companyObj.name,
+      locationName: locationObj.name,
+      departmentName: deptObj.name,
+      requestorName: requestor.trim() || 'Terminal Staff',
+      employeeId: employeeIdInput.trim().toUpperCase() || 'FS-1042',
       taskCode,
       description:
         description.trim() ||
         `${selectedTask?.name ?? 'Technical support'} logged via IT Support walk-in / Viber intake.`,
       mode,
-      intakeSource: 'Walk-in / Viber',
     });
 
-    setCreatedTicket(newTicket);
+    setIsSubmitting(false);
+    if (newTicket) {
+      setCreatedTicket(newTicket);
+    }
   };
 
   const handleCopyLink = async () => {
@@ -436,9 +438,10 @@ export const QuickIntakeModal: React.FC = () => {
               </button>
               <button
                 type="submit"
-                className="px-5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-semibold shadow-sm press-fx"
+                disabled={isSubmitting}
+                className="px-5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 disabled:opacity-50 text-white text-xs font-semibold shadow-sm press-fx inline-flex items-center gap-1.5"
               >
-                Add Ticket to Queue
+                {isSubmitting ? 'Adding to Queue...' : 'Add Ticket to Queue'}
               </button>
             </div>
           </form>

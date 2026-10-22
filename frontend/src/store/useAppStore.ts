@@ -12,6 +12,7 @@ import {
 
 import {
   Ticket,
+  TicketStatus,
   NewTicketInput,
   SupportMode,
   TicketChatMessage,
@@ -168,6 +169,22 @@ const INITIAL_SAVED_REPAIR_NOTES: SavedRepairNote[] = [
 interface AppState {
 
     // Live API Integration
+  isFetchingQueue: boolean;
+  fetchQueueApi: () => Promise<void>;
+  claimTicketApi: (ticketId: string) => Promise<boolean>;
+  updateTicketStatusApi: (ticketId: string, status: TicketStatus, mode?: SupportMode) => Promise<boolean>;
+  fetchTicketCommentsApi: (ticketId: string) => Promise<void>;
+  sendTicketMessageApi: (ticketId: string, message: string, isInternal?: boolean) => Promise<boolean>;
+  quickIntakeApi: (input: {
+    employeeId: string;
+    taskCode: TaskCategoryCode;
+    description: string;
+    mode: SupportMode;
+    companyName?: string;
+    locationName?: string;
+    departmentName?: string;
+    requestorName?: string;
+  }) => Promise<Ticket | null>;
   isAuthenticating: boolean;
   authError: string | null;
   loginWithApi: (credentials: { username: string; password: string }) => Promise<boolean>;
@@ -443,6 +460,260 @@ export const useAppStore = create<AppState>((set, get) => ({
       const msg = err.response?.data?.detail || 'Failed to submit ticket to server';
       get().addToast('Submission Error', msg, 'warning');
       return null;
+    }
+  },
+
+  quickIntakeApi: async (input) => {
+    const taskMeta = TASK_CATEGORIES.find((c) => c.code === input.taskCode);
+    const now = new Date();
+
+    if (USE_MOCK) {
+      return get().createTicket({
+        company: input.companyName ?? 'Five Star Bus Co.',
+        companyCode: 'FS',
+        location: input.locationName ?? 'Pasay Terminal',
+        locationCode: 'PSY',
+        department: input.departmentName ?? 'Operations',
+        departmentCode: 'OPS',
+        requestor: input.requestorName ?? 'Terminal Staff',
+        employeeId: input.employeeId,
+        taskCode: input.taskCode,
+        description: input.description,
+        mode: input.mode,
+        intakeSource: 'Walk-in / Viber',
+      });
+    }
+
+    try {
+      const res = await ticketsApi.quickIntake({
+        employee_id: input.employeeId,
+        task_code: input.taskCode,
+        description: input.description,
+      });
+
+      const newTicket: Ticket = {
+        id: res.id,
+        ticketCode: res.ticket_code,
+        company: input.companyName ?? 'Five Star Bus Co.',
+        companyCode: 'FS',
+        mode: input.mode,
+        department: input.departmentName ?? 'Operations',
+        departmentCode: 'OPS',
+        requestor: res.requester_name || input.requestorName || 'Terminal Staff',
+        employeeId: input.employeeId,
+        task: taskMeta ? taskMeta.name : input.taskCode,
+        taskCode: input.taskCode,
+        description: input.description,
+        month: res.month || now.toLocaleString('default', { month: 'long', year: 'numeric' }),
+        dateStarted: res.date_started || now.toISOString().split('T')[0],
+        timeStarted: res.time_started ? String(res.time_started) : now.toTimeString().split(' ')[0],
+        status: (res.status as TicketStatus) || 'OPEN',
+        location: input.locationName ?? 'Pasay Terminal',
+        locationCode: 'PSY',
+        priority: taskMeta ? taskMeta.defaultPriority : 'Medium',
+        intakeSource: 'Walk-in / Viber',
+        createdAt: res.created_at || now.toISOString(),
+        messages: [
+          {
+            id: 'msg-init-' + Date.now(),
+            senderRole: 'employee',
+            senderName: res.requester_name || input.requestorName || 'Terminal Staff',
+            message: input.description,
+            timestamp: formatTimeAmPm(now),
+          },
+        ],
+      };
+
+      set((state) => ({
+        tickets: [newTicket, ...state.tickets],
+      }));
+
+      get().addToast(
+        `Ticket ${newTicket.ticketCode} Created!`,
+        `Walk-in / Viber ticket registered (${newTicket.location})`,
+        'success'
+      );
+
+      return newTicket;
+    } catch (err: any) {
+      const msg = err.response?.data?.detail || 'Failed to submit quick intake ticket to server';
+      get().addToast('Quick Intake Error', msg, 'warning');
+      return null;
+    }
+  },
+
+  isFetchingQueue: false,
+
+  fetchQueueApi: async () => {
+    if (USE_MOCK) return;
+    set({ isFetchingQueue: true });
+    try {
+      const data = await ticketsApi.getQueue();
+      if (Array.isArray(data)) {
+        const mapped: Ticket[] = data.map((row: any) => {
+          const taskMeta = TASK_CATEGORIES.find((t) => t.code === row.task_code);
+          return {
+            id: row.id,
+            ticketCode: row.ticket_code,
+            company: row.company_name || 'Five Star Bus Co.',
+            companyCode: 'FS',
+            mode: (row.mode as SupportMode) || 'SITE',
+            department: row.department_name || 'Operations',
+            departmentCode: 'OPS',
+            requestor: row.requester_name || 'Terminal Staff',
+            employeeId: row.employee_code || undefined,
+            task: taskMeta ? taskMeta.name : row.task_code,
+            taskCode: row.task_code as TaskCategoryCode,
+            description: row.description,
+            month: row.created_at
+              ? new Date(row.created_at).toLocaleString('default', { month: 'long', year: 'numeric' })
+              : 'October 2026',
+            dateStarted: row.created_at
+              ? row.created_at.split('T')[0]
+              : new Date().toISOString().split('T')[0],
+            timeStarted: row.created_at
+              ? row.created_at.split('T')[1].slice(0, 8)
+              : '08:00:00',
+            status: row.status as TicketStatus,
+            location: row.location_name || 'Pasay',
+            locationCode: 'PSY',
+            workedBy: row.technician_name || undefined,
+            workedById: row.technician_id || undefined,
+            priority: taskMeta ? taskMeta.defaultPriority : 'Medium',
+            createdAt: row.created_at || new Date().toISOString(),
+            messages: [],
+          };
+        });
+        set({ tickets: mapped, isFetchingQueue: false });
+      }
+    } catch {
+      set({ isFetchingQueue: false });
+    }
+  },
+
+  claimTicketApi: async (ticketId: string) => {
+    const previousTickets = get().tickets;
+    const target = previousTickets.find((t) => t.id === ticketId);
+    const techName = get().currentUser?.name || 'IT Specialist';
+
+    // Optimistic Sub-100ms UI Update
+    set((state) => ({
+      tickets: state.tickets.map((t) =>
+        t.id === ticketId ? { ...t, status: 'PROG', workedBy: techName } : t
+      ),
+    }));
+    get().addToast(
+      `Claimed ${target?.ticketCode || 'Ticket'}`,
+      `Assigned to ${techName} • In Progress`,
+      'success'
+    );
+
+    if (USE_MOCK) return true;
+
+    try {
+      await ticketsApi.claimTicket(ticketId);
+      return true;
+    } catch (err: any) {
+      // Rollback on conflict
+      set({ tickets: previousTickets });
+      const msg = err.response?.data?.detail || 'Ticket could not be claimed (already assigned)';
+      get().addToast('Claim Conflict', msg, 'warning');
+      return false;
+    }
+  },
+
+  updateTicketStatusApi: async (ticketId: string, status: TicketStatus, mode?: SupportMode) => {
+    const target = get().tickets.find((t) => t.id === ticketId);
+    if (!target) return false;
+
+    // Check 72-hour reopen limit if reopening from CLSD
+    if (target.status === 'CLSD' && status === 'PROG') {
+      const closedTime = target.dateFinished
+        ? new Date(`${target.dateFinished}T${target.timeFinished || '00:00:00'}`).getTime()
+        : 0;
+      const hoursSinceClose = (Date.now() - closedTime) / (1000 * 60 * 60);
+      if (hoursSinceClose > 72) {
+        get().addToast(
+          'Reopen Window Expired',
+          'Tickets closed over 72 hours ago cannot be reopened. Please create a new linked ticket.',
+          'warning'
+        );
+        return false;
+      }
+    }
+
+    set((state) => ({
+      tickets: state.tickets.map((t) =>
+        t.id === ticketId ? { ...t, status, mode: mode || t.mode } : t
+      ),
+    }));
+
+    if (USE_MOCK) return true;
+
+    try {
+      await ticketsApi.updateStatus(ticketId, {
+        status: status as any,
+        mode: mode || (target.mode as any),
+      });
+      get().addToast('Status Updated', `${target.ticketCode} is now ${status}`, 'info');
+      return true;
+    } catch (err: any) {
+      const msg = err.response?.data?.detail || 'Failed to update ticket status';
+      get().addToast('Error', msg, 'warning');
+      get().fetchQueueApi(); // re-sync
+      return false;
+    }
+  },
+
+  fetchTicketCommentsApi: async (ticketId: string) => {
+    if (USE_MOCK) return;
+    try {
+      const comments = await ticketsApi.getComments(ticketId);
+      if (Array.isArray(comments)) {
+        set((state) => ({
+          tickets: state.tickets.map((t) =>
+            t.id === ticketId
+              ? {
+                  ...t,
+                  messages: comments.map((c) => ({
+                    id: c.id,
+                    senderRole: c.is_internal ? 'it' : (c.sender_role || 'it'),
+                    senderName: c.sender_name || (c.is_internal ? '🔒 Internal IT Note' : 'IT Support'),
+                    message: c.body,
+                    timestamp: c.created_at
+                      ? new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                      : '',
+                  })),
+                }
+              : t
+          ),
+        }));
+      }
+    } catch {
+      // silent catch for background polling
+    }
+  },
+
+  sendTicketMessageApi: async (ticketId: string, message: string, isInternal = false) => {
+    const trimmed = message.trim();
+    if (!trimmed) return false;
+
+    // Optimistic local UI chat message
+    get().sendTicketMessage(
+      ticketId,
+      'it',
+      isInternal ? '🔒 Internal Note' : (get().currentUser?.name || 'IT Support'),
+      trimmed
+    );
+
+    if (USE_MOCK) return true;
+
+    try {
+      await ticketsApi.addComment(ticketId, { body: trimmed, is_internal: isInternal });
+      return true;
+    } catch {
+      get().addToast('Chat Error', 'Message failed to send to server', 'warning');
+      return false;
     }
   },
 
