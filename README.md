@@ -237,7 +237,7 @@ All AI coding assistants (Antigravity, Cursor, Copilot, Claude) and developers w
 ## 👥 Contributors & Core Team
 
 - **Jefferson Lopez** (`@jfflpz`): Backend Lead, System Architecture, Database Schema, IEEE 830 Specification.
-- **Rafael Emmanuel Codiñera**: Frontend Lead, React/TS SPA Architecture, Zustand State Modeling.
+- **Rafael Emmanuel B. Codiñera**: Frontend Lead, React/TS SPA Architecture, Zustand State Modeling.
 - **Supervisors & Stakeholders**:
   - **Sir Stephen Miralles** (Senior IT Analyst)
   - **Sir Nathaniel Esguerra** (Junior IT Specialist)
