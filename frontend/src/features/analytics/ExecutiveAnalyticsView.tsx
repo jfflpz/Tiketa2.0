@@ -26,9 +26,31 @@ import {
 import { BarcodeDivider } from '../../components/common/TickMeter';
 import { useAppStore } from '../../store/useAppStore';
 
-export const ExecutiveAnalyticsView: React.FC = () => {
-  const { addToast, setActiveView, setActiveReportId } = useAppStore();
-  const [activeReport, setActiveReport] = useState<number>(1);
+    const REPORT_SLUGS: Record<number, string> = {
+      1: 'monthly-sla',
+      2: 'staff-productivity',
+      3: 'department-demand',
+      4: 'backlog-exception',
+      5: 'transit-lag',
+      6: 'hardware-vulnerability',
+      7: 'pms-compliance',
+      8: 'chronic-requestors',
+    };
+
+  export const ExecutiveAnalyticsView: React.FC = () => {
+    const {
+      addToast,
+      setActiveView,
+      setActiveReportId,
+      kpis,
+      fetchKPIsApi,
+      downloadReportCSVApi,
+    } = useAppStore();
+    const [activeReport, setActiveReport] = useState<number>(1);
+
+    React.useEffect(() => {
+      fetchKPIsApi();
+    }, [fetchKPIsApi]);
 
   const reportTabs = [
     { id: 1, code: 'FR-REPT-01', title: '1. Monthly SLA Summary' },
@@ -56,13 +78,7 @@ export const ExecutiveAnalyticsView: React.FC = () => {
 
         <div className="flex items-center gap-2">
           <button
-            onClick={() =>
-              addToast(
-                'Exported Standardized Report',
-                `Report #${activeReport} exported to CSV`,
-                'success'
-              )
-            }
+            onClick={() => downloadReportCSVApi(REPORT_SLUGS[activeReport] || 'monthly-sla')}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-surface border border-line text-xs font-semibold text-ink shadow-card hover:bg-zinc-50 transition-colors press-fx"
           >
             <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
@@ -84,6 +100,7 @@ export const ExecutiveAnalyticsView: React.FC = () => {
         </div>
       </div>
 
+
       {/* 4 Executive Summary Cards (FR-DASH-01: Synchronized with the 8 Standard Reports) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Report 1 - Monthly SLA Compliance */}
@@ -92,7 +109,8 @@ export const ExecutiveAnalyticsView: React.FC = () => {
             setActiveReportId(1);
             setActiveView('reports');
           }}
-          className="bg-surface border border-line rounded-2xl p-4 shadow-card hover:border-orange-500/50 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+          className="bg-surface border border-line rounded-2xl p-4 shadow-card hover:border-orange-500/50 hover:shadow-md transition-all cursor-
+pointer group flex flex-col justify-between"
           title="Click to view Report 1: Monthly SLA & Volume Summary"
         >
           <div>
@@ -109,10 +127,14 @@ export const ExecutiveAnalyticsView: React.FC = () => {
             </p>
             <div className="flex items-baseline gap-2 mt-1">
               <span className="text-2xl font-bold tracking-tight text-ink tabular-nums">
-                84.8%
+                {kpis?.sla_compliance_pct != null
+                  ? `${kpis.sla_compliance_pct.toFixed(1)}%`
+                  : '84.8%'}
               </span>
               <span className="text-xs text-emerald-600 font-semibold">
-                155 / 165 Done
+                {kpis?.completed != null && kpis?.total_tickets != null
+                  ? `${kpis.completed} / ${kpis.total_tickets} Done`
+                  : '155 / 165 Done'}
               </span>
             </div>
             <p className="text-[11px] text-ink-subtle mt-1.5 line-clamp-2">
@@ -135,7 +157,8 @@ export const ExecutiveAnalyticsView: React.FC = () => {
             setActiveReportId(2);
             setActiveView('reports');
           }}
-          className="bg-surface border border-line rounded-2xl p-4 shadow-card hover:border-orange-500/50 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+          className="bg-surface border border-line rounded-2xl p-4 shadow-card hover:border-orange-500/50 hover:shadow-md transition-all cursor-
+pointer group flex flex-col justify-between"
           title="Click to view Report 2 & 5: Staff Labor & Transit Disaggregation"
         >
           <div>
@@ -152,7 +175,9 @@ export const ExecutiveAnalyticsView: React.FC = () => {
             </p>
             <div className="flex items-baseline gap-2 mt-1">
               <span className="text-2xl font-bold tracking-tight text-ink tabular-nums">
-                41 mins
+                {kpis?.avg_labor_minutes != null
+                  ? `${Math.round(kpis.avg_labor_minutes)} mins`
+                  : '41 mins'}
               </span>
               <span className="text-xs text-ink-subtle font-medium">
                 Hands-on repair
@@ -178,7 +203,8 @@ export const ExecutiveAnalyticsView: React.FC = () => {
             setActiveReportId(4);
             setActiveView('reports');
           }}
-          className="bg-surface border border-line rounded-2xl p-4 shadow-card hover:border-orange-500/50 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+          className="bg-surface border border-line rounded-2xl p-4 shadow-card hover:border-orange-500/50 hover:shadow-md transition-all cursor-
+pointer group flex flex-col justify-between"
           title="Click to view Report 4: Critical Aging Backlog Exception Report"
         >
           <div>
@@ -195,7 +221,9 @@ export const ExecutiveAnalyticsView: React.FC = () => {
             </p>
             <div className="flex items-baseline gap-2 mt-1">
               <span className="text-2xl font-bold tracking-tight text-ink tabular-nums">
-                4 Tickets
+                {kpis?.overdue_backlog != null
+                  ? `${kpis.overdue_backlog} Tickets`
+                  : '4 Tickets'}
               </span>
               <span className="text-xs text-rose-600 font-semibold">
                 Requires escalation
@@ -221,7 +249,8 @@ export const ExecutiveAnalyticsView: React.FC = () => {
             setActiveReportId(7);
             setActiveView('reports');
           }}
-          className="bg-surface border border-line rounded-2xl p-4 shadow-card hover:border-orange-500/50 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+          className="bg-surface border border-line rounded-2xl p-4 shadow-card hover:border-orange-500/50 hover:shadow-md transition-all cursor-
+pointer group flex flex-col justify-between"
           title="Click to view Report 7: Fleet PMS Compliance Audit"
         >
           <div>
@@ -238,7 +267,9 @@ export const ExecutiveAnalyticsView: React.FC = () => {
             </p>
             <div className="flex items-baseline gap-2 mt-1">
               <span className="text-2xl font-bold tracking-tight text-ink tabular-nums">
-                87.5%
+                {kpis?.same_day_resolution_pct != null
+                  ? `${kpis.same_day_resolution_pct.toFixed(1)}%`
+                  : '87.5%'}
               </span>
               <span className="text-xs text-amber-700 font-semibold">
                 POS &amp; Printer PMS

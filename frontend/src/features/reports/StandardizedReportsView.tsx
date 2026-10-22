@@ -114,18 +114,36 @@ const REPORT_TABS: ReportMeta[] = [
   },
 ];
 
-export const StandardizedReportsView: React.FC = () => {
-  const { addToast, activeReportId, setActiveReportId } = useAppStore();
-
-  const activeTabMeta = REPORT_TABS.find((t) => t.id === activeReportId) || REPORT_TABS[0];
-
-  const handleExportCSV = () => {
-    addToast(
-      'Exported Standardized Report',
-      `${activeTabMeta.code} (${activeTabMeta.shortTitle}) downloaded as CSV.`,
-      'success'
-    );
+  const REPORT_SLUGS: Record<number, string> = {
+    1: 'monthly-sla',
+    2: 'staff-productivity',
+    3: 'department-demand',
+    4: 'backlog-exception',
+    5: 'transit-lag',
+    6: 'hardware-vulnerability',
+    7: 'pms-compliance',
+    8: 'chronic-requestors',
   };
+
+  export const StandardizedReportsView: React.FC = () => {
+    const {
+      addToast,
+      activeReportId,
+      setActiveReportId,
+      fetchReportApi,
+      downloadReportCSVApi,
+    } = useAppStore();
+
+    const activeTabMeta = REPORT_TABS.find((t) => t.id === activeReportId) || REPORT_TABS[0];
+    const currentSlug = REPORT_SLUGS[activeReportId] || 'monthly-sla';
+
+    React.useEffect(() => {
+      fetchReportApi(currentSlug);
+    }, [currentSlug, fetchReportApi]);
+
+    const handleExportCSV = () => {
+      downloadReportCSVApi(currentSlug);
+    };
 
   const handleExportDeck = () => {
     addToast(

@@ -193,3 +193,58 @@ export const ticketsApi = {
     return res.data;
     },
 };
+
+export interface ReportKPIs {
+    total_tickets: number;
+    active_tickets: number;
+    completed: number;
+    overdue_backlog: number;
+    avg_labor_minutes: number | null;
+    same_day_resolution_pct: number | null;
+    sla_compliance_pct: number | null;
+}
+
+export const reportsApi = {
+    getKPIs: async (params?: {
+    date_from?: string;
+    date_to?: string;
+    company_id?: string;
+    location_id?: string;
+    department_id?: string;
+    }): Promise<ReportKPIs> => {
+    const res = await apiClient.get<ReportKPIs>('/reports/kpis', { params });
+    return res.data;
+    },
+    getReport: async (
+    reportName: string,
+    params?: {
+        date_from?: string;
+        date_to?: string;
+        company_id?: string;
+        location_id?: string;
+        department_id?: string;
+    }
+    ) => {
+    const res = await apiClient.get<{ date_from: string; date_to: string; rows: any[] }>(
+        `/reports/${reportName}`,
+        { params: { ...params, format: 'json' } }
+    );
+    return res.data;
+    },
+    downloadReportCSV: async (
+    reportName: string,
+    params?: {
+        date_from?: string;
+        date_to?: string;
+        company_id?: string;
+        location_id?: string;
+        department_id?: string;
+    }
+    ) => {
+    const res = await apiClient.get(`/reports/${reportName}`, {
+        params: { ...params, format: 'csv' },
+        responseType: 'blob',
+    });
+    return res.data;
+    },
+};

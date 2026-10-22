@@ -5,6 +5,8 @@ import {
   authApi,
   directoryApi,
   ticketsApi,
+  reportsApi,
+  ReportKPIs,
   setAccessToken,
   USE_MOCK,
   EmployeeLookupResult,
@@ -201,6 +203,15 @@ interface AppState {
     requestorName?: string;
   }) => Promise<Ticket | null>;
   trackTicketApi: (code: string) => Promise<Ticket | null>;
+
+    // Executive Analytics & Reports Live API
+  kpis: ReportKPIs | null;
+  isFetchingKPIs: boolean;
+  fetchKPIsApi: () => Promise<void>;
+  activeReportData: any[] | null;
+  isFetchingReport: boolean;
+  fetchReportApi: (reportName: string) => Promise<void>;
+  downloadReportCSVApi: (reportName: string) => Promise<void>;
 
   // Auth & Flow State: null = Public Employee Ticket Creation Screen
   currentUser: AuthenticatedUser | null;
@@ -825,6 +836,53 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
+    kpis: null,
+  isFetchingKPIs: false,
+  fetchKPIsApi: async () => {
+    if (USE_MOCK) return;
+    set({ isFetchingKPIs: true });
+    try {
+      const data = await reportsApi.getKPIs();
+      set({ kpis: data, isFetchingKPIs: false });
+    } catch {
+      set({ isFetchingKPIs: false });
+    }
+  },
+
+  activeReportData: null,
+  isFetchingReport: false,
+  fetchReportApi: async (reportName: string) => {
+    if (USE_MOCK) return;
+    set({ isFetchingReport: true });
+    try {
+      const data = await reportsApi.getReport(reportName);
+      set({ activeReportData: data?.rows || [], isFetchingReport: false });
+    } catch {
+      set({ isFetchingReport: false });
+    }
+  },
+
+  downloadReportCSVApi: async (reportName: string) => {
+    if (USE_MOCK) {
+      get().addToast('CSV Export', `Generated demo CSV for ${reportName}`, 'info');
+      return;
+    }
+    try {
+      const blob = await reportsApi.downloadReportCSV(reportName);
+      const url = window.URL.createObjectURL(new Blob([blob]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${reportName}-${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      get().addToast('Export Complete', `Downloaded ${reportName}.csv`, 'success');
+    } catch (err: any) {
+      get().addToast('Export Failed', err.response?.data?.detail || 'Failed to download CSV', 'warning');
+    }
+  },
+
   currentUser: null,
   loginModalRole: null,
 
@@ -1301,7 +1359,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           }
         }
       },
-      
+
   createTicket: (input) => {
     const now = new Date();
     const randomNum = Math.floor(261050 + Math.random() * 900);
