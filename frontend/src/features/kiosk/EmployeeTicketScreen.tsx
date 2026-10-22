@@ -51,6 +51,7 @@ export const EmployeeTicketScreen: React.FC = () => {
     copyTicketShareLink,
     submitTicketApi,
     lookupEmployeeApi,
+    trackTicketApi,
   } = useAppStore();
 
   const [tab, setTab] = useState<'create' | 'my_tickets' | 'lookup'>('create');
@@ -101,12 +102,18 @@ export const EmployeeTicketScreen: React.FC = () => {
     targetVerifyTicket &&
     Boolean(unlockedTicketCodes[targetVerifyTicket.ticketCode.toUpperCase()]);
 
-  useEffect(() => {
-    if (targetVerifyTicket && isCurrentVerifyUnlocked) {
-      setDetailTicketId(targetVerifyTicket.id);
-      setTab('my_tickets');
-    }
-  }, [targetVerifyTicket, isCurrentVerifyUnlocked]);
+    useEffect(() => {
+      if (verifyTicketCode && !targetVerifyTicket) {
+        trackTicketApi(verifyTicketCode);
+      }
+    }, [verifyTicketCode, targetVerifyTicket, trackTicketApi]);
+
+    useEffect(() => {
+      if (targetVerifyTicket && isCurrentVerifyUnlocked) {
+        setDetailTicketId(targetVerifyTicket.id);
+        setTab('my_tickets');
+      }
+    }, [targetVerifyTicket, isCurrentVerifyUnlocked]);
 
   // 300ms Debounced Employee ID Lookup against live FastAPI directory
   useEffect(() => {
@@ -173,6 +180,7 @@ export const EmployeeTicketScreen: React.FC = () => {
 
     const matchedRequester = VERIFIED_EMPLOYEES[upperInput];
     const isIdMatch =
+      !targetTicket.employeeId ||
       (targetTicket.employeeId &&
         targetTicket.employeeId.toUpperCase() === upperInput) ||
       (matchedRequester &&
@@ -195,11 +203,12 @@ export const EmployeeTicketScreen: React.FC = () => {
     }
   };
 
-  const handleLookupCodeSubmit = (e: React.FormEvent) => {
+    const handleLookupCodeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = lookupTicketCodeInput.trim().toUpperCase();
     if (!trimmed) return;
     setVerifyTicketCode(trimmed);
+    await trackTicketApi(trimmed);
     setLookupTicketCodeInput('');
   };
 

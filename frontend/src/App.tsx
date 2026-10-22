@@ -16,11 +16,37 @@ import { JobLogDrawer } from './components/tickets/JobLogDrawer';
 import { QuickIntakeModal } from './components/tickets/QuickIntakeModal';
 import { ToastContainer } from './components/common/ToastContainer';
 import { useAppStore } from './store/useAppStore';
+import { useEffect } from 'react';
+
 
 export default function App() {
-  const { currentUser, activeView, verifyTicketCode } = useAppStore();
+  const {
+    currentUser,
+    activeView,
+    verifyTicketCode,
+    isHydratingAuth,
+    hydrateAuthApi,
+  } = useAppStore();
 
-  // Public / Terminal Employee View or Direct Confirmation Link View
+  useEffect(() => {
+    hydrateAuthApi();
+  }, []);
+
+  if (isHydratingAuth) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-[#F4F6F9]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-zinc-900 text-white flex items-center justify-center shadow-lg animate-pulse">
+            <span className="text-orange-500 font-bold text-lg font-mono">T</span>
+          </div>
+          <div className="flex items-center gap-2 text-xs font-semibold text-zinc-500">
+            <div className="w-2 h-2 rounded-full bg-orange-500 animate-ping" />
+            <span>Restoring secure session...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
   if (!currentUser || verifyTicketCode) {
     return (
       <>

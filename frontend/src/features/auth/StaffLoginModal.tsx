@@ -5,7 +5,6 @@ import { useAppStore, StaffRole } from '../../store/useAppStore';
 
 export const StaffLoginModal: React.FC = () => {
   const { loginModalRole, closeLoginModal, loginWithApi, isAuthenticating, authError } = useAppStore();
-
   const [role, setRole] = useState<StaffRole>('admin');
   const [username, setUsername] = useState('admin');
   const [password, setPassword] = useState('');

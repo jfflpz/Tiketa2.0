@@ -33,8 +33,8 @@ export const TicketListsView: React.FC = () => {
     setQueueFilter,
     locationFilter,
     setLocationFilter,
-    claimTicketApi,   // <-- REPLACE claimTicket WITH claimTicketApi
-    fetchQueueApi,    // <-- ADD
+    claimTicketApi,  
+    fetchQueueApi,   
     isFetchingQueue,
     assignTicket,
     itTeamMembers,

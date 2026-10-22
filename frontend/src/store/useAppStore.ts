@@ -187,6 +187,8 @@ interface AppState {
   }) => Promise<Ticket | null>;
   isAuthenticating: boolean;
   authError: string | null;
+  isHydratingAuth: boolean;
+  hydrateAuthApi: () => Promise<boolean>;
   loginWithApi: (credentials: { username: string; password: string }) => Promise<boolean>;
   lookupEmployeeApi: (query: string) => Promise<EmployeeLookupResult | null>;
   submitTicketApi: (input: {
@@ -198,6 +200,7 @@ interface AppState {
     departmentName?: string;
     requestorName?: string;
   }) => Promise<Ticket | null>;
+  trackTicketApi: (code: string) => Promise<Ticket | null>;
 
   // Auth & Flow State: null = Public Employee Ticket Creation Screen
   currentUser: AuthenticatedUser | null;
@@ -323,9 +326,61 @@ const getInitialVerifyCode = (): string | null => {
   }
 };
 
+let isHydratingInFlight: Promise<boolean> | null = null;
+
 export const useAppStore = create<AppState>((set, get) => ({
   isAuthenticating: false,
   authError: null,
+  isHydratingAuth: true,
+
+  hydrateAuthApi: async () => {
+    if (get().currentUser) return true;
+    if (isHydratingInFlight) return isHydratingInFlight;
+
+    isHydratingInFlight = (async () => {
+      if (USE_MOCK) {
+        set({ isHydratingAuth: false });
+        return false;
+      }
+      try {
+        const data = await authApi.refresh();
+        if (data?.access_token && data?.user) {
+          setAccessToken(data.access_token);
+          const userRole: StaffRole = data.user.role === 'admin' ? 'admin' : 'it';
+          const savedView = localStorage.getItem('tiketa_active_view') as ActiveView | null;
+          const targetView = savedView || (userRole === 'admin' ? 'overview' : 'workbench');
+
+          set({
+            currentUser: {
+              id: data.user.id,
+              name: data.user.full_name,
+              email: data.user.email,
+              role: userRole,
+              title: userRole === 'admin' ? 'IT Administrator' : 'Senior IT Support Specialist',
+              avatar: data.user.full_name
+                .split(' ')
+                .map((n: string) => n[0])
+                .join('')
+                .slice(0, 2)
+                .toUpperCase(),
+            },
+            loginModalRole: null,
+            activeView: targetView,
+            isHydratingAuth: false,
+          });
+          return true;
+        }
+      } catch {
+        setAccessToken(null);
+        set({ currentUser: null, isHydratingAuth: false });
+      } finally {
+        isHydratingInFlight = null;
+      }
+      return false;
+    })();
+
+    return isHydratingInFlight;
+  },
 
   loginWithApi: async ({ username, password }) => {
     set({ isAuthenticating: true, authError: null });
@@ -340,6 +395,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       setAccessToken(data.access_token);
 
       const userRole: StaffRole = data.user.role === 'admin' ? 'admin' : 'it';
+      const targetView = userRole === 'admin' ? 'overview' : 'workbench';
+      localStorage.setItem('tiketa_active_view', targetView);
       set({
         currentUser: {
           id: data.user.id,
@@ -355,7 +412,7 @@ export const useAppStore = create<AppState>((set, get) => ({
             .toUpperCase(),
         },
         loginModalRole: null,
-        activeView: userRole === 'admin' ? 'overview' : 'workbench',
+        activeView: targetView,
         isAuthenticating: false,
       });
 
@@ -459,6 +516,57 @@ export const useAppStore = create<AppState>((set, get) => ({
     } catch (err: any) {
       const msg = err.response?.data?.detail || 'Failed to submit ticket to server';
       get().addToast('Submission Error', msg, 'warning');
+      return null;
+    }
+  },
+
+    trackTicketApi: async (code: string) => {
+    const cleanCode = code.trim().toUpperCase();
+    const existing = get().tickets.find(
+      (t) => t.ticketCode.toUpperCase() === cleanCode
+    );
+    if (existing) return existing;
+    if (USE_MOCK) return null;
+
+    try {
+      const res = await ticketsApi.trackTicket(cleanCode);
+      if (res && res.ticket_code) {
+        const trackedTicket: Ticket = {
+          id: 'tracked-' + res.ticket_code,
+          ticketCode: res.ticket_code,
+          company: 'Five Star Bus Co.',
+          companyCode: 'FS',
+          location: 'Terminal Depot',
+          locationCode: 'FS',
+          department: 'Operations',
+          departmentCode: 'OPS',
+          requestor: 'Terminal Staff',
+          task: 'IT Support Service',
+          taskCode: 'PRN-TS',
+          description: `Ticket ${res.ticket_code} tracked from server. Status: ${res.status}`,
+          month: new Date(res.created_at).toLocaleString('default', {
+            month: 'long',
+            year: 'numeric',
+          }),
+          dateStarted: res.created_at
+            ? res.created_at.split('T')[0]
+            : new Date().toISOString().split('T')[0],
+          timeStarted: res.created_at
+            ? new Date(res.created_at).toLocaleTimeString([], { hour12: false })
+            : '00:00:00',
+          status: res.status as TicketStatus,
+          priority: 'Medium',
+          createdAt: res.created_at,
+          mode: 'SITE',
+          intakeSource: 'PC Kiosk',
+        };
+        set((state) => ({
+          tickets: [trackedTicket, ...state.tickets],
+        }));
+        return trackedTicket;
+      }
+      return null;
+    } catch {
       return null;
     }
   },
@@ -761,6 +869,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   logoutToKiosk: () => {
+    localStorage.removeItem('tiketa_active_view');
+    setAccessToken(null);
+    authApi.logout().catch(() => {});
     set({
       currentUser: null,
       selectedTicketId: null,
@@ -774,8 +885,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     );
   },
 
-  activeView: 'overview',
-  setActiveView: (view) => set({ activeView: view }),
+  activeView: (typeof window !== 'undefined' && (localStorage.getItem('tiketa_active_view') as ActiveView)) || 'overview',
+  setActiveView: (view) => {
+    localStorage.setItem('tiketa_active_view', view);
+    set({ activeView: view });
+  },
 
   queueFilter: 'ALL',
   setQueueFilter: (filter) => set({ queueFilter: filter }),
@@ -1133,47 +1247,61 @@ export const useAppStore = create<AppState>((set, get) => ({
     );
   },
 
-  confirmClosure: (ticketId) => {
-    const target = get().tickets.find((t) => t.id === ticketId);
-    set((state) => ({
-      tickets: state.tickets.map((t) =>
-        t.id === ticketId
-          ? {
-              ...t,
-              status: 'CLSD',
-              userConfirmedAt: new Date().toISOString(),
-            }
-          : t
-      ),
-    }));
-    get().addToast(
-      `Verified & Closed ${target?.ticketCode ?? 'Ticket'}`,
-      'Ticket closure confirmed and archived in 15-column Job Log.',
-      'success'
-    );
-  },
+    confirmClosure: async (ticketId) => {
+        const target = get().tickets.find((t) => t.id === ticketId);
+        set((state) => ({
+          tickets: state.tickets.map((t) =>
+            t.id === ticketId
+              ? {
+                  ...t,
+                  status: 'CLSD',
+                  userConfirmedAt: new Date().toISOString(),
+                }
+              : t
+          ),
+        }));
+        get().addToast(
+          `Verified & Closed ${target?.ticketCode ?? 'Ticket'}`,
+          'Ticket closure confirmed and archived in 15-column Job Log.',
+          'success'
+        );
+        if (!USE_MOCK && target && !target.id.startsWith('t-') && !target.id.startsWith('tracked-')) {
+          try {
+            await ticketsApi.updateStatus(ticketId, { status: 'CLSD' });
+          } catch {
+            // Keep optimistic sign-off
+          }
+        }
+      },
 
-  reopenTicket: (ticketId) => {
-    const target = get().tickets.find((t) => t.id === ticketId);
-    set((state) => ({
-      tickets: state.tickets.map((t) =>
-        t.id === ticketId
-          ? {
-              ...t,
-              status: 'PROG',
-              timeFinished: undefined,
-              dateFinished: undefined,
-            }
-          : t
-      ),
-    }));
-    get().addToast(
-      `Reopened ${target?.ticketCode ?? 'Ticket'}`,
-      'Returned to IT Support active repairs',
-      'warning'
-    );
-  },
-
+      reopenTicket: async (ticketId) => {
+        const target = get().tickets.find((t) => t.id === ticketId);
+        set((state) => ({
+          tickets: state.tickets.map((t) =>
+            t.id === ticketId
+              ? {
+                  ...t,
+                  status: 'PROG',
+                  timeFinished: undefined,
+                  dateFinished: undefined,
+                }
+              : t
+          ),
+        }));
+        get().addToast(
+          `Reopened ${target?.ticketCode ?? 'Ticket'}`,
+          'Returned to IT Support active repairs',
+          'warning'
+        );
+        if (!USE_MOCK && target && !target.id.startsWith('t-') && !target.id.startsWith('tracked-')) {
+          try {
+            await ticketsApi.updateStatus(ticketId, { status: 'PROG' });
+          } catch {
+            // Keep optimistic reopen
+          }
+        }
+      },
+      
   createTicket: (input) => {
     const now = new Date();
     const randomNum = Math.floor(261050 + Math.random() * 900);
