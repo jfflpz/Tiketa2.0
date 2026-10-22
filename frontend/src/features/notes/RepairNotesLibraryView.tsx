@@ -13,7 +13,7 @@ import {
   User,
 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
-import { TASK_CATEGORIES } from '../../data/mockTicketsData';
+import { TASK_CATEGORIES } from '../../constants/domain';
 import { TaskCategoryCode, SavedRepairNote } from '../../types/ticket';
 
 export const RepairNotesLibraryView: React.FC = () => {

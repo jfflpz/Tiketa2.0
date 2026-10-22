@@ -17,7 +17,7 @@ import {
 import { MetricCard } from '../../components/common/MetricCard';
 import { useAppStore } from '../../store/useAppStore';
 import { TeamRole, TeamMemberStatus } from '../../types/team';
-import { COMPANIES, LOCATIONS, DEPARTMENTS } from '../../data/mockTicketsData';
+import { COMPANIES, LOCATIONS, DEPARTMENTS } from '../../constants/domain';
 
 export const TeamWorkbenchView: React.FC = () => {
   const {

@@ -19,7 +19,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { useAppStore, QueueFilterTab } from '../../store/useAppStore';
-import { LOCATIONS } from '../../data/mockTicketsData';
+import { LOCATIONS } from '../../constants/domain';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { Ticket } from '../../types/ticket';
 

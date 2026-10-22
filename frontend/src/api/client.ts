@@ -1,7 +1,6 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
-export const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
 
 // In-Memory Access Token (ADR-003: RAM only, zero localStorage exposure)
 let inMemoryAccessToken: string | null = null;

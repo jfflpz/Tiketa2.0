@@ -25,16 +25,7 @@ import {
   CheckSquare,
   AlertTriangle,
 } from 'lucide-react';
-import {
-  REPORT_1_MONTHLY_SLA,
-  REPORT_2_STAFF_UTILIZATION,
-  REPORT_3_DEPT_DEMAND,
-  REPORT_4_AGING_BACKLOG,
-  REPORT_5_TRANSIT_LAG,
-  REPORT_6_HARDWARE_HOTSPOTS,
-  REPORT_7_PMS_COMPLIANCE,
-  REPORT_8_CHRONIC_REQUESTORS,
-} from '../../data/mockAnalyticsData';
+
 import { BarcodeDivider } from '../../components/common/TickMeter';
 import { useAppStore } from '../../store/useAppStore';
 
@@ -132,6 +123,7 @@ const REPORT_TABS: ReportMeta[] = [
       setActiveReportId,
       fetchReportApi,
       downloadReportCSVApi,
+      activeReportData,
     } = useAppStore();
 
     const activeTabMeta = REPORT_TABS.find((t) => t.id === activeReportId) || REPORT_TABS[0];
@@ -140,6 +132,94 @@ const REPORT_TABS: ReportMeta[] = [
     React.useEffect(() => {
       fetchReportApi(currentSlug);
     }, [currentSlug, fetchReportApi]);
+
+  const rawRows = activeReportData || [];
+
+  const report1Data = rawRows.map((r: any) => ({
+    month: r.month || 'Current Month',
+    totalRequests: r.total_tickets ?? r.totalRequests ?? 0,
+    completed: r.completed ?? 0,
+    pending: r.active_tickets ?? r.pending ?? 0,
+    completionRate: r.completion_rate_pct ?? r.completionRate ?? 0,
+    remoteMode: r.remote ?? r.remoteMode ?? 0,
+    siteMode: r.site ?? r.siteMode ?? 0,
+    avgResolutionHours: r.avg_labor_hours ?? r.avgResolutionHours ?? 0,
+    sameDayResolutionRate: r.same_day_resolution_pct ?? r.sameDayResolutionRate ?? 0,
+  }));
+
+  const report2Data = rawRows.map((r: any) => ({
+    technician: r.technician || 'IT Specialist',
+    totalAssigned: r.total_assigned ?? r.totalAssigned ?? 0,
+    completed: r.completed ?? 0,
+    pending: r.pending ?? 0,
+    totalHoursLogged: r.total_hours ?? r.totalHoursLogged ?? 0,
+    avgTimePerTask: r.avg_hours ?? r.avgTimePerTask ?? 0,
+    primaryLocation: r.primary_location || r.primaryLocation || 'Depot',
+    mostFrequentTask: r.most_frequent_task || r.mostFrequentTask || 'General Support',
+  }));
+
+  const report3Data = rawRows.map((r: any) => ({
+    company: r.company || 'Five Star Bus Co.',
+    department: r.department || 'Operations',
+    location: r.location || 'Pasay Terminal',
+    totalTickets: r.total_tickets ?? r.totalTickets ?? 0,
+    totalHoursConsumed: r.total_hours ?? r.totalHoursConsumed ?? 0,
+    topRequestor: r.top_requester || r.topRequestor || 'Terminal Staff',
+    primaryTask: r.primary_issue || r.primaryTask || 'Printer Troubleshoot',
+  }));
+
+  const report4Data = rawRows.map((r: any) => ({
+    dateStarted: r.date_started || r.dateStarted || '',
+    daysOpen: r.days_open ?? r.daysOpen ?? 0,
+    companyDept: (r.company && r.department) ? `${r.company} • ${r.department}` : (r.companyDept || 'Five Star'),
+    requestor: r.requester || r.requestor || 'Staff',
+    taskDescription: r.description || r.taskDescription || r.task || 'Support Issue',
+    location: r.location || 'Pasay Terminal',
+    workedBy: r.technician || r.workedBy || 'Unassigned',
+    status: r.status || 'OPEN',
+  }));
+
+  const report5Data = rawRows.map((r: any) => ({
+    location: r.location || 'Terminal',
+    supportMode: r.mode || r.supportMode || 'SITE',
+    completedTickets: r.completed ?? r.completedTickets ?? 0,
+    meanLaborMins: r.mean_labor_minutes ?? r.meanLaborMins ?? 0,
+    meanTurnaroundDays: r.mean_turnaround_days ?? r.meanTurnaroundDays ?? 0,
+    meanTransitLagDays: r.mean_transit_lag_days ?? r.meanTransitLagDays ?? 0,
+    lagToLaborRatio: r.lag_to_labor_ratio ?? r.lagToLaborRatio ?? 0,
+    recommendedAction: r.recommended_action || r.recommendedAction || 'Normal',
+  }));
+
+  const report6Data = rawRows.map((r: any) => ({
+    location: r.location || 'Terminal',
+    company: r.company || 'Five Star Bus Co.',
+    topFailureTask: r.task || r.topFailureTask || 'Printer Troubleshoot',
+    incidentsLogged: r.incidents ?? r.incidentsLogged ?? 0,
+    totalDownTimeHours: r.labor_hours ?? r.totalDownTimeHours ?? 0,
+    severityRiskScore: r.severity_score ?? r.severityRiskScore ?? 0,
+    stagingRecommendation: r.recommendation || r.stagingRecommendation || 'Monitor',
+  }));
+
+  const report7Data = rawRows.map((r: any) => ({
+    terminalLocation: r.location || r.location_id || r.terminalLocation || 'Pasay',
+    department: r.department || r.department_id || r.department || 'Operations',
+    totalDevices: r.expected_services ?? r.totalDevices ?? 0,
+    pmsConducted: r.completed_services ?? r.pmsConducted ?? 0,
+    complianceRate: r.coverage_pct ?? r.complianceRate ?? 0,
+    lastCompletedDate: r.last_completed || r.lastCompletedDate || '2026-10-22',
+    servicedBy: r.serviced_by || r.servicedBy || 'IT Specialist',
+    status: (r.coverage_pct >= 80 ? 'Compliant' : 'Due') as any,
+  }));
+
+  const report8Data = rawRows.map((r: any) => ({
+    requestorName: r.requester || r.requestorName || 'Terminal Staff',
+    department: r.department || 'Operations',
+    location: r.location || 'Pasay Terminal',
+    repeatIncidents: r.total_tickets ?? r.repeatIncidents ?? 0,
+    dominantTask: r.dominant_task || r.dominantTask || 'PRN-TS',
+    remoteResolutionRate: r.remote_pct ?? r.remoteResolutionRate ?? 50,
+    sopTrainingTarget: r.sop_training || r.sopTrainingTarget || 'Printer Roll Handling SOP',
+  }));
 
     const handleExportCSV = () => {
       downloadReportCSVApi(currentSlug);
@@ -253,7 +333,7 @@ const REPORT_TABS: ReportMeta[] = [
         <div className="h-64 w-full">
           {activeReportId === 1 && (
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={REPORT_1_MONTHLY_SLA}>
+              <BarChart data={report1Data}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#ECEEF2" />
                 <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#6B7280' }} />
                 <YAxis tick={{ fontSize: 11, fill: '#6B7280' }} />
@@ -275,7 +355,7 @@ const REPORT_TABS: ReportMeta[] = [
 
           {activeReportId === 2 && (
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={REPORT_2_STAFF_UTILIZATION}>
+              <BarChart data={report2Data}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#ECEEF2" />
                 <XAxis dataKey="technician" tick={{ fontSize: 11, fill: '#6B7280' }} />
                 <YAxis tick={{ fontSize: 11, fill: '#6B7280' }} />
@@ -297,7 +377,7 @@ const REPORT_TABS: ReportMeta[] = [
 
           {activeReportId === 3 && (
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={REPORT_3_DEPT_DEMAND}>
+              <BarChart data={report3Data}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#ECEEF2" />
                 <XAxis dataKey="department" tick={{ fontSize: 10, fill: '#6B7280' }} />
                 <YAxis tick={{ fontSize: 11, fill: '#6B7280' }} />
@@ -318,7 +398,7 @@ const REPORT_TABS: ReportMeta[] = [
 
           {activeReportId === 4 && (
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={REPORT_4_AGING_BACKLOG}>
+              <BarChart data={report4Data}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#ECEEF2" />
                 <XAxis dataKey="location" tick={{ fontSize: 11, fill: '#6B7280' }} />
                 <YAxis tick={{ fontSize: 11, fill: '#6B7280' }} />
@@ -338,7 +418,7 @@ const REPORT_TABS: ReportMeta[] = [
 
           {activeReportId === 5 && (
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={REPORT_5_TRANSIT_LAG}>
+              <BarChart data={report5Data}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#ECEEF2" />
                 <XAxis dataKey="location" tick={{ fontSize: 11, fill: '#6B7280' }} />
                 <YAxis tick={{ fontSize: 11, fill: '#6B7280' }} />
@@ -359,7 +439,7 @@ const REPORT_TABS: ReportMeta[] = [
 
           {activeReportId === 6 && (
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={REPORT_6_HARDWARE_HOTSPOTS}>
+              <BarChart data={report6Data}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#ECEEF2" />
                 <XAxis dataKey="location" tick={{ fontSize: 11, fill: '#6B7280' }} />
                 <YAxis tick={{ fontSize: 11, fill: '#6B7280' }} />
@@ -380,7 +460,7 @@ const REPORT_TABS: ReportMeta[] = [
 
           {activeReportId === 7 && (
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={REPORT_7_PMS_COMPLIANCE}>
+              <BarChart data={report7Data}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#ECEEF2" />
                 <XAxis dataKey="terminalLocation" tick={{ fontSize: 11, fill: '#6B7280' }} />
                 <YAxis tick={{ fontSize: 11, fill: '#6B7280' }} />
@@ -401,7 +481,7 @@ const REPORT_TABS: ReportMeta[] = [
 
           {activeReportId === 8 && (
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={REPORT_8_CHRONIC_REQUESTORS}>
+              <BarChart data={report8Data}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#ECEEF2" />
                 <XAxis dataKey="requestorName" tick={{ fontSize: 11, fill: '#6B7280' }} />
                 <YAxis tick={{ fontSize: 11, fill: '#6B7280' }} />
@@ -451,7 +531,7 @@ const REPORT_TABS: ReportMeta[] = [
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#ECEEF2]">
-                {REPORT_1_MONTHLY_SLA.map((r) => (
+                {report1Data.map((r: any) => (
                   <tr key={r.month} className="hover:bg-zinc-50/60">
                     <td className="py-3 px-3 font-bold text-ink">{r.month}</td>
                     <td className="py-3 px-3 font-mono">{r.totalRequests}</td>
@@ -486,7 +566,7 @@ const REPORT_TABS: ReportMeta[] = [
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#ECEEF2]">
-                {REPORT_2_STAFF_UTILIZATION.map((r) => (
+                {report2Data.map((r: any) => (
                   <tr key={r.technician} className="hover:bg-zinc-50/60">
                     <td className="py-3 px-3 font-bold text-ink">{r.technician}</td>
                     <td className="py-3 px-3 font-mono">{r.totalAssigned}</td>
@@ -519,7 +599,7 @@ const REPORT_TABS: ReportMeta[] = [
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#ECEEF2]">
-                {REPORT_3_DEPT_DEMAND.map((r, i) => (
+                {report3Data.map((r: any, i: number) => (
                   <tr key={i} className="hover:bg-zinc-50/60">
                     <td className="py-3 px-3 font-bold text-ink">{r.company}</td>
                     <td className="py-3 px-3">{r.department}</td>
@@ -552,7 +632,7 @@ const REPORT_TABS: ReportMeta[] = [
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#ECEEF2]">
-                {REPORT_4_AGING_BACKLOG.map((r, i) => (
+                {report4Data.map((r: any, i: number) => (
                   <tr key={i} className="hover:bg-zinc-50/60">
                     <td className="py-3 px-3 font-mono text-zinc-400">{r.dateStarted}</td>
                     <td className="py-3 px-3 font-mono font-extrabold text-rose-600">{r.daysOpen} days</td>
@@ -590,7 +670,7 @@ const REPORT_TABS: ReportMeta[] = [
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#ECEEF2]">
-                {REPORT_5_TRANSIT_LAG.map((r) => (
+                {report5Data.map((r: any) => (
                   <tr key={r.location} className="hover:bg-zinc-50/60">
                     <td className="py-3 px-3 font-bold text-ink">{r.location}</td>
                     <td className="py-3 px-3 font-mono">{r.supportMode}</td>
@@ -623,7 +703,7 @@ const REPORT_TABS: ReportMeta[] = [
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#ECEEF2]">
-                {REPORT_6_HARDWARE_HOTSPOTS.map((r) => (
+                {report6Data.map((r: any) => (
                   <tr key={r.location} className="hover:bg-zinc-50/60">
                     <td className="py-3 px-3 font-bold text-ink">{r.location}</td>
                     <td className="py-3 px-3">{r.company}</td>
@@ -656,7 +736,7 @@ const REPORT_TABS: ReportMeta[] = [
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#ECEEF2]">
-                {REPORT_7_PMS_COMPLIANCE.map((r) => (
+                {report7Data.map((r: any) => (
                   <tr key={r.terminalLocation} className="hover:bg-zinc-50/60">
                     <td className="py-3 px-3 font-bold text-ink">{r.terminalLocation}</td>
                     <td className="py-3 px-3">{r.department}</td>
@@ -705,7 +785,7 @@ const REPORT_TABS: ReportMeta[] = [
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#ECEEF2]">
-                {REPORT_8_CHRONIC_REQUESTORS.map((r) => (
+                {report8Data.map((r: any) => (
                   <tr key={r.requestorName} className="hover:bg-zinc-50/60">
                     <td className="py-3 px-3 font-bold text-ink">{r.requestorName}</td>
                     <td className="py-3 px-3">{r.department}</td>

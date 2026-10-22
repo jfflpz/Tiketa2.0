@@ -18,8 +18,7 @@ import {
   LOCATIONS,
   DEPARTMENTS,
   TASK_CATEGORIES,
-  VERIFIED_EMPLOYEES,
-} from '../../data/mockTicketsData';
+} from '../../constants/domain';
 import { SupportMode, TaskCategoryCode, Ticket } from '../../types/ticket';
 
 export const QuickIntakeModal: React.FC = () => {
@@ -31,6 +30,7 @@ export const QuickIntakeModal: React.FC = () => {
     setActiveView,
     setSelectedTicketId,
     setVerifyTicketCode,
+    lookupEmployeeApi,
   } = useAppStore();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -51,17 +51,19 @@ export const QuickIntakeModal: React.FC = () => {
 
   useEffect(() => {
     const upper = employeeIdInput.trim().toUpperCase();
-    const matched = VERIFIED_EMPLOYEES[upper];
-    if (matched) {
-      setRequestor(matched.full_name);
-      setCompanyCode(matched.company_id);
-      setLocationCode(matched.location_id);
-      setDepartmentCode(matched.department_id);
-      setAutoBound(true);
-    } else {
-      setAutoBound(false);
-    }
-  }, [employeeIdInput]);
+    if (!upper || upper.length < 2) return;
+    lookupEmployeeApi(upper).then((matched) => {
+      if (matched) {
+        setRequestor(matched.full_name);
+        setCompanyCode(matched.company_name || 'FS');
+        setLocationCode(matched.location_name || 'PSY');
+        setDepartmentCode(matched.department_name || 'CASH');
+        setAutoBound(true);
+      } else {
+        setAutoBound(false);
+      }
+    });
+  }, [employeeIdInput, lookupEmployeeApi]);
 
   if (!isQuickIntakeOpen) return null;
 

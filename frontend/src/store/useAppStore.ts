@@ -8,7 +8,6 @@ import {
   reportsApi,
   ReportKPIs,
   setAccessToken,
-  USE_MOCK,
   EmployeeLookupResult,
 } from '../api/client';
 
@@ -22,10 +21,9 @@ import {
   SavedRepairNote,
   TaskCategoryCode,
 } from '../types/ticket';
-import { INITIAL_TICKETS, TASK_CATEGORIES, VERIFIED_EMPLOYEES } from '../data/mockTicketsData';
+import { TASK_CATEGORIES } from '../constants/domain';
 import { TeamMember, TeamRole, TeamMemberStatus } from '../types/team';
 import { EmployeeProfile } from '../types';
-import { TEAM_ROSTER } from '../data/mockTeamData';
 
 export type ActiveView =
   | 'overview'    // IT Screen 1: Personal Technician KPI Overview
@@ -349,10 +347,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (isHydratingInFlight) return isHydratingInFlight;
 
     isHydratingInFlight = (async () => {
-      if (USE_MOCK) {
-        set({ isHydratingAuth: false });
-        return false;
-      }
+      
       try {
         const data = await authApi.refresh();
         if (data?.access_token && data?.user) {
@@ -379,6 +374,7 @@ export const useAppStore = create<AppState>((set, get) => ({
             activeView: targetView,
             isHydratingAuth: false,
           });
+          get().fetchQueueApi();
           return true;
         }
       } catch {
@@ -396,11 +392,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   loginWithApi: async ({ username, password }) => {
     set({ isAuthenticating: true, authError: null });
     try {
-      if (USE_MOCK) {
-        get().loginAsStaff('admin');
-        set({ isAuthenticating: false });
-        return true;
-      }
+      
 
       const data = await authApi.login({ username, password });
       setAccessToken(data.access_token);
@@ -426,6 +418,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         activeView: targetView,
         isAuthenticating: false,
       });
+      get().fetchQueueApi();
 
       get().addToast(
         `Welcome, ${data.user.full_name}!`,
@@ -443,9 +436,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   lookupEmployeeApi: async (query: string) => {
     try {
-      if (USE_MOCK) {
-        return null;
-      }
+      
       return await directoryApi.lookupEmployee(query);
     } catch {
       return null;
@@ -456,22 +447,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const taskMeta = TASK_CATEGORIES.find((c) => c.code === input.taskCode);
     const now = new Date();
 
-    if (USE_MOCK) {
-      return get().createTicket({
-        company: input.companyName ?? 'Five Star Bus Co.',
-        companyCode: 'FS',
-        location: input.locationName ?? 'Pasay Terminal',
-        locationCode: 'PSY',
-        department: input.departmentName ?? 'Operations',
-        departmentCode: 'OPS',
-        requestor: input.requestorName ?? 'Terminal Staff',
-        employeeId: input.employeeId,
-        taskCode: input.taskCode,
-        description: input.description,
-        mode: 'SITE',
-        intakeSource: 'PC Kiosk',
-      });
-    }
+    
 
     try {
       const res = await ticketsApi.submitPublicTicket({
@@ -537,7 +513,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       (t) => t.ticketCode.toUpperCase() === cleanCode
     );
     if (existing) return existing;
-    if (USE_MOCK) return null;
+    
 
     try {
       const res = await ticketsApi.trackTicket(cleanCode);
@@ -586,22 +562,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const taskMeta = TASK_CATEGORIES.find((c) => c.code === input.taskCode);
     const now = new Date();
 
-    if (USE_MOCK) {
-      return get().createTicket({
-        company: input.companyName ?? 'Five Star Bus Co.',
-        companyCode: 'FS',
-        location: input.locationName ?? 'Pasay Terminal',
-        locationCode: 'PSY',
-        department: input.departmentName ?? 'Operations',
-        departmentCode: 'OPS',
-        requestor: input.requestorName ?? 'Terminal Staff',
-        employeeId: input.employeeId,
-        taskCode: input.taskCode,
-        description: input.description,
-        mode: input.mode,
-        intakeSource: 'Walk-in / Viber',
-      });
-    }
+    
 
     try {
       const res = await ticketsApi.quickIntake({
@@ -664,7 +625,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   isFetchingQueue: false,
 
   fetchQueueApi: async () => {
-    if (USE_MOCK) return;
+    
     set({ isFetchingQueue: true });
     try {
       const data = await ticketsApi.getQueue();
@@ -727,7 +688,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       'success'
     );
 
-    if (USE_MOCK) return true;
+    
 
     try {
       await ticketsApi.claimTicket(ticketId);
@@ -767,7 +728,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       ),
     }));
 
-    if (USE_MOCK) return true;
+    
 
     try {
       await ticketsApi.updateStatus(ticketId, {
@@ -785,7 +746,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   fetchTicketCommentsApi: async (ticketId: string) => {
-    if (USE_MOCK) return;
+    
     try {
       const comments = await ticketsApi.getComments(ticketId);
       if (Array.isArray(comments)) {
@@ -825,7 +786,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       trimmed
     );
 
-    if (USE_MOCK) return true;
+    
 
     try {
       await ticketsApi.addComment(ticketId, { body: trimmed, is_internal: isInternal });
@@ -839,7 +800,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     kpis: null,
   isFetchingKPIs: false,
   fetchKPIsApi: async () => {
-    if (USE_MOCK) return;
+    
     set({ isFetchingKPIs: true });
     try {
       const data = await reportsApi.getKPIs();
@@ -852,7 +813,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   activeReportData: null,
   isFetchingReport: false,
   fetchReportApi: async (reportName: string) => {
-    if (USE_MOCK) return;
+    
     set({ isFetchingReport: true });
     try {
       const data = await reportsApi.getReport(reportName);
@@ -863,10 +824,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   downloadReportCSVApi: async (reportName: string) => {
-    if (USE_MOCK) {
-      get().addToast('CSV Export', `Generated demo CSV for ${reportName}`, 'info');
-      return;
-    }
+    
     try {
       const blob = await reportsApi.downloadReportCSV(reportName);
       const url = window.URL.createObjectURL(new Blob([blob]));
@@ -958,7 +916,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   sidebarCollapsed: false,
   toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
 
-  tickets: INITIAL_TICKETS,
+  tickets: [],
   selectedTicketId: null,
   setSelectedTicketId: (id) => set({ selectedTicketId: id }),
   activeWorkbenchTicketId: null,
@@ -1323,7 +1281,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           'Ticket closure confirmed and archived in 15-column Job Log.',
           'success'
         );
-        if (!USE_MOCK && target && !target.id.startsWith('t-') && !target.id.startsWith('tracked-')) {
+        if (target && !target.id.startsWith('t-') && !target.id.startsWith('tracked-')) {
           try {
             await ticketsApi.updateStatus(ticketId, { status: 'CLSD' });
           } catch {
@@ -1351,7 +1309,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           'Returned to IT Support active repairs',
           'warning'
         );
-        if (!USE_MOCK && target && !target.id.startsWith('t-') && !target.id.startsWith('tracked-')) {
+        if (target && !target.id.startsWith('t-') && !target.id.startsWith('tracked-')) {
           try {
             await ticketsApi.updateStatus(ticketId, { status: 'PROG' });
           } catch {
@@ -1440,7 +1398,34 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   // IT Team Specialist & Account Management
-  itTeamMembers: TEAM_ROSTER,
+  itTeamMembers: [
+    {
+      id: 'tm-1',
+      name: 'Stephen I. Miralles',
+      email: 's.miralles@fivestar.com.ph',
+      role: 'Senior Analyst',
+      department: 'IT Infrastructure & Server Ops',
+      status: 'active',
+      primaryLocation: 'Pasay Terminal (PSY)',
+      ticketsClosed: 41,
+      activeTickets: 2,
+      flameScore: 28,
+      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=William&backgroundColor=b6e3f4',
+    },
+    {
+      id: 'tm-2',
+      name: 'Nathaniel D. Esguerra',
+      email: 'n.esguerra@fivestar.com.ph',
+      role: 'Field Technician',
+      department: 'Terminal Operations & PMS',
+      status: 'active',
+      primaryLocation: 'Caloocan Terminal (CAL)',
+      ticketsClosed: 34,
+      activeTickets: 3,
+      flameScore: 24,
+      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Edward&backgroundColor=c0aede',
+    },
+  ],
   createITMember: (memberData) => {
     const newMember: TeamMember = {
       id: 'tm-' + Date.now(),
@@ -1474,7 +1459,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   // Verified Employees Directory
-  verifiedEmployeesList: Object.values(VERIFIED_EMPLOYEES),
+  verifiedEmployeesList: [],
   createEmployee: (empData) => {
     const newEmp: EmployeeProfile = {
       id: 'emp-' + Date.now(),

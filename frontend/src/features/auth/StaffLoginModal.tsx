@@ -158,6 +158,21 @@ zinc-500 disabled:opacity-60"
             )}
           </div>
 
+          {/* Quick Demo Helper */}
+          <div className="flex items-center justify-between text-[11px] text-ink-subtle px-1">
+            <span>Demo: <code className="bg-canvas px-1 py-0.5 rounded border border-line text-ink font-mono">{role === 'admin' ? 'admin' : 'technician'}</code> / <code className="bg-canvas px-1 py-0.5 rounded border border-line text-ink font-mono">Tiketa2026!Pass</code></span>
+            <button
+              type="button"
+              onClick={() => {
+                setUsername(role === 'admin' ? 'admin' : 'technician');
+                setPassword('Tiketa2026!Pass');
+              }}
+              className="text-brand hover:underline font-medium text-[11px]"
+            >
+              Fill Credentials
+            </button>
+          </div>
+
           <button
             type="submit"
             disabled={isAuthenticating}

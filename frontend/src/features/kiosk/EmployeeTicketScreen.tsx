@@ -30,7 +30,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
-import { VERIFIED_EMPLOYEES, LOCATIONS } from '../../data/mockTicketsData';
+import { LOCATIONS } from '../../constants/domain';
 import { TaskCategoryCode, Ticket } from '../../types/ticket';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { BarcodeDivider } from '../../components/common/TickMeter';
@@ -89,7 +89,7 @@ export const EmployeeTicketScreen: React.FC = () => {
   const activeHub =
     LOCATIONS.find((l) => l.code === activeOfficeLocationCode) ?? LOCATIONS[5];
 
-  const matchedEmployee = VERIFIED_EMPLOYEES[employeeId.trim().toUpperCase()];
+  
 
   // Listen to verifyTicketCode from URL params or store
   const targetVerifyTicket = verifyTicketCode
@@ -143,21 +143,8 @@ export const EmployeeTicketScreen: React.FC = () => {
           return;
         }
 
-        // Offline fallback to mock directory
-        const mockFound = VERIFIED_EMPLOYEES[cleanId];
-        if (mockFound) {
-          setDeclaredName(mockFound.full_name);
-          setActiveOfficeLocationCode(mockFound.location_id);
-          setEmployeeVerified(true);
-          setEmployeeDetails({
-            company: mockFound.company_name,
-            location: mockFound.location_id,
-            department: mockFound.department_name,
-          });
-        } else {
-          setEmployeeVerified(false);
-          setLookupError(`Employee ID "${cleanId}" not recognized in active directory.`);
-        }
+        setEmployeeVerified(false);
+        setLookupError(`Employee ID "${cleanId}" not recognized in active directory.`);
       } catch {
         setEmployeeVerified(false);
         setLookupError(`Unable to verify Employee ID "${cleanId}".`);
@@ -178,14 +165,10 @@ export const EmployeeTicketScreen: React.FC = () => {
     const upperInput = verifyIdInput.trim().toUpperCase();
     if (!upperInput) return;
 
-    const matchedRequester = VERIFIED_EMPLOYEES[upperInput];
     const isIdMatch =
       !targetTicket.employeeId ||
       (targetTicket.employeeId &&
         targetTicket.employeeId.toUpperCase() === upperInput) ||
-      (matchedRequester &&
-        matchedRequester.full_name.toLowerCase() ===
-          targetTicket.requestor.toLowerCase()) ||
       upperInput === targetTicket.requestor.toUpperCase();
 
     if (isIdMatch) {
@@ -273,9 +256,9 @@ export const EmployeeTicketScreen: React.FC = () => {
       description:
         description.trim() ||
         `Reported from ${employeeDetails.location || activeHub.name} employee helpdesk screen.`,
-      companyName: employeeDetails.company ?? matchedEmployee?.company_name ?? 'Pangasinan Five Star Bus Co.',
+      companyName: employeeDetails.company ?? 'Pangasinan Five Star Bus Co.',
       locationName: employeeDetails.location ?? activeHub.name,
-      departmentName: employeeDetails.department ?? matchedEmployee?.department_name ?? 'Operation',
+      departmentName: employeeDetails.department ?? 'Operation',
       requestorName: declaredName.trim() || 'Terminal Staff',
     });
 
@@ -701,7 +684,7 @@ zinc-500"
                           </strong>{' '}
                           • Department:{' '}
                           <strong>
-                            {employeeDetails.department ?? matchedEmployee?.department_name ?? 'Operation'}
+                            {employeeDetails.department ?? 'Operation'}
                           </strong>
                         </span>
                       </div>

@@ -7,7 +7,7 @@ import {
   UserCheck,
 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
-import { COMPANIES } from '../../data/mockTicketsData';
+import { COMPANIES } from '../../constants/domain';
 import { StatusBadge } from '../../components/common/StatusBadge';
 
 export const JobLogSheetView: React.FC = () => {
