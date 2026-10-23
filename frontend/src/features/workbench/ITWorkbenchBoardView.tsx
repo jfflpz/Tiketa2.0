@@ -65,6 +65,15 @@ export const ITWorkbenchBoardView: React.FC = () => {
 
   const handleCopyLink = async () => {
     if (!focusedTicket) return;
+    if (focusedTicket.closureUrl) {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(focusedTicket.closureUrl);
+      }
+      setCopiedLink(true);
+      addToast('Viber Link Copied', `Direct resolution URL copied for ${focusedTicket.ticketCode}`, 'success');
+      setTimeout(() => setCopiedLink(false), 2000);
+      return;
+    }
     await copyTicketShareLink(focusedTicket.ticketCode);
     setCopiedLink(true);
     addToast('Link Copied', `Employee verification URL copied for ${focusedTicket.ticketCode}`, 'success');

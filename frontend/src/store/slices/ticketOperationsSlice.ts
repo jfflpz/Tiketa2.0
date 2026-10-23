@@ -180,11 +180,34 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
     }));
 
     try {
-      await ticketsApi.updateStatus(ticketId, {
+      const res = await ticketsApi.updateStatus(ticketId, {
         status: status as any,
         mode: mode || (target.mode as any),
       });
       get().addToast('Status Updated', `${target.ticketCode} is now ${status}`, 'info');
+
+      // Development / Test: Backend returns closure_url when transitioning to RESL
+      const closureUrl = (res as any)?.closure_url;
+      if (closureUrl) {
+        set((state) => ({
+          tickets: state.tickets.map((t) =>
+            t.id === ticketId ? { ...t, closureUrl } : t
+          ),
+        }));
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(closureUrl);
+          }
+        } catch {
+          // Fallback if clipboard API restricted
+        }
+        get().addToast(
+          'Viber Closure Link Copied!',
+          `Direct resolution link copied: ${closureUrl}`,
+          'success'
+        );
+      }
+
       return true;
     } catch (err: any) {
       const msg = err.response?.data?.detail || 'Failed to update ticket status';

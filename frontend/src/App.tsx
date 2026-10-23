@@ -1,4 +1,5 @@
 // @spec UI-SHELL-01: Role-Separated Application Flow (Employee Screen -> Staff Login -> Role-Isolated Workspace)
+// @spec FR-VERIF-02: Interactive Closure Verification Modal Mount
 import { Sidebar } from './components/layout/Sidebar';
 import { TopHeader } from './components/layout/TopHeader';
 import { ITOverviewDashboard } from './features/overview/ITOverviewDashboard';
@@ -14,6 +15,7 @@ import { EmployeeTicketScreen } from './features/kiosk/EmployeeTicketScreen';
 import { StaffLoginModal } from './features/auth/StaffLoginModal';
 import { JobLogDrawer } from './components/tickets/JobLogDrawer';
 import { QuickIntakeModal } from './components/tickets/QuickIntakeModal';
+import { TicketVerificationModal } from './components/tickets/TicketVerificationModal';
 import { ToastContainer } from './components/common/ToastContainer';
 import { useAppStore } from './store/useAppStore';
 import { useEffect } from 'react';
@@ -49,6 +51,7 @@ export default function App() {
       <>
         <EmployeeTicketScreen />
         <StaffLoginModal />
+        <TicketVerificationModal />
         <ToastContainer />
       </>
     );
@@ -90,6 +93,9 @@ export default function App() {
 
       {/* Global Walk-In & Viber Quick Intake Modal */}
       <QuickIntakeModal />
+
+      {/* Interactive Ticket Verification & Closure Confirmation Modal */}
+      <TicketVerificationModal />
 
       {/* Sub-100ms Tactile Toast Notification Container */}
       <ToastContainer />

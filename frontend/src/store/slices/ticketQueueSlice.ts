@@ -48,6 +48,7 @@ export const createTicketQueueSlice: AppSliceCreator<TicketQueueSlice> = (set) =
       if (Array.isArray(data)) {
         const mapped: Ticket[] = data.map((row: any) => {
           const taskMeta = TASK_CATEGORIES.find((t) => t.code === row.task_code);
+          const techId = row.assigned_tech_id || row.technician_id || undefined;
           return {
             id: row.id,
             ticketCode: row.ticket_code,
@@ -73,8 +74,9 @@ export const createTicketQueueSlice: AppSliceCreator<TicketQueueSlice> = (set) =
             status: row.status as TicketStatus,
             location: row.location_name || 'Pasay',
             locationCode: 'PSY',
-            workedBy: row.technician_name || undefined,
-            workedById: row.technician_id || undefined,
+            workedBy: row.technician_name || row.assigned_tech || undefined,
+            workedById: techId,
+            assigned_tech_id: techId,
             priority: taskMeta ? taskMeta.defaultPriority : 'Medium',
             createdAt: row.created_at || new Date().toISOString(),
             messages: [],

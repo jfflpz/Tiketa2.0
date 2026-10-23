@@ -43,8 +43,26 @@ def set_cookie(response: Response, token: str):
 
 def check_origin(request: Request):
     origin = request.headers.get("origin")
-    if origin and origin not in settings.CORS_ORIGINS:
-        raise HTTPException(403, "Untrusted origin")
+    if not origin:
+        return
+    norm_origin = origin.rstrip("/")
+    allowed = {o.rstrip("/") for o in settings.CORS_ORIGINS}
+    if norm_origin in allowed:
+        return
+    if settings.ENVIRONMENT == "development":
+        from urllib.parse import urlparse
+
+        parsed = urlparse(norm_origin)
+        if parsed.hostname in ("localhost", "127.0.0.1", "0.0.0.0", "testserver") or (
+            parsed.hostname
+            and (
+                parsed.hostname.startswith("192.168.")
+                or parsed.hostname.startswith("10.")
+                or parsed.hostname.startswith("172.")
+            )
+        ):
+            return
+    raise HTTPException(403, "Untrusted origin")
 
 
 @router.post("/login", response_model=TokenOut)
