@@ -1,5 +1,5 @@
 // @spec SR-03: Personal IT Specialist Job Logs Sheet (Filtered strictly to the Logged-In Account's Employee)
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   FileSpreadsheet,
   Download,
@@ -14,25 +14,32 @@ export const JobLogSheetView: React.FC = () => {
   const currentUser = useAppStore((state) => state.currentUser);
   const tickets = useAppStore((state) => state.tickets);
   const setSelectedTicketId = useAppStore((state) => state.setSelectedTicketId);
+  const fetchQueueApi = useAppStore((state) => state.fetchQueueApi);
   const addToast = useAppStore((state) => state.addToast);
 
   const [companyFilter, setCompanyFilter] = useState('ALL');
   const [modeFilter, setModeFilter] = useState<'ALL' | 'SITE' | 'REM'>('ALL');
   const [sheetSearch, setSheetSearch] = useState('');
 
+  // Fetch queue on mount so the table loads immediately upon direct navigation
+  useEffect(() => {
+    fetchQueueApi();
+  }, [fetchQueueApi]);
+
   const isAdmin = currentUser?.role === 'admin';
   const accountEmployeeName = currentUser?.name ?? 'Nathaniel D. Esguerra';
   const accountFirstName = accountEmployeeName.split(' ')[0].toLowerCase();
 
-  // For IT Support: strictly show ONLY the job logs worked by the logged-in account's employee
+  // For IT Support: strictly show the job logs claimed or assigned to the logged-in technician
   const personalOrAdminTickets = isAdmin
-    ? tickets.filter((t) => Boolean(t.workedBy))
+    ? tickets.filter((t) => Boolean(t.workedBy || t.workedById || t.assigned_tech_id))
     : tickets.filter(
         (t) =>
-          Boolean(t.workedBy) &&
-          (t.workedBy === accountEmployeeName ||
-            t.workedBy?.toLowerCase().includes(accountFirstName) ||
-            t.workedById === currentUser?.id)
+          Boolean(t.workedBy || t.workedById || t.assigned_tech_id) &&
+          (t.workedById === currentUser?.id ||
+            t.assigned_tech_id === currentUser?.id ||
+            t.workedBy === accountEmployeeName ||
+            t.workedBy?.toLowerCase().includes(accountFirstName))
       );
 
   const filteredLogs = personalOrAdminTickets.filter((t) => {
@@ -236,7 +243,7 @@ export const JobLogSheetView: React.FC = () => {
                     {t.location} ({t.locationCode})
                   </td>
                   <td className="py-3 px-3 font-semibold text-ink">
-                    {isAdmin ? t.workedBy : accountEmployeeName}
+                    {isAdmin ? (t.workedBy || 'Awaiting Triage') : accountEmployeeName}
                   </td>
                 </tr>
               ))}

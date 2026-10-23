@@ -1,5 +1,6 @@
+// @spec FR-VERIF-02: Employee Ticket Details with Interactive Closure Verification Gate
 import React from 'react';
-import { ArrowLeft, CheckCircle2, Copy, Check } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Copy, Check, ShieldCheck } from 'lucide-react';
 import type { Ticket } from '../../../types/ticket';
 import { StatusBadge } from '../../../components/common/StatusBadge';
 import { TicketConversation } from './TicketConversation';
@@ -11,7 +12,7 @@ export interface EmployeeTicketDetailsProps {
 }
 
 export const EmployeeTicketDetails: React.FC<EmployeeTicketDetailsProps> = ({ ticket, onBack }) => {
-  const confirmClosure = useAppStore((state) => state.confirmClosure);
+  const openVerificationModal = useAppStore((state) => state.openVerificationModal);
   const copyTicketShareLink = useAppStore((state) => state.copyTicketShareLink);
   const [copied, setCopied] = React.useState(false);
 
@@ -69,13 +70,14 @@ export const EmployeeTicketDetails: React.FC<EmployeeTicketDetailsProps> = ({ ti
             <span>IT Support Marked This Issue Resolved</span>
           </div>
           <p className="text-xs text-emerald-800 leading-relaxed">
-            Please verify your equipment (test printing, connection, etc.). If working normally, click below to confirm closure.
+            Please verify your equipment (test printing, connection, etc.). If working normally, click below to review and confirm closure.
           </p>
           <button
-            onClick={() => confirmClosure(ticket.id)}
-            className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs press-fx shadow-sm"
+            onClick={() => openVerificationModal(ticket.id)}
+            className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs press-fx shadow-sm inline-flex items-center gap-2"
           >
-            Yes, Confirm & Close Ticket
+            <ShieldCheck className="w-4 h-4" />
+            <span>Review &amp; Verify Closure</span>
           </button>
         </div>
       )}

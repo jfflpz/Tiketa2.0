@@ -73,11 +73,13 @@ export interface Ticket {
   locationCode: string; // AVN, BTM, CAL, PSY, CMA, etc.
   workedBy?: string; // 15. Worked by (Technician name)
   workedById?: string; // Assigned tech UUID
+  assigned_tech_id?: string; // Backend direct assignee UUID
 
   // Additional metadata, Closure Verification, Two-Way Chat & Editable Checklist
   priority: 'Low' | 'Medium' | 'High' | 'Critical';
   intakeSource?: 'PC Kiosk' | 'Employee ID' | 'Walk-in / Viber';
   closureTokenHash?: string;
+  closureUrl?: string; // Viber / direct verification link returned by backend
   userConfirmedAt?: string;
   validationRequested?: boolean;
   validationRequestedAt?: string;

@@ -62,12 +62,15 @@ export const ITOverviewDashboard: React.FC = () => {
   const setActiveView = useAppStore((state) => state.setActiveView);
   const fetchQueueApi = useAppStore((state) => state.fetchQueueApi);
   const isFetchingQueue = useAppStore((state) => state.isFetchingQueue);
+  const kpis = useAppStore((state) => state.kpis);
+  const fetchKPIsApi = useAppStore((state) => state.fetchKPIsApi);
 
   const techName = currentUser?.name ?? 'Nathaniel D. Esguerra';
   const techFirstName = techName.split(' ')[0];
 
-  useEffect(() => {
+    useEffect(() => {
     fetchQueueApi();
+    fetchKPIsApi();
     const interval = setInterval(() => {
       fetchQueueApi();
     }, 15000);
@@ -84,6 +87,19 @@ export const ITOverviewDashboard: React.FC = () => {
   const myResolvedCount =
     myTickets.filter((t) => t.status === 'RESL' || t.status === 'CLSD').length + 16;
   const openPoolCount = tickets.filter((t) => t.status === 'OPEN').length;
+
+  // Option C: Intuitive Ticket Resolution Rate (Simple completed vs total ratio)
+  const totalFleetFromTickets = tickets.length;
+  const completedFleetFromTickets = tickets.filter(
+    (t) => t.status === 'RESL' || t.status === 'CLSD'
+  ).length;
+
+  const totalCount = kpis?.total_tickets ?? (totalFleetFromTickets > 0 ? totalFleetFromTickets : 40);
+  const completedCount = kpis?.completed ?? (totalFleetFromTickets > 0 ? completedFleetFromTickets : 36);
+  const resolutionPercentage =
+    totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 100;
+  const strokeOffset =
+    2 * Math.PI * 32 * (1 - Math.min(Math.max(resolutionPercentage, 0), 100) / 100);
 
   return (
     <div className="space-y-5 pb-8">
@@ -129,7 +145,7 @@ export const ITOverviewDashboard: React.FC = () => {
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
         {/* LEFT COLUMN (3 Cols): Fleet SLA Card + Claimed Tickets + Weekly Bench Hours */}
         <div className="xl:col-span-3 space-y-5">
-          {/* 1. Orange Gradient Card: Repurposed into Fleet SLA Compliance Rate */}
+          {/* 1. Orange Gradient Card: Option C - Simple & Intuitive Ticket Resolution Rate */}
           <div className="rounded-2xl bg-gradient-to-br from-orange-500 via-orange-500 to-orange-600 text-white p-5 shadow-md relative overflow-hidden">
             <div className="w-36 h-36 rounded-full bg-white/10 absolute -right-10 -bottom-10 pointer-events-none" />
             <div className="w-20 h-20 rounded-full bg-white/5 absolute right-12 -top-6 pointer-events-none" />
@@ -137,13 +153,13 @@ export const ITOverviewDashboard: React.FC = () => {
             <div className="relative z-10 flex items-center justify-between gap-3">
               <div className="space-y-2 max-w-[63%]">
                 <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-black/20 text-orange-100">
-                  Fleet Service Metric
+                  Terminal Resolution Rate
                 </span>
                 <h2 className="text-base font-bold leading-snug">
-                  Fleet SLA Compliance
+                  Ticket Resolution Rate
                 </h2>
                 <p className="text-[11px] text-orange-100 leading-relaxed">
-                  <strong>98.4%</strong> of terminal dispatch issues resolved within SLA across 15 hubs.
+                  <strong>{resolutionPercentage}%</strong> of reported terminal issues resolved ({completedCount} of {totalCount} closed).
                 </p>
                 <button
                   type="button"
@@ -175,11 +191,11 @@ export const ITOverviewDashboard: React.FC = () => {
                     strokeWidth="6"
                     strokeLinecap="round"
                     strokeDasharray={2 * Math.PI * 32}
-                    strokeDashoffset={2 * Math.PI * 32 * (1 - 0.984)}
+                    strokeDashoffset={strokeOffset}
                   />
                 </svg>
                 <span className="absolute text-sm font-extrabold text-white tabular-nums">
-                  98.4%
+                  {resolutionPercentage}%
                 </span>
               </div>
             </div>
@@ -569,28 +585,82 @@ export const ITOverviewDashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Quick Saved Repair Notes Shortcut Card */}
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              disabled={isFetchingQueue}
-              onClick={() => fetchQueueApi()}
-              className="px-3.5 py-2 rounded-xl bg-white hover:bg-zinc-50 text-ink border border-[#ECEEF2] text-xs font-semibold inline-flex items-
-center gap-1.5 shadow-card transition-colors press-fx"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 text-zinc-500 ${isFetchingQueue ? 'animate-spin text-orange-500' : ''}`} />
-              <span>{isFetchingQueue ? 'Refreshing...' : 'Refresh'}</span>
-            </button>
+          {/* Saved Repair Notes & Quick Guides Card */}
+          <div className="bg-white border border-[#ECEEF2] rounded-2xl p-5 shadow-card space-y-3.5">
+            <div className="flex items-center justify-between pb-2 border-b border-[#ECEEF2]">
+              <div className="flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-orange-500" />
+                <h3 className="text-sm font-bold text-ink">
+                  Saved Repair Notes ({savedRepairNotes.length})
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveView('notes')}
+                className="text-[11px] font-bold text-orange-600 hover:text-orange-700 hover:underline inline-flex items-center gap-0.5 press-fx"
+              >
+                <span>View All</span>
+                <ArrowRight className="w-3 h-3" />
+              </button>
+            </div>
 
-            <button
-              type="button"
-              onClick={() => setActiveView('notes')}
-              className="px-3.5 py-2 rounded-xl bg-white hover:bg-zinc-50 text-ink border border-[#ECEEF2] text-xs font-semibold inline-flex items-
-center gap-1.5 shadow-card transition-colors press-fx"
-            >
-              <BookOpen className="w-3.5 h-3.5 text-orange-500" />
-              <span>Saved Repair Notes ({savedRepairNotes.length})</span>
-            </button>
+            {/* Note items preview */}
+            <div className="space-y-2.5">
+              {savedRepairNotes.length === 0 ? (
+                <div className="text-center py-6 text-zinc-400 space-y-1">
+                  <BookOpen className="w-6 h-6 mx-auto text-zinc-300" />
+                  <p className="text-xs">No saved repair notes yet</p>
+                </div>
+              ) : (
+                savedRepairNotes.slice(0, 3).map((note) => (
+                  <div
+                    key={note.id}
+                    onClick={() => setActiveView('notes')}
+                    className="p-3 rounded-xl bg-[#F4F6F9] hover:bg-orange-50/60 border border-[#ECEEF2] hover:border-orange-200 cursor-pointer transition-all space-y-1.5 group"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-white border border-zinc-200 text-zinc-700">
+                        {note.taskCode}
+                      </span>
+                      <span className="text-[10px] text-zinc-400 font-medium">
+                        {note.checklistSteps.length} SOP steps
+                      </span>
+                    </div>
+                    <h4 className="text-xs font-bold text-ink group-hover:text-orange-600 transition-colors line-clamp-1">
+                      {note.title}
+                    </h4>
+                    <p className="text-[11px] text-zinc-500 line-clamp-2 leading-relaxed">
+                      {note.symptomAndFixNote}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="pt-1 flex items-center gap-2">
+              <button
+                type="button"
+                disabled={isFetchingQueue}
+                onClick={() => fetchQueueApi()}
+                className="px-3 py-2 rounded-xl bg-[#F4F6F9] hover:bg-zinc-100 text-ink border border-[#ECEEF2] text-xs font-semibold inline-flex items-center gap-1.5 transition-colors press-fx"
+                title="Refresh queue and stats"
+              >
+                <RefreshCw
+                  className={`w-3.5 h-3.5 text-zinc-500 ${
+                    isFetchingQueue ? 'animate-spin text-orange-500' : ''
+                  }`}
+                />
+                <span>Refresh</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveView('notes')}
+                className="flex-1 py-2 px-3 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold inline-flex items-center justify-center gap-1.5 shadow-sm transition-colors press-fx"
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>Open Library ({savedRepairNotes.length})</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>

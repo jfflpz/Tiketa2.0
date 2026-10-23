@@ -6,6 +6,9 @@ export interface TicketVerificationSlice {
   unlockedTicketCodes: Record<string, boolean>;
   unlockTicketVerification: (ticketCode: string) => void;
   copyTicketShareLink: (ticketCode: string) => Promise<string>;
+  verificationModalTicketId: string | null;
+  openVerificationModal: (ticketId: string) => void;
+  closeVerificationModal: () => void;
 }
 
 const getInitialVerifyCode = (): string | null => {
@@ -67,4 +70,8 @@ export const createTicketVerificationSlice: AppSliceCreator<TicketVerificationSl
     );
     return link;
   },
+
+  verificationModalTicketId: null,
+  openVerificationModal: (ticketId) => set({ verificationModalTicketId: ticketId }),
+  closeVerificationModal: () => set({ verificationModalTicketId: null }),
 });

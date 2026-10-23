@@ -1,4 +1,5 @@
 // @spec SR-03: Slide-out 15-Column Canonical Job Log Drawer, Repair Controls & Two-Way Employee Chat
+// @spec FR-VERIF-02: Closure Verification Modal Gate
 import React, { useState, useEffect } from 'react';
 import {
   CheckCircle2,
@@ -7,6 +8,7 @@ import {
   ShieldCheck,
   UserCheck,
   Wrench,
+  Copy,
 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { JobLogDrawerHeader } from './drawer/JobLogDrawerHeader';
@@ -29,7 +31,7 @@ export const JobLogDrawer: React.FC = () => {
   const updateTicketDescription = useAppStore((state) => state.updateTicketDescription);
   const resolveTicket = useAppStore((state) => state.resolveTicket);
   const requestValidation = useAppStore((state) => state.requestValidation);
-  const confirmClosure = useAppStore((state) => state.confirmClosure);
+  const openVerificationModal = useAppStore((state) => state.openVerificationModal);
   const reopenTicket = useAppStore((state) => state.reopenTicket);
   const copyTicketShareLink = useAppStore((state) => state.copyTicketShareLink);
   const setActiveWorkbenchTicketId = useAppStore((state) => state.setActiveWorkbenchTicketId);
@@ -119,13 +121,35 @@ export const JobLogDrawer: React.FC = () => {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 pt-1">
+              <div className="flex flex-wrap items-center gap-2 pt-1">
                 <button
-                  onClick={() => confirmClosure(ticket.id)}
-                  className="flex-1 py-2 px-3 bg-brand hover:bg-brand-hover text-white text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition-colors press-fx"
+                  onClick={() => openVerificationModal(ticket.id)}
+                  className="flex-1 min-w-[140px] py-2 px-3 bg-brand hover:bg-brand-hover text-white text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition-colors press-fx"
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   Confirm Closure Sign-Off
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (ticket.closureUrl) {
+                      if (navigator.clipboard?.writeText) {
+                        await navigator.clipboard.writeText(ticket.closureUrl);
+                      }
+                      addToast(
+                        'Viber Link Copied',
+                        `Viber resolution link copied to clipboard`,
+                        'success'
+                      );
+                    } else {
+                      await copyTicketShareLink(ticket.ticketCode);
+                    }
+                  }}
+                  className="py-2 px-3 bg-surface hover:bg-zinc-50 text-brand border border-orange-300 text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition-colors press-fx"
+                  title="Copy Viber closure link"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>Copy Viber Link</span>
                 </button>
                 <button
                   onClick={() => reopenTicket(ticket.id)}
@@ -191,7 +215,10 @@ export const JobLogDrawer: React.FC = () => {
             )}
             {ticket.status === 'PROG' && (
               <button
-                onClick={() => resolveTicket(ticket.id)}
+                onClick={async () => {
+                  resolveTicket(ticket.id);
+                  await updateTicketStatusApi(ticket.id, 'RESL', ticket.mode || 'SITE');
+                }}
                 className="px-4 py-2 bg-brand hover:bg-brand-hover text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-colors press-fx"
               >
                 <Wrench className="w-4 h-4" />
