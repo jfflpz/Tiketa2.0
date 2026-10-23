@@ -324,6 +324,17 @@
             ],
             "title": "Assigned Tech Id"
           },
+          "closure_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closure Url"
+          },
           "company_id": {
             "format": "uuid",
             "title": "Company Id",

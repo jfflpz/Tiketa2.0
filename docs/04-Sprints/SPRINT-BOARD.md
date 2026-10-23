@@ -5,6 +5,8 @@
 **Specification Baseline**: SRS v2.1.0 (`ARCH/01-Projects/Tiketa/SRS.md`)  
 **Status**: Backend implementation under verification; not merged or deployed. See BACKEND-PROGRESS.md.
 
+**Planned follow-up (2026-10-23)**: [Bug Fixes 1.0 Sprint Plan](BUG-FIXES-1.0-SPRINT-PLAN.md) — one full-scope sprint for two people: [Person 1 — Backend](BUG-FIXES-1.0-BACKEND-PLAN.md) and [Person 2 — Frontend](BUG-FIXES-1.0-FRONTEND-PLAN.md). All BF-01–BF-12 requirements share API handoffs, integration milestones and one completion gate. Sprint dates remain unset. [Requirement backlog](BUG-FIXES-1.0.md). Status: planned, not implemented or verified.
+
 ---
 
 ## 1. Sprint 1 Progress Log

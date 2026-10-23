@@ -1,9 +1,10 @@
+import logging
 import secrets
 import smtplib
 from datetime import timedelta
 from decimal import Decimal
 from typing import Literal
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, Request, Response, UploadFile
@@ -25,6 +26,8 @@ from app.schemas import (
 )
 from app.services import mail
 from app.services.tickets import claim, get_ticket, local, now, submit, ticket_view
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/tickets", tags=["Tickets"])
 queue_adapter = TypeAdapter(list[TicketOut])
@@ -99,6 +102,7 @@ async def claim_ticket(ticket_id: UUID, db: DB, user: CurrentUser):
 @router.patch("/{ticket_id}/status", response_model=TicketOut)
 async def status_ticket(ticket_id: UUID, body: StatusInput, db: DB, user: CurrentUser):
     row = await get_ticket(db, ticket_id, lock=True)
+    closure_url: str | None = None
     if body.task_code:
         cat = await db.get(TaskCategory, body.task_code)
         if not cat:
@@ -131,10 +135,25 @@ async def status_ticket(ticket_id: UUID, body: StatusInput, db: DB, user: Curren
                 decrypt(row.requester_contact_enc), row.ticket_code, str(row.id), token
             )
         except (OSError, smtplib.SMTPException):
-            raise HTTPException(
-                503, "Confirmation delivery failed; retry resolution"
-            ) from None
+            if settings.ENVIRONMENT == "production":
+                await db.rollback()
+                raise HTTPException(
+                    503, "Confirmation delivery failed; retry resolution"
+                ) from None
+            logger.warning(
+                "Closure confirmation delivery failed in non-production environment; proceeding with resolution"
+            )
         row.status = "RESL"
+        if settings.ENVIRONMENT != "production":
+            base_url = settings.PUBLIC_BASE_URL.rstrip("/")
+            params = urlencode(
+                {
+                    "verifyTicket": row.ticket_code,
+                    "ticketId": str(row.id),
+                    "token": token,
+                }
+            )
+            closure_url = f"{base_url}/?{params}"
     elif row.status == "RESL" and body.status == "CLSD":
         if user.role != "admin":
             raise HTTPException(
@@ -158,7 +177,10 @@ async def status_ticket(ticket_id: UUID, body: StatusInput, db: DB, user: Curren
         raise HTTPException(409, "Invalid status transition")
     await db.commit()
     await cache.incr("queue:version")
-    return ticket_view(row)
+    response_data = ticket_view(row)
+    if closure_url is not None:
+        response_data["closure_url"] = closure_url
+    return response_data
 
 
 @router.post("/{ticket_id}/confirm-closure")

@@ -111,6 +111,7 @@ class TicketOut(PublicTicket):
     updated_at: datetime
     user_confirmed_at: datetime | None
     transit_lag_days: float | None
+    closure_url: str | None = None
 
 
 class PlanInput(ScopeInput):
