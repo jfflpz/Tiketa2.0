@@ -15,6 +15,7 @@ import { ExecutiveAnalyticsView } from './features/analytics/ExecutiveAnalyticsV
 import { StandardizedReportsView } from './features/reports/StandardizedReportsView';
 import { EmployeeTicketScreen } from './features/kiosk/EmployeeTicketScreen';
 import { StaffLoginModal } from './features/auth/StaffLoginModal';
+import { LogoutConfirmationModal } from './features/auth/LogoutConfirmationModal';
 import { JobLogDrawer } from './components/tickets/JobLogDrawer';
 import { QuickIntakeModal } from './components/tickets/QuickIntakeModal';
 import { TicketVerificationModal } from './components/tickets/TicketVerificationModal';
@@ -148,6 +149,9 @@ export default function App() {
 
       {/* Interactive Ticket Verification & Closure Confirmation Modal */}
       <TicketVerificationModal />
+
+      {/* Staff Logout Confirmation Modal */}
+      <LogoutConfirmationModal />
 
       {/* Sub-100ms Tactile Toast Notification Container */}
       <ToastContainer />

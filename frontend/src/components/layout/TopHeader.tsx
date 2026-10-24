@@ -18,7 +18,7 @@ export const TopHeader: React.FC = () => {
   const setActiveView = useAppStore((state) => state.setActiveView);
   const claimTicket = useAppStore((state) => state.claimTicket);
   const copyTicketShareLink = useAppStore((state) => state.copyTicketShareLink);
-  const logoutToKiosk = useAppStore((state) => state.logoutToKiosk);
+  const openLogoutModal = useAppStore((state) => state.openLogoutModal);
   const addToast = useAppStore((state) => state.addToast);
 
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -115,7 +115,7 @@ export const TopHeader: React.FC = () => {
         {/* 6. Staff Profile Popover */}
         <HeaderProfilePopover
           currentUser={currentUser}
-          onSignOut={logoutToKiosk}
+          onSignOut={openLogoutModal}
         />
       </div>
     </header>

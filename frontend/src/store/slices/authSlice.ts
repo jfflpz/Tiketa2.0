@@ -13,6 +13,9 @@ export interface AuthSlice {
   isHydratingAuth: boolean;
   hydrateAuthApi: () => Promise<boolean>;
   loginWithApi: (credentials: { username: string; password: string }) => Promise<boolean>;
+  isLogoutModalOpen: boolean;
+  openLogoutModal: () => void;
+  closeLogoutModal: () => void;
   openLoginModal: (role?: StaffRole) => void;
   closeLoginModal: () => void;
   loginAsStaff: (role: StaffRole, customName?: string) => void;
@@ -24,6 +27,7 @@ let isHydratingInFlight: Promise<boolean> | null = null;
 export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
   currentUser: null,
   loginModalRole: null,
+  isLogoutModalOpen: false,
   isAuthenticating: false,
   authError: null,
   isHydratingAuth: true,
@@ -144,6 +148,8 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
     }
   },
 
+  openLogoutModal: () => set({ isLogoutModalOpen: true }),
+  closeLogoutModal: () => set({ isLogoutModalOpen: false }),
   openLoginModal: (role = 'it') => set({ loginModalRole: role }),
   closeLoginModal: () => set({ loginModalRole: null, authError: null }),
 
@@ -200,6 +206,7 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
 
     set({
       currentUser: null,
+      isLogoutModalOpen: false,
       selectedTicketId: null,
       activeWorkbenchTicketId: null,
       isQuickIntakeOpen: false,
