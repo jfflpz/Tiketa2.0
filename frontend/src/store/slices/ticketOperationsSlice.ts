@@ -9,6 +9,7 @@ import type {
 } from '../../types/ticket';
 import { TASK_CATEGORIES } from '../../constants/domain';
 import { ticketsApi } from '../../api/client';
+import { normalizeApiError } from '../../utils/errorUtils';
 
 export interface TicketOperationsSlice {
   // Staff Quick Intake modal & mutation
@@ -121,7 +122,7 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
 
       return newTicket;
     } catch (err: any) {
-      const msg = err.response?.data?.detail || 'Failed to submit quick intake ticket to server';
+      const msg = normalizeApiError(err, 'Failed to submit quick intake ticket to server');
       get().addToast('Quick Intake Error', msg, 'warning');
       return null;
     }
@@ -148,7 +149,7 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
       return true;
     } catch (err: any) {
       set({ tickets: previousTickets });
-      const msg = err.response?.data?.detail || 'Ticket could not be claimed (already assigned)';
+      const msg = normalizeApiError(err, 'Ticket could not be claimed (already assigned)');
       get().addToast('Claim Conflict', msg, 'warning');
       return false;
     }
@@ -210,7 +211,7 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
 
       return true;
     } catch (err: any) {
-      const msg = err.response?.data?.detail || 'Failed to update ticket status';
+      const msg = normalizeApiError(err, 'Failed to update ticket status');
       get().addToast('Error', msg, 'warning');
       get().fetchQueueApi();
       return false;

@@ -1,5 +1,6 @@
+// @spec BF-02: Single Login Button for Staff Authentication
 import React, { useState, useEffect } from 'react';
-import { MapPin, Clock, Wrench, ShieldCheck } from 'lucide-react';
+import { MapPin, Clock, Lock } from 'lucide-react';
 import { useAppStore } from '../../../store/useAppStore';
 
 export interface KioskTopBarProps {
@@ -46,20 +47,14 @@ export const KioskTopBar: React.FC<KioskTopBarProps> = ({ hubName }) => {
           <span>{clock}</span>
         </div>
 
+        {/* BF-02: Replaced separate IT Support/Admin buttons with single Login button */}
         <button
           onClick={() => openLoginModal('it')}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-canvas hover:bg-surface border border-line text-ink text-xs font-semibold press-fx transition-colors"
+          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-semibold press-fx shadow-xs transition-colors"
+          title="Staff Workspace Login"
         >
-          <Wrench className="w-3.5 h-3.5 text-brand" />
-          <span>IT Support</span>
-        </button>
-
-        <button
-          onClick={() => openLoginModal('admin')}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-semibold press-fx shadow-xs transition-colors"
-        >
-          <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Admin</span>
+          <Lock className="w-3.5 h-3.5 text-emerald-400" />
+          <span>Login</span>
         </button>
       </div>
     </header>

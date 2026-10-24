@@ -1,5 +1,7 @@
 // @spec UI-SHELL-01: Role-Separated Application Flow (Employee Screen -> Staff Login -> Role-Isolated Workspace)
+// @spec BF-02: URL-Aware Employee and Staff Routing, Deep Links & Public Page Preservation
 // @spec FR-VERIF-02: Interactive Closure Verification Modal Mount
+import { useState, useEffect } from 'react';
 import { Sidebar } from './components/layout/Sidebar';
 import { TopHeader } from './components/layout/TopHeader';
 import { ITOverviewDashboard } from './features/overview/ITOverviewDashboard';
@@ -18,18 +20,42 @@ import { QuickIntakeModal } from './components/tickets/QuickIntakeModal';
 import { TicketVerificationModal } from './components/tickets/TicketVerificationModal';
 import { ToastContainer } from './components/common/ToastContainer';
 import { useAppStore } from './store/useAppStore';
-import { useEffect } from 'react';
+import { resolvePathToView } from './utils/routeUtils';
 
 export default function App() {
   const currentUser = useAppStore((state) => state.currentUser);
   const activeView = useAppStore((state) => state.activeView);
+  const setActiveView = useAppStore((state) => state.setActiveView);
   const verifyTicketCode = useAppStore((state) => state.verifyTicketCode);
   const isHydratingAuth = useAppStore((state) => state.isHydratingAuth);
   const hydrateAuthApi = useAppStore((state) => state.hydrateAuthApi);
 
+  const [currentPath, setCurrentPath] = useState(() =>
+    typeof window !== 'undefined' ? window.location.pathname : '/'
+  );
+
   useEffect(() => {
     hydrateAuthApi();
   }, [hydrateAuthApi]);
+
+  // BF-02: Handle browser back/forward and external URL navigation
+  useEffect(() => {
+    const onPopState = () => {
+      const path = window.location.pathname;
+      setCurrentPath(path);
+      const route = resolvePathToView(path);
+      if (route !== 'public' && currentUser) {
+        const isAdmin = currentUser.role === 'admin';
+        const isRestrictedAdminRoute =
+          route === 'analytics' || route === 'team' || route === 'reports';
+        if (!isRestrictedAdminRoute || isAdmin) {
+          setActiveView(route);
+        }
+      }
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [currentUser, setActiveView]);
 
   if (isHydratingAuth) {
     return (
@@ -46,7 +72,12 @@ export default function App() {
       </div>
     );
   }
-  if (!currentUser || verifyTicketCode) {
+
+  const currentRoute = resolvePathToView(currentPath);
+  const isPublicPage = currentRoute === 'public';
+
+  // BF-02: If unauthenticated, on public /report page, or verification link override is active, render Employee Helpdesk
+  if (!currentUser || verifyTicketCode || isPublicPage) {
     return (
       <>
         <EmployeeTicketScreen />

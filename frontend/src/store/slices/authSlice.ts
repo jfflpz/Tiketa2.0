@@ -1,6 +1,9 @@
+// @spec BF-02: Staff Login, Public Navigation & Dashboard Landing
 import type { AppSliceCreator } from '../types';
 import type { AuthenticatedUser, StaffRole, ActiveView } from './uiSlice';
 import { authApi, setAccessToken } from '../../api/client';
+import { resolvePathToView } from '../../utils/routeUtils';
+import { normalizeApiError } from '../../utils/errorUtils';
 
 export interface AuthSlice {
   currentUser: AuthenticatedUser | null;
@@ -10,7 +13,7 @@ export interface AuthSlice {
   isHydratingAuth: boolean;
   hydrateAuthApi: () => Promise<boolean>;
   loginWithApi: (credentials: { username: string; password: string }) => Promise<boolean>;
-  openLoginModal: (role: StaffRole) => void;
+  openLoginModal: (role?: StaffRole) => void;
   closeLoginModal: () => void;
   loginAsStaff: (role: StaffRole, customName?: string) => void;
   logoutToKiosk: () => void;
@@ -35,8 +38,22 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
         if (data?.access_token && data?.user) {
           setAccessToken(data.access_token);
           const userRole: StaffRole = data.user.role === 'admin' ? 'admin' : 'it';
-          const savedView = localStorage.getItem('tiketa_active_view') as ActiveView | null;
-          const targetView = savedView || (userRole === 'admin' ? 'overview' : 'workbench');
+
+          // BF-02: Check URL path on session restoration
+          const currentPath = typeof window !== 'undefined' ? window.location.pathname : '/';
+          const requestedRoute = resolvePathToView(currentPath);
+
+          let targetView: ActiveView = 'overview';
+          if (requestedRoute !== 'public') {
+            // Respect deep link if permitted by role
+            const isAdminView =
+              requestedRoute === 'analytics' ||
+              requestedRoute === 'team' ||
+              requestedRoute === 'reports';
+            if (!isAdminView || userRole === 'admin') {
+              targetView = requestedRoute;
+            }
+          }
 
           set({
             currentUser: {
@@ -78,8 +95,21 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
       setAccessToken(data.access_token);
 
       const userRole: StaffRole = data.user.role === 'admin' ? 'admin' : 'it';
-      const targetView = userRole === 'admin' ? 'overview' : 'workbench';
+
+      // BF-02: Explicit login for either staff role always lands on /dashboard (overview view)
+      const targetView: ActiveView = 'overview';
       localStorage.setItem('tiketa_active_view', targetView);
+
+      // BF-02: Clear verification override without consuming an employee closure confirmation
+      if (get().verifyTicketCode) {
+        get().setVerifyTicketCode(null);
+      }
+
+      // Update URL to canonical /dashboard
+      if (typeof window !== 'undefined') {
+        window.history.pushState(null, '', '/dashboard');
+      }
+
       set({
         currentUser: {
           id: data.user.id,
@@ -106,16 +136,16 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
         'success'
       );
       return true;
-    } catch (err: any) {
-      const msg = err.response?.data?.detail || 'Invalid username or password';
+    } catch (err: unknown) {
+      const msg = normalizeApiError(err, 'Invalid username or password');
       set({ authError: msg, isAuthenticating: false });
       get().addToast('Authentication Failed', msg, 'warning');
       return false;
     }
   },
 
-  openLoginModal: (role) => set({ loginModalRole: role }),
-  closeLoginModal: () => set({ loginModalRole: null }),
+  openLoginModal: (role = 'it') => set({ loginModalRole: role }),
+  closeLoginModal: () => set({ loginModalRole: null, authError: null }),
 
   loginAsStaff: (role, customName) => {
     const user: AuthenticatedUser =
@@ -139,10 +169,14 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
               'https://api.dicebear.com/7.x/avataaars/svg?seed=Edward&backgroundColor=fed7aa',
           };
 
+    if (typeof window !== 'undefined') {
+      window.history.pushState(null, '', '/dashboard');
+    }
+
     set({
       currentUser: user,
       loginModalRole: null,
-      activeView: role === 'admin' ? 'analytics' : 'overview',
+      activeView: 'overview',
       queueFilter: 'ALL',
       locationFilter: 'ALL',
     });
@@ -159,6 +193,11 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
     setAccessToken(null);
     authApi.logout().catch(() => {});
     get().resetReportsState?.();
+
+    if (typeof window !== 'undefined') {
+      window.history.pushState(null, '', '/report');
+    }
+
     set({
       currentUser: null,
       selectedTicketId: null,

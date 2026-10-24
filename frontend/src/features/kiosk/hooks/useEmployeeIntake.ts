@@ -1,7 +1,10 @@
+// @spec BF-01: Reliable Form Submission, Submitting State Restoration, Error Retention
+// @spec BF-03: Six-Button Issue Title & Description Synchronization
 import { useState, useEffect, useRef } from 'react';
 import { useAppStore } from '../../../store/useAppStore';
 import type { TaskCategoryCode, Ticket } from '../../../types/ticket';
 import { LOCATIONS } from '../../../constants/domain';
+import { ISSUE_OPTIONS } from '../components/KioskIntakeForm';
 
 export function useEmployeeIntake() {
   const activeOfficeLocationCode = useAppStore((state) => state.activeOfficeLocationCode);
@@ -90,25 +93,37 @@ export function useEmployeeIntake() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!employeeVerified || isSubmitting) return;
-    if (!description.trim() && !selectedTask) return;
+
+    // BF-03: Retrieve selected six-button issue title
+    const issueMeta = ISSUE_OPTIONS.find((opt) => opt.code === selectedTask);
+    const taskTitle = issueMeta ? issueMeta.title : 'Technical Support Request';
+
+    // BF-01/BF-03: Construct description adhering to backend min 10-char requirement
+    const trimmedDesc = description.trim();
+    const finalDescription = trimmedDesc
+      ? `${taskTitle}: ${trimmedDesc}`
+      : `${taskTitle} reported from ${employeeDetails.location || activeHub.name} employee helpdesk screen.`;
 
     setIsSubmitting(true);
-    const created = await submitTicketApi({
-      employeeId: employeeId.trim().toUpperCase(),
-      taskCode: selectedTask,
-      description:
-        description.trim() ||
-        `Reported from ${employeeDetails.location || activeHub.name} employee helpdesk screen.`,
-      companyName: employeeDetails.company ?? 'Pangasinan Five Star Bus Co.',
-      locationName: employeeDetails.location ?? activeHub.name,
-      departmentName: employeeDetails.department ?? 'Operation',
-      requestorName: declaredName.trim() || 'Terminal Staff',
-    });
+    try {
+      const created = await submitTicketApi({
+        employeeId: employeeId.trim().toUpperCase(),
+        taskCode: selectedTask,
+        taskTitle,
+        description: finalDescription,
+        companyName: employeeDetails.company ?? 'Pangasinan Five Star Bus Co.',
+        locationName: employeeDetails.location ?? activeHub.name,
+        departmentName: employeeDetails.department ?? 'Operations',
+        requestorName: declaredName.trim() || 'Terminal Staff',
+      });
 
-    setIsSubmitting(false);
-    if (created) {
-      setSubmittedTicket(created);
-      setDescription('');
+      if (created) {
+        setSubmittedTicket(created);
+        setDescription('');
+      }
+      // On failure, input is preserved in state so employee does not lose typed data
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
