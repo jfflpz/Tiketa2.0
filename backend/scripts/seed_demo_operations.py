@@ -1,10 +1,12 @@
 import asyncio
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 
+from app.core.config import settings
 from app.core.security import encrypt, hash_password
 from app.db.session import AsyncSessionLocal
 from app.models import (
@@ -20,6 +22,20 @@ from app.models import (
     TicketTechnician,
     User,
 )
+
+PUBLIC_KIOSK_ISSUES = {
+    "PRN-TS",
+    "NET-CFG",
+    "SW-ASST",
+    "PC-HW-REP",
+    "SRV-ASSESS",
+    "PC-PMS",
+}
+
+
+def local(dt: datetime) -> datetime:
+    return dt.astimezone(ZoneInfo(settings.BUSINESS_TIMEZONE))
+
 
 # 1. Location-Department Scopes across transit terminals
 LOCATION_DEPARTMENTS = [
@@ -44,38 +60,38 @@ LOCATION_DEPARTMENTS = [
 
 # 2. Verified Employees across terminals
 EMPLOYEES = [
-    ("FS-1042", "Maria Santos", "maria.santos@fivestarbus.com", "FS", "PSY", "CASH"),
-    ("FS-1088", "Juan Dela Cruz", "juan.delacruz@fivestarbus.com", "FS", "PSY", "OPS"),
+    ("1042", "Maria Santos", "maria.santos@fivestarbus.com", "FS", "PSY", "CASH"),
+    ("1088", "Juan Dela Cruz", "juan.delacruz@fivestarbus.com", "FS", "PSY", "OPS"),
     (
-        "FS-1092",
+        "1092",
         "Roberto D. Garcia",
         "roberto.garcia@fivestarbus.com",
         "FS",
         "PSY",
         "MAINT",
     ),
-    ("FS-1105", "Elena M. Reyes", "elena.reyes@fivestarbus.com", "FS", "PSY", "ACCT"),
-    ("FS-2015", "Ricardo Ramos", "ricardo.ramos@fivestarbus.com", "FS", "CAL", "CASH"),
+    ("1105", "Elena M. Reyes", "elena.reyes@fivestarbus.com", "FS", "PSY", "ACCT"),
+    ("2015", "Ricardo Ramos", "ricardo.ramos@fivestarbus.com", "FS", "CAL", "CASH"),
     (
-        "FS-2022",
+        "2022",
         "Lorna B. Bautista",
         "lorna.bautista@fivestarbus.com",
         "FS",
         "CAL",
         "OPS",
     ),
-    ("FS-2041", "Danilo Tan", "danilo.tan@fivestarbus.com", "FS", "CAL", "MAINT"),
+    ("2041", "Danilo Tan", "danilo.tan@fivestarbus.com", "FS", "CAL", "MAINT"),
     (
-        "FS-3011",
+        "3011",
         "Grace P. Mendoza",
         "grace.mendoza@fivestarbus.com",
         "FS",
         "CMA",
         "CASH",
     ),
-    ("FS-3019", "Ferdinand Cruz", "ferdinand.cruz@fivestarbus.com", "FS", "CMA", "OPS"),
+    ("3019", "Ferdinand Cruz", "ferdinand.cruz@fivestarbus.com", "FS", "CMA", "OPS"),
     (
-        "FS-3044",
+        "3044",
         "Arnel S. Navarro",
         "arnel.navarro@fivestarbus.com",
         "FS",
@@ -83,16 +99,16 @@ EMPLOYEES = [
         "BP-GPS",
     ),
     (
-        "FS-4008",
+        "4008",
         "Teresa G. Aquino",
         "teresa.aquino@fivestarbus.com",
         "FS",
         "AVN",
         "CASH",
     ),
-    ("FS-4015", "Eduardo Lim", "eduardo.lim@fivestarbus.com", "FS", "AVN", "OPS"),
+    ("4015", "Eduardo Lim", "eduardo.lim@fivestarbus.com", "FS", "AVN", "OPS"),
     (
-        "FS-5012",
+        "5012",
         "Nestor V. Macaraeg",
         "nestor.macaraeg@fivestarbus.com",
         "FS",
@@ -100,7 +116,7 @@ EMPLOYEES = [
         "OPS",
     ),
     (
-        "FS-5020",
+        "5020",
         "Wilfredo Perez",
         "wilfredo.perez@fivestarbus.com",
         "FS",
@@ -108,7 +124,7 @@ EMPLOYEES = [
         "MAINT",
     ),
     (
-        "FS-6018",
+        "6018",
         "Maricel D. Soriano",
         "maricel.soriano@fivestarbus.com",
         "FS",
@@ -116,7 +132,7 @@ EMPLOYEES = [
         "OPS",
     ),
     (
-        "FS-7014",
+        "7014",
         "Benjamin Flores",
         "benjamin.flores@fivestarbus.com",
         "FS",
@@ -130,7 +146,7 @@ DEMO_TICKETS = [
     # --- ACTIVE: OPEN QUEUE (Awaiting Triage) ---
     {
         "code": "T-2610-0101",
-        "emp_id": "FS-1042",
+        "emp_id": "1042",
         "task": "PRN-TS",
         "desc": "Thermal ticket printer red error light blinking. Cash booth 2 receipts not printing.",
         "status": "OPEN",
@@ -139,7 +155,7 @@ DEMO_TICKETS = [
     },
     {
         "code": "T-2610-0102",
-        "emp_id": "FS-1088",
+        "emp_id": "1088",
         "task": "NET-CFG",
         "desc": "Passenger Wi-Fi access point in Pasay dispatch waiting lounge unreachable.",
         "status": "OPEN",
@@ -148,7 +164,7 @@ DEMO_TICKETS = [
     },
     {
         "code": "T-2610-0103",
-        "emp_id": "FS-2015",
+        "emp_id": "2015",
         "task": "SW-ASST",
         "desc": "POS Ticketing App database lock error after morning shift handover at Caloocan.",
         "status": "OPEN",
@@ -157,7 +173,7 @@ DEMO_TICKETS = [
     },
     {
         "code": "T-2610-0104",
-        "emp_id": "FS-3011",
+        "emp_id": "3011",
         "task": "PC-HW-REP",
         "desc": "Cubao ticketing cashier monitor flickering and displaying blue artifacts.",
         "status": "OPEN",
@@ -166,7 +182,7 @@ DEMO_TICKETS = [
     },
     {
         "code": "T-2610-0105",
-        "emp_id": "FS-4008",
+        "emp_id": "4008",
         "task": "PRN-TS",
         "desc": "Epson LX-310 roller feed slipping. Conductor manifest printing skewed at Avenida.",
         "status": "OPEN",
@@ -175,7 +191,7 @@ DEMO_TICKETS = [
     },
     {
         "code": "T-2610-0106",
-        "emp_id": "FS-5012",
+        "emp_id": "5012",
         "task": "NET-CFG",
         "desc": "Bataan Mirasol dispatch booth lost internet connection to central booking server.",
         "status": "OPEN",
@@ -184,7 +200,7 @@ DEMO_TICKETS = [
     },
     {
         "code": "T-2610-0107",
-        "emp_id": "FS-3044",
+        "emp_id": "3044",
         "task": "SRV-ASSESS",
         "desc": "GPS tracking receiver server room UPS alarming battery degradation.",
         "status": "OPEN",
@@ -193,7 +209,7 @@ DEMO_TICKETS = [
     },
     {
         "code": "T-2610-0108",
-        "emp_id": "FS-7014",
+        "emp_id": "7014",
         "task": "PC-PMS",
         "desc": "Scheduled quarterly PMS checkup for Tarlac gateway dispatch desktop units.",
         "status": "OPEN",
@@ -203,7 +219,7 @@ DEMO_TICKETS = [
     # --- ACTIVE: IN PROGRESS (Claimed by Technicians) ---
     {
         "code": "T-2610-0109",
-        "emp_id": "FS-1092",
+        "emp_id": "1092",
         "task": "PC-HW-REP",
         "desc": "Pasay Maintenance inspection PC hard drive clicking; cloned to new 500GB SSD.",
         "status": "PROG",
@@ -214,7 +230,7 @@ DEMO_TICKETS = [
     },
     {
         "code": "T-2610-0110",
-        "emp_id": "FS-2022",
+        "emp_id": "2022",
         "task": "NET-CFG",
         "desc": "Caloocan ticketing router VLAN reconfiguration for remote credit card POS swipe terminal.",
         "status": "PROG",
@@ -225,7 +241,7 @@ DEMO_TICKETS = [
     },
     {
         "code": "T-2610-0111",
-        "emp_id": "FS-3019",
+        "emp_id": "3019",
         "task": "SW-ASST",
         "desc": "Remote assistance updating Windows security patches and terminal firewall rules at Cubao.",
         "status": "PROG",
@@ -236,7 +252,7 @@ DEMO_TICKETS = [
     },
     {
         "code": "T-2610-0112",
-        "emp_id": "FS-4015",
+        "emp_id": "4015",
         "task": "PRN-TS",
         "desc": "Avenida terminal ticket printer waste ink counter reset and head alignment.",
         "status": "PROG",
@@ -247,7 +263,7 @@ DEMO_TICKETS = [
     },
     {
         "code": "T-2610-0113",
-        "emp_id": "FS-6018",
+        "emp_id": "6018",
         "task": "PC-HW-REP",
         "desc": "San Carlos shop dispatch desktop power supply replacement (450W PSU).",
         "status": "PROG",
@@ -259,7 +275,7 @@ DEMO_TICKETS = [
     # --- RESOLVED: AWAITING EMPLOYEE CONFIRMATION ---
     {
         "code": "T-2610-0114",
-        "emp_id": "FS-1042",
+        "emp_id": "1042",
         "task": "PRN-TS",
         "desc": "Thermal printer sensor cleaned and calibrated. Test print batch completed with zero errors.",
         "status": "RESL",
@@ -270,7 +286,7 @@ DEMO_TICKETS = [
     },
     {
         "code": "T-2610-0115",
-        "emp_id": "FS-2015",
+        "emp_id": "2015",
         "task": "NET-CFG",
         "desc": "Replaced corroded RJ45 keystone jack in Cash booth 1. Bandwidth restored to 100Mbps.",
         "status": "RESL",
@@ -281,7 +297,7 @@ DEMO_TICKETS = [
     },
     {
         "code": "T-2610-0116",
-        "emp_id": "FS-3011",
+        "emp_id": "3011",
         "task": "SW-ASST",
         "desc": "Reinstalled corrupted ticket barcode scanner driver and verified USB COM port mapping.",
         "status": "RESL",
@@ -293,7 +309,7 @@ DEMO_TICKETS = [
     # --- HISTORICAL CLOSED: COMPLETED REPAIRS (For Analytics & SLA Reports) ---
     {
         "code": "T-2610-0117",
-        "emp_id": "FS-1088",
+        "emp_id": "1088",
         "task": "PRN-TS",
         "desc": "Replaced thermal printhead on Bixolon SRP-330 printer in Pasay dispatch.",
         "status": "CLSD",
@@ -304,7 +320,7 @@ DEMO_TICKETS = [
     },
     {
         "code": "T-2610-0118",
-        "emp_id": "FS-1105",
+        "emp_id": "1105",
         "task": "SW-ASST",
         "desc": "Accounting Excel macro runtime error debugged and cell formatting restored.",
         "status": "CLSD",
@@ -315,7 +331,7 @@ DEMO_TICKETS = [
     },
     {
         "code": "T-2610-0119",
-        "emp_id": "FS-2041",
+        "emp_id": "2041",
         "task": "PC-PMS",
         "desc": "Cleaned dust filters, applied thermal paste, and tested CPU temps on Caloocan shop PC.",
         "status": "CLSD",
@@ -326,7 +342,7 @@ DEMO_TICKETS = [
     },
     {
         "code": "T-2610-0120",
-        "emp_id": "FS-5020",
+        "emp_id": "5020",
         "task": "NET-CFG",
         "desc": "Rebooted and reconfigured Bataan Mirasol Mikrotik router DHCP lease reservations.",
         "status": "CLSD",
@@ -337,7 +353,7 @@ DEMO_TICKETS = [
     },
     {
         "code": "T-2610-0121",
-        "emp_id": "FS-4015",
+        "emp_id": "4015",
         "task": "PC-HW-REP",
         "desc": "Replaced blown 12V DC power brick on Avenida conductor manifest workstation.",
         "status": "CLSD",
@@ -348,7 +364,7 @@ DEMO_TICKETS = [
     },
     {
         "code": "T-2610-0122",
-        "emp_id": "FS-3044",
+        "emp_id": "3044",
         "task": "SRV-ASSESS",
         "desc": "Routine verification of GPS telemetry ingestion health on central server.",
         "status": "CLSD",
@@ -359,7 +375,7 @@ DEMO_TICKETS = [
     },
     {
         "code": "T-2610-0123",
-        "emp_id": "FS-1042",
+        "emp_id": "1042",
         "task": "SW-ASST",
         "desc": "Resolved printer paper size mismatch (A4 vs Receipt roll) in terminal booking portal.",
         "status": "CLSD",
@@ -370,7 +386,7 @@ DEMO_TICKETS = [
     },
     {
         "code": "T-2610-0124",
-        "emp_id": "FS-2022",
+        "emp_id": "2022",
         "task": "PRN-TS",
         "desc": "Cleared stuck receipt paper roll from cutter assembly in Caloocan booth 3.",
         "status": "CLSD",
@@ -381,7 +397,7 @@ DEMO_TICKETS = [
     },
     {
         "code": "T-2610-0125",
-        "emp_id": "FS-7014",
+        "emp_id": "7014",
         "task": "NET-CFG",
         "desc": "Replaced bad patch cable between switch and Tarlac terminal supervisor desk.",
         "status": "CLSD",
@@ -500,8 +516,8 @@ async def seed():
                 if existing:
                     continue
 
-                start_date = (now - timedelta(days=tdata["days_ago"])).date()
                 start_dt = now - timedelta(days=tdata["days_ago"], hours=2)
+                start_date = local(start_dt).date()
                 tech = admin_user if tdata.get("tech_role") == "admin" else tech_user
 
                 status = tdata["status"]
@@ -511,13 +527,15 @@ async def seed():
                 duration = None
 
                 if status in ("RESL", "CLSD"):
-                    res_dt = start_dt + timedelta(
-                        minutes=int(float(tdata.get("hours_labor") or 1) * 60)
-                    )
-                    date_fin = res_dt.date()
                     duration = tdata.get("hours_labor") or Decimal("1.00")
+                    res_dt = start_dt + timedelta(minutes=int(float(duration) * 60))
+                    date_fin = local(res_dt).date()
                 if status == "CLSD":
                     conf_dt = res_dt + timedelta(hours=1)
+
+                reported_issue = (
+                    tdata["task"] if tdata["task"] in PUBLIC_KIOSK_ISSUES else None
+                )
 
                 ticket = Ticket(
                     ticket_code=code,
@@ -528,6 +546,7 @@ async def seed():
                     department_id=emp.department_id,
                     requester_name=emp.full_name,
                     requester_contact_enc=encrypt(emp.email),
+                    reported_issue_code=reported_issue,
                     task_code=tdata["task"],
                     description_enc=encrypt(tdata["desc"]),
                     mode=tdata.get("mode"),

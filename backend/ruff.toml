@@ -1,4 +1,5 @@
 target-version = "py312"
+extend-exclude = ["deploy"]
 
 [lint]
 select = ["E4", "E7", "E9", "F", "I", "RUF022"]
