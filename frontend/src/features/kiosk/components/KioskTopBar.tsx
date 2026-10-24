@@ -30,9 +30,9 @@ export const KioskTopBar: React.FC<KioskTopBarProps> = ({ hubName }) => {
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2 font-bold tracking-tight text-ink text-sm">
           <div className="w-6 h-6 rounded-lg bg-brand flex items-center justify-center text-white font-black text-xs">
-            5*
+            T
           </div>
-          <span>Five Star IT Helpdesk Kiosk</span>
+          <span>Tiketa</span>
         </div>
         <span className="hidden sm:inline-block text-ink-faint">•</span>
         <div className="hidden sm:flex items-center gap-1.5 text-ink-subtle">
