@@ -247,3 +247,98 @@ export const reportsApi = {
     return res.data;
     },
 };
+
+export interface BackendUser {
+    id: string;
+    username: string;
+    email: string;
+    full_name: string;
+    role: 'it' | 'admin';
+    is_active: boolean;
+    location_id?: string | null;
+    token_version?: number;
+    created_at?: string;
+    updated_at?: string;
+}
+
+export interface UserCreateInput {
+    username: string;
+    email: string;
+    full_name: string;
+    role: 'it' | 'admin';
+    password: string;
+    location_id?: string | null;
+}
+
+export interface UserUpdateInput {
+    full_name?: string | null;
+    role?: 'it' | 'admin' | null;
+    is_active?: boolean | null;
+    password?: string | null;
+    location_id?: string | null;
+}
+
+export interface EmployeeCreateInput {
+    employee_id: string;
+    full_name: string;
+    email: string;
+    company_id: string;
+    location_id: string;
+    department_id: string;
+}
+
+export interface DictionaryItem {
+    id: string;
+    code: string;
+    name: string;
+}
+
+export interface DictionariesResponse {
+    companies: DictionaryItem[];
+    locations: DictionaryItem[];
+    departments: DictionaryItem[];
+    tasks: DictionaryItem[];
+    location_departments: Array<{ location_id: string; department_id: string }>;
+}
+
+export const extractApiErrorMessage = (err: unknown, fallback: string): string => {
+    if (err && typeof err === 'object' && 'response' in err) {
+        const axiosErr = err as { response?: { data?: { detail?: unknown } } };
+        const detail = axiosErr.response?.data?.detail;
+        if (typeof detail === 'string') return detail;
+        if (Array.isArray(detail)) {
+            return detail.map((d: any) => d.msg || String(d)).join('; ');
+        }
+    }
+    if (err instanceof Error) {
+        return err.message;
+    }
+    return fallback;
+};
+
+export const adminApi = {
+    getUsers: async (params?: { offset?: number; limit?: number }): Promise<BackendUser[]> => {
+        const res = await apiClient.get<BackendUser[]>('/admin/users', { params });
+        return res.data;
+    },
+    createUser: async (payload: UserCreateInput): Promise<BackendUser> => {
+        const res = await apiClient.post<BackendUser>('/admin/users', payload);
+        return res.data;
+    },
+    updateUser: async (userId: string, payload: UserUpdateInput): Promise<BackendUser> => {
+        const res = await apiClient.patch<BackendUser>(`/admin/users/${userId}`, payload);
+        return res.data;
+    },
+    getEmployees: async (params?: { offset?: number; limit?: number }): Promise<EmployeeLookupResult[]> => {
+        const res = await apiClient.get<EmployeeLookupResult[]>('/admin/employees', { params });
+        return res.data;
+    },
+    createEmployee: async (payload: EmployeeCreateInput): Promise<EmployeeLookupResult> => {
+        const res = await apiClient.post<EmployeeLookupResult>('/admin/employees', payload);
+        return res.data;
+    },
+    getDictionaries: async (): Promise<DictionariesResponse> => {
+        const res = await apiClient.get<DictionariesResponse>('/dictionaries');
+        return res.data;
+    },
+};

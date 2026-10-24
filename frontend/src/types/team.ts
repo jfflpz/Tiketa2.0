@@ -15,8 +15,10 @@ export type TeamRole =
 export interface TeamMember {
   id: string;
   name: string;
+  username?: string;
   email: string;
   role: TeamRole;
+  systemRole?: 'it' | 'admin';
   avatar: string;
   department: string;
   status: TeamMemberStatus;
@@ -24,6 +26,7 @@ export interface TeamMember {
   ticketsClosed: number;
   activeTickets: number;
   flameScore: number;
+  is_active?: boolean;
 }
 
 export interface WorkflowActivityItem {

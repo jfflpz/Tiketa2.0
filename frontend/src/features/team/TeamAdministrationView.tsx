@@ -1,6 +1,6 @@
 // @spec UI-TEAM-01: IT Support Specialist Roster, Employee Directory & Account Governance
-import React, { useState } from 'react';
-import { UserPlus, Plus, Briefcase, Fingerprint, Clock, Search } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { UserPlus, Plus, Briefcase, Fingerprint, Clock, Search, RefreshCw, Loader2 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { TeamKpiSummaryCards } from './components/TeamKpiSummaryCards';
 import { ITStaffTable } from './components/ITStaffTable';
@@ -11,16 +11,22 @@ import { AddEmployeeModal } from './components/AddEmployeeModal';
 
 export const TeamAdministrationView: React.FC = () => {
   const itTeamMembers = useAppStore((state) => state.itTeamMembers);
-  const createITMember = useAppStore((state) => state.createITMember);
-  const deleteITMember = useAppStore((state) => state.deleteITMember);
+  const fetchITMembers = useAppStore((state) => state.fetchITMembers);
+  const createITMemberApi = useAppStore((state) => state.createITMemberApi);
+  const deleteITMemberApi = useAppStore((state) => state.deleteITMemberApi);
+
   const verifiedEmployeesList = useAppStore((state) => state.verifiedEmployeesList);
-  const createEmployee = useAppStore((state) => state.createEmployee);
-  const deleteEmployee = useAppStore((state) => state.deleteEmployee);
+  const fetchEmployees = useAppStore((state) => state.fetchEmployees);
+  const createEmployeeApi = useAppStore((state) => state.createEmployeeApi);
+  const deleteEmployeeApi = useAppStore((state) => state.deleteEmployeeApi);
+
+  const fetchDictionaries = useAppStore((state) => state.fetchDictionaries);
+  const isLoadingTeam = useAppStore((state) => state.isLoadingTeam);
+
   const tickets = useAppStore((state) => state.tickets);
   const setSelectedTicketId = useAppStore((state) => state.setSelectedTicketId);
   const setActiveView = useAppStore((state) => state.setActiveView);
   const currentUser = useAppStore((state) => state.currentUser);
-  const addToast = useAppStore((state) => state.addToast);
 
   const [activeTab, setActiveTab] = useState<'IT_STAFF' | 'EMPLOYEES' | 'ACTIVITY'>('IT_STAFF');
   const [employeeSearch, setEmployeeSearch] = useState('');
@@ -29,6 +35,13 @@ export const TeamAdministrationView: React.FC = () => {
   // Modals state
   const [isAddITModalOpen, setAddITModalOpen] = useState(false);
   const [isAddEmployeeModalOpen, setAddEmployeeModalOpen] = useState(false);
+
+  // Load real database records on mount
+  useEffect(() => {
+    fetchDictionaries();
+    fetchITMembers();
+    fetchEmployees();
+  }, [fetchDictionaries, fetchITMembers, fetchEmployees]);
 
   // Operational metrics
   const activeTechCount = itTeamMembers.filter((m) => m.status === 'active').length;
@@ -52,6 +65,8 @@ export const TeamAdministrationView: React.FC = () => {
     if (!q) return true;
     return (
       m.name.toLowerCase().includes(q) ||
+      (m.username && m.username.toLowerCase().includes(q)) ||
+      m.email.toLowerCase().includes(q) ||
       m.role.toLowerCase().includes(q) ||
       m.primaryLocation.toLowerCase().includes(q) ||
       m.department.toLowerCase().includes(q)
@@ -67,7 +82,7 @@ export const TeamAdministrationView: React.FC = () => {
             <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase tracking-wider">
               Governance &amp; Accounts
             </span>
-            <span className="text-xs font-mono text-zinc-400">2-Tier RBAC Staff Suite</span>
+            <span className="text-xs font-mono text-zinc-400">PostgreSQL Live RBAC Suite</span>
           </div>
           <h1 className="text-xl font-bold tracking-tight text-ink mt-1">
             IT Team Roster &amp; Account Governance
@@ -78,6 +93,19 @@ export const TeamAdministrationView: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            disabled={isLoadingTeam}
+            onClick={() => {
+              fetchITMembers();
+              fetchEmployees();
+            }}
+            className="p-2 rounded-xl border border-[#ECEEF2] bg-white hover:bg-zinc-50 text-zinc-600 transition-colors shadow-sm disabled:opacity-50 press-fx"
+            title="Refresh directory from server"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoadingTeam ? 'animate-spin text-orange-600' : ''}`} />
+          </button>
+
           <button
             type="button"
             onClick={() => setAddITModalOpen(true)}
@@ -98,7 +126,7 @@ export const TeamAdministrationView: React.FC = () => {
         </div>
       </div>
 
-      {/* Top 5 Operational Transit IT KPI Cards */}
+      {/* Top Operational IT KPI Cards */}
       <TeamKpiSummaryCards
         itStaffCount={itTeamMembers.length}
         activeTechCount={activeTechCount}
@@ -107,7 +135,7 @@ export const TeamAdministrationView: React.FC = () => {
         verifiedEmployeesCount={verifiedEmployeesList.length}
       />
 
-      {/* Directory & Management Segmented Controls */}
+      {/* Segmented Controls and Search Bar */}
       <div className="bg-white border border-[#ECEEF2] rounded-2xl p-2 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-1.5 overflow-x-auto">
           <button
@@ -150,7 +178,7 @@ export const TeamAdministrationView: React.FC = () => {
           </button>
         </div>
 
-        {/* Search input based on active tab */}
+        {/* Search Input */}
         {activeTab === 'IT_STAFF' && (
           <div className="relative">
             <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -178,50 +206,59 @@ export const TeamAdministrationView: React.FC = () => {
         )}
       </div>
 
-      {/* TAB 1: IT SUPPORT SPECIALISTS ROSTER */}
-      {activeTab === 'IT_STAFF' && (
-        <ITStaffTable
-          staff={filteredITStaff}
-          currentUserEmail={currentUser?.email}
-          onDeleteMember={(id, name) => {
-            if (window.confirm(`Are you sure you want to delete ${name}'s IT account?`)) {
-              deleteITMember(id);
-              addToast('Account Deleted', `Removed ${name} from IT staff roster.`, 'info');
-            }
-          }}
-        />
-      )}
+      {isLoadingTeam && itTeamMembers.length === 0 ? (
+        <div className="bg-white border border-[#ECEEF2] rounded-3xl p-12 text-center space-y-3 shadow-card">
+          <Loader2 className="w-8 h-8 text-orange-600 animate-spin mx-auto" />
+          <p className="text-xs font-semibold text-zinc-600">Loading accounts from backend database...</p>
+        </div>
+      ) : (
+        <>
+          {/* TAB 1: IT SUPPORT SPECIALISTS ROSTER */}
+          {activeTab === 'IT_STAFF' && (
+            <ITStaffTable
+              staff={filteredITStaff}
+              currentUserEmail={currentUser?.email}
+              onDeleteMember={(id, name) => {
+                deleteITMemberApi(id, name);
+              }}
+            />
+          )}
 
-      {/* TAB 2: VERIFIED EMPLOYEE DIRECTORY */}
-      {activeTab === 'EMPLOYEES' && (
-        <VerifiedEmployeeTable
-          employees={filteredEmployees}
-          onOpenAddModal={() => setAddEmployeeModalOpen(true)}
-          onDeleteEmployee={(empId, name) => {
-            if (window.confirm(`Delete employee profile for ${name} (${empId})?`)) {
-              deleteEmployee(empId);
-              addToast('Profile Removed', `Deleted employee directory profile for ${name}.`, 'info');
-            }
-          }}
-        />
-      )}
+          {/* TAB 2: VERIFIED EMPLOYEE DIRECTORY */}
+          {activeTab === 'EMPLOYEES' && (
+            <VerifiedEmployeeTable
+              employees={filteredEmployees}
+              onOpenAddModal={() => setAddEmployeeModalOpen(true)}
+              onDeleteEmployee={(empId, name) => {
+                deleteEmployeeApi(empId, name);
+              }}
+            />
+          )}
 
-      {/* TAB 3: RECENT TECHNICIAN ACTIVITY */}
-      {activeTab === 'ACTIVITY' && (
-        <TechnicianActivityFeed
-          tickets={tickets}
-          onSelectTicket={setSelectedTicketId}
-          onOpenQueue={() => setActiveView('tickets')}
-        />
+          {/* TAB 3: RECENT TECHNICIAN ACTIVITY */}
+          {activeTab === 'ACTIVITY' && (
+            <TechnicianActivityFeed
+              tickets={tickets}
+              onSelectTicket={setSelectedTicketId}
+              onOpenQueue={() => setActiveView('tickets')}
+            />
+          )}
+        </>
       )}
 
       {/* MODAL 1: CREATE IT SPECIALIST ACCOUNT */}
       <CreateITStaffModal
         isOpen={isAddITModalOpen}
         onClose={() => setAddITModalOpen(false)}
-        onSubmit={(data) => {
-          createITMember(data);
-          addToast('Account Created', `Provisioned IT specialist account for ${data.name}.`, 'success');
+        onSubmit={async (data) => {
+          return await createITMemberApi({
+            username: data.username,
+            password: data.password,
+            full_name: data.name,
+            email: data.email,
+            role: data.systemRole,
+            location_id: data.locationId ?? null,
+          });
         }}
       />
 
@@ -229,9 +266,8 @@ export const TeamAdministrationView: React.FC = () => {
       <AddEmployeeModal
         isOpen={isAddEmployeeModalOpen}
         onClose={() => setAddEmployeeModalOpen(false)}
-        onSubmit={(data) => {
-          createEmployee(data);
-          addToast('Profile Saved', `Registered ${data.full_name} (${data.employee_id}) in employee directory.`, 'success');
+        onSubmit={async (data) => {
+          return await createEmployeeApi(data);
         }}
       />
     </div>

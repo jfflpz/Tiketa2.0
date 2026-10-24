@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapPin, Briefcase, Flame, Trash2 } from 'lucide-react';
+import { MapPin, Briefcase, Flame, Trash2, ShieldAlert } from 'lucide-react';
 import type { TeamMember } from '../../../types/team';
 
 export interface ITStaffTableProps {
@@ -13,15 +13,33 @@ export const ITStaffTable: React.FC<ITStaffTableProps> = ({
   currentUserEmail,
   onDeleteMember,
 }) => {
+  if (staff.length === 0) {
+    return (
+      <div className="bg-white border border-[#ECEEF2] rounded-3xl p-12 text-center space-y-3 shadow-card">
+        <ShieldAlert className="w-10 h-10 text-zinc-300 mx-auto" />
+        <h3 className="text-sm font-bold text-ink">No Staff Accounts Found</h3>
+        <p className="text-xs text-zinc-500 max-w-sm mx-auto">
+          No authorized IT staff or administrator accounts are registered in the database, or an error occurred loading them.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {staff.map((member) => {
-          const isCurrentUser = currentUserEmail === member.email;
+          const isCurrentUser = currentUserEmail?.toLowerCase() === member.email.toLowerCase();
+          const isDeactivated = member.is_active === false;
+
           return (
             <div
               key={member.id}
-              className="bg-white border border-[#ECEEF2] rounded-2xl p-4 shadow-card hover:border-orange-300 transition-all flex flex-col justify-between space-y-3"
+              className={`bg-white border rounded-2xl p-4 shadow-card transition-all flex flex-col justify-between space-y-3 ${
+                isDeactivated
+                  ? 'border-zinc-200 opacity-60 bg-zinc-50/50'
+                  : 'border-[#ECEEF2] hover:border-orange-300'
+              }`}
             >
               <div className="space-y-3">
                 <div className="flex items-start justify-between gap-3">
@@ -32,16 +50,24 @@ export const ITStaffTable: React.FC<ITStaffTableProps> = ({
                       className="w-11 h-11 rounded-full border border-[#ECEEF2] bg-zinc-50 shrink-0"
                     />
                     <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <h3 className="text-xs font-bold text-ink truncate">{member.name}</h3>
                         {isCurrentUser && (
                           <span className="px-1.5 py-0.2 rounded bg-orange-100 text-orange-700 text-[9px] font-extrabold uppercase">
                             You
                           </span>
                         )}
+                        {member.systemRole === 'admin' && (
+                          <span className="px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 text-[9px] font-extrabold uppercase">
+                            Admin
+                          </span>
+                        )}
                       </div>
                       <p className="text-[11px] text-zinc-400 truncate">{member.email}</p>
-                      <span className="inline-block mt-0.5 text-[10px] font-semibold text-orange-600">
+                      {member.username && (
+                        <p className="text-[10px] font-mono text-orange-600 font-semibold">@{member.username}</p>
+                      )}
+                      <span className="inline-block mt-0.5 text-[10px] font-semibold text-zinc-600">
                         {member.role}
                       </span>
                     </div>
@@ -49,23 +75,21 @@ export const ITStaffTable: React.FC<ITStaffTableProps> = ({
 
                   <span
                     className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
-                      member.status === 'active'
+                      isDeactivated
+                        ? 'bg-zinc-100 text-zinc-500 border border-zinc-200'
+                        : member.status === 'active'
                         ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                        : member.status === 'away'
-                        ? 'bg-amber-50 text-amber-700 border border-amber-200'
                         : 'bg-zinc-100 text-zinc-600'
                     }`}
                   >
                     <span
                       className={`w-1.5 h-1.5 rounded-full ${
-                        member.status === 'active'
-                          ? 'bg-emerald-500 animate-pulse'
-                          : member.status === 'away'
-                          ? 'bg-amber-500'
-                          : 'bg-zinc-400'
+                        isDeactivated
+                          ? 'bg-zinc-400'
+                          : 'bg-emerald-500 animate-pulse'
                       }`}
                     />
-                    {member.status === 'active' ? 'Online' : member.status === 'away' ? 'Away' : 'Offline'}
+                    {isDeactivated ? 'Deactivated' : 'Active'}
                   </span>
                 </div>
 
@@ -110,12 +134,16 @@ export const ITStaffTable: React.FC<ITStaffTableProps> = ({
                   {member.flameScore} Rating
                 </span>
 
-                {!isCurrentUser && (
+                {!isCurrentUser && !isDeactivated && (
                   <button
                     type="button"
-                    onClick={() => onDeleteMember(member.id, member.name)}
+                    onClick={() => {
+                      if (window.confirm(`Deactivate staff account @${member.username || member.name}?`)) {
+                        onDeleteMember(member.id, member.name);
+                      }
+                    }}
                     className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-600 hover:bg-rose-50 transition-colors press-fx"
-                    title="Delete IT Specialist Account"
+                    title="Deactivate Staff Account"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
