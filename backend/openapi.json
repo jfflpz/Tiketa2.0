@@ -121,6 +121,80 @@
         "title": "EmployeeInput",
         "type": "object"
       },
+      "EmployeeMatchInput": {
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "format": "email",
+            "maxLength": 150,
+            "title": "Email",
+            "type": "string"
+          },
+          "employee_id": {
+            "maxLength": 50,
+            "minLength": 1,
+            "pattern": "^[0-9]{1,50}$",
+            "title": "Employee Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "employee_id",
+          "email"
+        ],
+        "title": "EmployeeMatchInput",
+        "type": "object"
+      },
+      "EmployeeMatchOut": {
+        "properties": {
+          "employee": {
+            "$ref": "#/components/schemas/EmployeeScopeOut"
+          },
+          "match_token": {
+            "title": "Match Token",
+            "type": "string"
+          },
+          "matched": {
+            "default": true,
+            "title": "Matched",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "match_token",
+          "employee"
+        ],
+        "title": "EmployeeMatchOut",
+        "type": "object"
+      },
+      "EmployeeScopeOut": {
+        "properties": {
+          "company_name": {
+            "title": "Company Name",
+            "type": "string"
+          },
+          "department_name": {
+            "title": "Department Name",
+            "type": "string"
+          },
+          "full_name": {
+            "title": "Full Name",
+            "type": "string"
+          },
+          "location_name": {
+            "title": "Location Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "full_name",
+          "company_name",
+          "location_name",
+          "department_name"
+        ],
+        "title": "EmployeeScopeOut",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -132,6 +206,73 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "LocationObservationInput": {
+        "additionalProperties": false,
+        "properties": {
+          "accuracy": {
+            "minimum": 0.0,
+            "title": "Accuracy",
+            "type": "number"
+          },
+          "captured_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Captured At"
+          },
+          "latitude": {
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Latitude",
+            "type": "number"
+          },
+          "longitude": {
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Longitude",
+            "type": "number"
+          },
+          "session_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "latitude",
+          "longitude",
+          "accuracy"
+        ],
+        "title": "LocationObservationInput",
+        "type": "object"
+      },
+      "LocationObservationOut": {
+        "properties": {
+          "observation_id": {
+            "format": "uuid",
+            "title": "Observation Id",
+            "type": "string"
+          },
+          "status": {
+            "default": "recorded",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "observation_id"
+        ],
+        "title": "LocationObservationOut",
         "type": "object"
       },
       "Login": {
@@ -228,6 +369,93 @@
           "created_at"
         ],
         "title": "PublicTicket",
+        "type": "object"
+      },
+      "QuickIntakeInput": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "maxLength": 20000,
+            "minLength": 10,
+            "title": "Description",
+            "type": "string"
+          },
+          "employee_id": {
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "pattern": "^[0-9]{1,50}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Employee Id"
+          },
+          "match_token": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Match Token"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "REM",
+                  "SITE"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode"
+          },
+          "observation_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observation Id"
+          },
+          "reported_issue_code": {
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reported Issue Code"
+          },
+          "task_code": {
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Task Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_code",
+          "description"
+        ],
+        "title": "QuickIntakeInput",
         "type": "object"
       },
       "ScopeInput": {
@@ -349,11 +577,41 @@
             "type": "string"
           },
           "employee_id": {
-            "maxLength": 50,
-            "minLength": 1,
-            "pattern": "^[0-9]{1,50}$",
-            "title": "Employee Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "pattern": "^[0-9]{1,50}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Employee Id"
+          },
+          "match_token": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Match Token"
+          },
+          "observation_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observation Id"
           },
           "reported_issue_code": {
             "anyOf": [
@@ -375,7 +633,6 @@
           }
         },
         "required": [
-          "employee_id",
           "task_code",
           "description"
         ],
@@ -576,6 +833,17 @@
             "title": "Task Code",
             "type": "string"
           },
+          "technician_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Technician Name"
+          },
           "ticket_code": {
             "title": "Ticket Code",
             "type": "string"
@@ -734,6 +1002,16 @@
       },
       "UserOut": {
         "properties": {
+          "active_bench": {
+            "default": 0,
+            "title": "Active Bench",
+            "type": "integer"
+          },
+          "closed_repairs": {
+            "default": 0,
+            "title": "Closed Repairs",
+            "type": "integer"
+          },
           "email": {
             "title": "Email",
             "type": "string"
@@ -1551,9 +1829,96 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Lookup",
         "tags": [
           "Directory"
+        ]
+      }
+    },
+    "/api/v1/employees/match": {
+      "post": {
+        "operationId": "match_employee_api_v1_employees_match_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmployeeMatchInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmployeeMatchOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Match Employee",
+        "tags": [
+          "Directory"
+        ]
+      }
+    },
+    "/api/v1/locations/observations": {
+      "post": {
+        "operationId": "record_observation_api_v1_locations_observations_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocationObservationInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocationObservationOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Record Observation",
+        "tags": [
+          "Locations"
         ]
       }
     },
@@ -1963,7 +2328,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/TicketInput"
+                "$ref": "#/components/schemas/QuickIntakeInput"
               }
             }
           },

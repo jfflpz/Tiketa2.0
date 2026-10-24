@@ -11,6 +11,7 @@ import type { Ticket } from '../../types/ticket';
 import { TicketQueueFilterToolbar } from './components/TicketQueueFilterToolbar';
 import { TicketQueueTable } from './components/TicketQueueTable';
 import { TicketQueueKanbanBoard } from './components/TicketQueueKanbanBoard';
+import { TicketResolveModal } from './components/TicketResolveModal';
 
 export const TicketListsView: React.FC = () => {
   const currentUser = useAppStore((state) => state.currentUser);
@@ -23,10 +24,11 @@ export const TicketListsView: React.FC = () => {
   const setLocationFilter = useAppStore((state) => state.setLocationFilter);
   const claimTicketApi = useAppStore((state) => state.claimTicketApi);
   const fetchQueueApi = useAppStore((state) => state.fetchQueueApi);
+  const fetchITMembers = useAppStore((state) => state.fetchITMembers);
+  const fetchDictionaries = useAppStore((state) => state.fetchDictionaries);
   const isFetchingQueue = useAppStore((state) => state.isFetchingQueue);
   const assignTicket = useAppStore((state) => state.assignTicket);
   const itTeamMembers = useAppStore((state) => state.itTeamMembers);
-  const resolveTicket = useAppStore((state) => state.resolveTicket);
   const setSelectedTicketId = useAppStore((state) => state.setSelectedTicketId);
   const setQuickIntakeOpen = useAppStore((state) => state.setQuickIntakeOpen);
   const setActiveView = useAppStore((state) => state.setActiveView);
@@ -36,6 +38,7 @@ export const TicketListsView: React.FC = () => {
 
   const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [ticketToResolve, setTicketToResolve] = useState<Ticket | null>(null);
 
   const currentTechName = currentUser?.name ?? 'Nathaniel D. Esguerra';
   const isAdmin = currentUser?.role === 'admin';
@@ -89,12 +92,14 @@ export const TicketListsView: React.FC = () => {
   };
 
   useEffect(() => {
+    fetchDictionaries();
+    fetchITMembers();
     fetchQueueApi();
     const interval = setInterval(() => {
       fetchQueueApi();
     }, 15000);
     return () => clearInterval(interval);
-  }, [fetchQueueApi]);
+  }, [fetchQueueApi, fetchITMembers, fetchDictionaries]);
 
   const handleClaimAndWork = async (e: React.MouseEvent, ticket: Ticket) => {
     e.stopPropagation();
@@ -201,9 +206,9 @@ export const TicketListsView: React.FC = () => {
           onSelectTicket={setSelectedTicketId}
           onClaimAndWork={handleClaimAndWork}
           onFocusWorkbench={handleFocusWorkbench}
-          onResolveTicket={(e, id) => {
+          onResolveTicket={(e, ticket) => {
             e.stopPropagation();
-            resolveTicket(id);
+            setTicketToResolve(ticket);
           }}
           onCopyVerification={handleCopyVerification}
           onAssignTicket={assignTicket}
@@ -220,11 +225,17 @@ export const TicketListsView: React.FC = () => {
           onSelectTicket={setSelectedTicketId}
           onClaimAndWork={handleClaimAndWork}
           onFocusWorkbench={handleFocusWorkbench}
-          onResolveTicket={resolveTicket}
+          onResolveTicket={(ticket) => setTicketToResolve(ticket)}
           onCopyVerification={handleCopyVerification}
           onAssignTicket={assignTicket}
         />
       )}
+
+      {/* Quick Resolve Confirmation Modal */}
+      <TicketResolveModal
+        ticket={ticketToResolve}
+        onClose={() => setTicketToResolve(null)}
+      />
     </div>
   );
 };

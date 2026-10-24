@@ -51,16 +51,25 @@ async def intake(client, headers):
 
 
 async def test_lookup_and_public_intake(client, accounts):
-    profile = (await client.get("/api/v1/employees/lookup?q=1042")).json()
+    profile = (
+        await client.get("/api/v1/employees/lookup?q=1042", headers=accounts["tech"])
+    ).json()
     assert (
         profile["location_name"] == "Pasay"
         and profile["department_name"] == "Cash Management"
     )
     assert (
-        await client.get("/api/v1/employees/lookup?q=maria.santos@example.com")
+        await client.get(
+            "/api/v1/employees/lookup?q=maria.santos@example.com",
+            headers=accounts["tech"],
+        )
     ).status_code == 200
-    assert (await client.get("/api/v1/employees/lookup?q=ghost")).status_code == 422
-    assert (await client.get("/api/v1/employees/lookup?q=FS-1042")).status_code == 422
+    assert (
+        await client.get("/api/v1/employees/lookup?q=ghost", headers=accounts["tech"])
+    ).status_code == 422
+    assert (
+        await client.get("/api/v1/employees/lookup?q=FS-1042", headers=accounts["tech"])
+    ).status_code == 422
     assert await client.post(
         "/api/v1/tickets/submit", json={**BODY, "company_id": str(uuid4())}
     )
@@ -469,10 +478,18 @@ async def test_directory_scope_and_governance(client, accounts):
         )
         == 2
     )
-    assert (await client.get("/api/v1/employees/lookup?q=2000")).status_code == 404
+    assert (
+        await client.get("/api/v1/employees/lookup?q=2000", headers=accounts["admin"])
+    ).status_code == 404
 
 
-async def test_lookup_rate_limit(client):
+async def test_lookup_rate_limit(client, accounts):
     for _ in range(60):
-        assert (await client.get("/api/v1/employees/lookup?q=1042")).status_code == 200
-    assert (await client.get("/api/v1/employees/lookup?q=1042")).status_code == 429
+        assert (
+            await client.get(
+                "/api/v1/employees/lookup?q=1042", headers=accounts["tech"]
+            )
+        ).status_code == 200
+    assert (
+        await client.get("/api/v1/employees/lookup?q=1042", headers=accounts["tech"])
+    ).status_code == 429

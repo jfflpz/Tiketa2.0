@@ -242,7 +242,9 @@ async def test_reports_endpoints_filters_and_authorization(client, accounts, tmp
             headers=accounts["admin"],
         )
     ).status_code == 422
-    profile = (await client.get("/api/v1/employees/lookup?q=1042")).json()
+    profile = (
+        await client.get("/api/v1/employees/lookup?q=1042", headers=accounts["admin"])
+    ).json()
     plan = dict(
         location_id=profile["location_id"],
         department_id=profile["department_id"],

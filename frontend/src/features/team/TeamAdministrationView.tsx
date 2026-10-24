@@ -28,10 +28,12 @@ export const TeamAdministrationView: React.FC = () => {
   const setSelectedTicketId = useAppStore((state) => state.setSelectedTicketId);
   const setActiveView = useAppStore((state) => state.setActiveView);
   const currentUser = useAppStore((state) => state.currentUser);
+  const addToast = useAppStore((state) => state.addToast);
 
   const [activeTab, setActiveTab] = useState<'IT_STAFF' | 'EMPLOYEES' | 'ACTIVITY'>('IT_STAFF');
   const [employeeSearch, setEmployeeSearch] = useState('');
   const [itSearch, setItSearch] = useState('');
+  const [isManualRefreshing, setIsManualRefreshing] = useState(false);
 
   // Modals state
   const [isAddITModalOpen, setAddITModalOpen] = useState(false);
@@ -75,7 +77,7 @@ export const TeamAdministrationView: React.FC = () => {
     );
   });
 
-  // Calculate live closed and active repairs dynamically per staff member
+  // Combine authoritative server metrics with reactive client ticket mutations
   const itStaffWithLiveMetrics = useMemo(() => {
     return filteredITStaff.map((m) => {
       const userTickets = tickets.filter(
@@ -84,18 +86,39 @@ export const TeamAdministrationView: React.FC = () => {
           t.workedById === m.id ||
           (t.workedBy && t.workedBy.toLowerCase() === m.name.toLowerCase())
       );
-      const ticketsClosed = userTickets.filter(
+      const clientClosed = userTickets.filter(
         (t) => t.status === 'CLSD' || t.status === 'RESL'
       ).length;
-      const activeTickets = userTickets.filter((t) => t.status === 'PROG').length;
+      const clientActive = userTickets.filter((t) => t.status === 'PROG').length;
 
       return {
         ...m,
-        ticketsClosed,
-        activeTickets,
+        ticketsClosed: Math.max(m.ticketsClosed, clientClosed),
+        activeTickets: Math.max(m.activeTickets, clientActive),
       };
     });
   }, [filteredITStaff, tickets]);
+
+  const handleManualRefresh = async () => {
+    setIsManualRefreshing(true);
+    try {
+      await Promise.all([
+        fetchITMembers(),
+        fetchEmployees(),
+        fetchDictionaries(),
+        fetchQueueApi(),
+      ]);
+      addToast(
+        'Roster & Directory Synchronized',
+        'Latest IT specialist accounts, employee profiles, and repair workloads loaded from server.',
+        'info'
+      );
+    } catch {
+      addToast('Sync Warning', 'Could not complete full directory refresh.', 'warning');
+    } finally {
+      setTimeout(() => setIsManualRefreshing(false), 500);
+    }
+  };
 
   return (
     <div className="space-y-5 pb-8">
@@ -119,16 +142,19 @@ export const TeamAdministrationView: React.FC = () => {
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            disabled={isLoadingTeam}
-            onClick={() => {
-              fetchITMembers();
-              fetchEmployees();
-              fetchQueueApi();
-            }}
-            className="p-2 rounded-xl border border-[#ECEEF2] bg-white hover:bg-zinc-50 text-zinc-600 transition-colors shadow-sm disabled:opacity-50 press-fx"
-            title="Refresh directory from server"
+            disabled={isManualRefreshing || isLoadingTeam}
+            onClick={handleManualRefresh}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-zinc-50 text-ink border border-[#ECEEF2] text-xs font-bold shadow-xs transition-colors press-fx disabled:opacity-60"
+            title="Refresh directory and accounts from server"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isLoadingTeam ? 'animate-spin text-orange-600' : ''}`} />
+            <RefreshCw
+              className={`w-3.5 h-3.5 text-zinc-500 ${
+                isManualRefreshing || isLoadingTeam ? 'animate-spin text-orange-600' : ''
+              }`}
+            />
+            <span className="hidden sm:inline">
+              {isManualRefreshing || isLoadingTeam ? 'Syncing...' : 'Refresh'}
+            </span>
           </button>
 
           <button

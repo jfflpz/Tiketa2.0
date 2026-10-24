@@ -24,16 +24,20 @@ Requirement: BF-02. Backend contract: B-01. Milestones M1–M2.
 
 Acceptance: both roles land correctly and a public employee page is not replaced by the workbench on refresh. Login alone never closes a ticket.
 
-### F-02 — Reliable employee submission and original report
+### F-02 — Reliable employee submission, intake matching and original report
 
 Requirements: BF-01, BF-03. Backend contracts: B-01/B-02. Milestones M1–M2.
 
+- [ ] Refactor Kiosk intake form to require **Employee ID** (1–50 ASCII digits, preserving leading zeros) and **registered email** (any provider).
+- [ ] Add deliberate **Continue** button to trigger backend matching; do not trigger lookups on keystroke.
+- [ ] Display **“Employee details matched.”** banner with locked profile (name, company, terminal, department) on success; do not describe as identity proof.
+- [ ] Retain entered ID and email on mismatch or failure; show generic error “Employee ID and email do not match an active employee record.”
+- [ ] During rate-limit cooldown, display countdown wait (e.g. “Please try again in 1:42”) and re-enable Continue automatically upon expiry.
+- [ ] Pass server-issued `match_token` in public ticket submission; block submission if matching has not succeeded.
 - [ ] Reproduce the white screen and fix its observed cause; convert API validation/error payloads into readable text and provide recoverable error rendering.
-- [ ] Preserve form input after failure, restore submitting state reliably and show a receipt only after successful creation.
-- [ ] Use the selected six-button problem label as the displayed ticket title. Keep additional details in the employee description and remove the fabricated initial chat message.
-- [ ] Align description validation with the backend contract; preserve employee lookup race guards and block unverified submission.
+- [ ] Use the selected six-button problem label as displayed ticket title; keep additional details in description; align description validation (min 10 chars).
 
-Acceptance: all six issue choices survive submission/reload with the correct title and details. Valid, empty, short, long, timeout and server-error scenarios never cause a blank page or false success.
+Acceptance: employee ID + email matching succeeds with deliberate Continue action; failed attempts trigger session cooldown UI; entered fields are retained on error; public submission passes server-verified match token; receipt displays on creation.
 
 ### F-03 — Service Record & Diagnosis and workbench
 
@@ -104,16 +108,17 @@ Requirement: BF-09. Backend contract: B-07. Milestone M4.
 
 Acceptance: chart totals match backend fixtures for empty periods, reopened tickets, cross-month completion and different technicians. API errors never substitute sample values.
 
-### F-09 — Full-screen modals and browser location
+### F-09 — Full-screen modals and optional browser location
 
 Requirements: BF-11, BF-12. Backend contract: B-08 for location; none for overlays. Milestones M1–M4.
 
 - [ ] Mount overlays at an appropriate root/portal; ensure viewport blur coverage, stacking, scrolling, close behavior and focus handling for all affected modals.
-- [ ] Request browser location on site entry with clear context, respect remembered permission and avoid repeated requests caused by rerenders.
-- [ ] Save consented coordinates, accuracy and capture time through the location endpoint and agreed visit association.
-- [ ] Support denied/unavailable/timeout states and duplicate-write prevention; keep official terminal data directory-derived and allow ticket creation without coordinates.
+- [ ] Request browser location as **optional supporting information** during the reporting flow with clear explanation; do NOT use a mandatory full-screen root blocking gate.
+- [ ] Staff login and ticket tracking remain fully accessible at all times regardless of location permission.
+- [ ] When location is granted, display **“Location captured”** banner with accuracy and capture time; persist consented coordinates through `/api/v1/locations/observations`.
+- [ ] Support denied, unavailable, and timeout states smoothly without blocking reporting or ticket creation.
 
-Acceptance: modal coverage works on desktop/mobile and scrolled pages; granted coordinates persist separately from official terminal, and denied permission leaves reporting usable.
+Acceptance: modal overlays cover viewport without clipping; browser location is strictly optional supporting telemetry; reporting and staff login remain fully operational when location is denied; granted observations display 'Location captured'.
 
 ## Final frontend handoff
 

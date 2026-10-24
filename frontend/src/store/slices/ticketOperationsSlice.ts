@@ -8,7 +8,8 @@ import type {
   TicketChatMessage,
 } from '../../types/ticket';
 import { TASK_CATEGORIES } from '../../constants/domain';
-import { ticketsApi } from '../../api/client';
+import { ticketsApi, extractApiErrorMessage } from '../../api/client';
+import { mapStaffTicket } from '../../utils/mapStaffTicket';
 
 export interface TicketOperationsSlice {
   // Staff Quick Intake modal & mutation
@@ -19,10 +20,6 @@ export interface TicketOperationsSlice {
     taskCode: TaskCategoryCode;
     description: string;
     mode: SupportMode;
-    companyName?: string;
-    locationName?: string;
-    departmentName?: string;
-    requestorName?: string;
   }) => Promise<Ticket | null>;
 
   claimTicketApi: (ticketId: string) => Promise<boolean>;
@@ -49,12 +46,16 @@ export interface TicketOperationsSlice {
     message: string,
     isInternal?: boolean
   ) => void;
-  resolveTicket: (ticketId: string) => void;
+  resolveTicket: (ticketId: string) => Promise<void>;
   requestValidation: (ticketId: string) => void;
   confirmClosure: (ticketId: string) => Promise<void>;
   reopenTicket: (ticketId: string) => Promise<void>;
   createTicket: (input: NewTicketInput) => Ticket;
-  assignTicket: (ticketId: string, technicianName: string, technicianId: string) => void;
+  assignTicket: (
+    ticketId: string,
+    technicianName: string,
+    technicianId: string
+  ) => Promise<boolean>;
 }
 
 const formatTimeAmPm = (date: Date) =>
@@ -65,63 +66,33 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
   setQuickIntakeOpen: (open) => set({ isQuickIntakeOpen: open }),
 
   quickIntakeApi: async (input) => {
-    const taskMeta = TASK_CATEGORIES.find((c) => c.code === input.taskCode);
-    const now = new Date();
-
     try {
       const res = await ticketsApi.quickIntake({
         employee_id: input.employeeId,
         task_code: input.taskCode,
         description: input.description,
+        mode: input.mode,
       });
 
       const newTicket: Ticket = {
-        id: res.id,
-        ticketCode: res.ticket_code,
-        company: input.companyName ?? 'Five Star Bus Co.',
-        companyCode: 'FS',
-        mode: input.mode,
-        department: input.departmentName ?? 'Operations',
-        departmentCode: 'OPS',
-        requestor: res.requester_name || input.requestorName || 'Terminal Staff',
+        ...mapStaffTicket(res, get().serverDictionaries),
         employeeId: input.employeeId,
-        task: taskMeta ? taskMeta.name : input.taskCode,
-        taskCode: input.taskCode,
-        description: input.description,
-        month: res.month || now.toLocaleString('default', { month: 'long', year: 'numeric' }),
-        dateStarted: res.date_started || now.toISOString().split('T')[0],
-        timeStarted: res.time_started ? String(res.time_started) : now.toTimeString().split(' ')[0],
-        status: (res.status as TicketStatus) || 'OPEN',
-        location: input.locationName ?? 'Pasay Terminal',
-        locationCode: 'PSY',
-        priority: taskMeta ? taskMeta.defaultPriority : 'Medium',
         intakeSource: 'Walk-in / Viber',
-        createdAt: res.created_at || now.toISOString(),
-        messages: [
-          {
-            id: 'msg-init-' + Date.now(),
-            senderRole: 'employee',
-            senderName: res.requester_name || input.requestorName || 'Terminal Staff',
-            message: input.description,
-            timestamp: formatTimeAmPm(now),
-            isInternal: false,
-          },
-        ],
       };
 
       set((state) => ({
-        tickets: [newTicket, ...state.tickets],
+        tickets: [newTicket, ...state.tickets.filter((ticket) => ticket.id !== newTicket.id)],
       }));
 
       get().addToast(
         `Ticket ${newTicket.ticketCode} Created!`,
-        `Walk-in / Viber ticket registered (${newTicket.location})`,
+        'Saved to the support queue.',
         'success'
       );
 
       return newTicket;
-    } catch (err: any) {
-      const msg = err.response?.data?.detail || 'Failed to submit quick intake ticket to server';
+    } catch (err: unknown) {
+      const msg = extractApiErrorMessage(err, 'Failed to submit quick intake ticket to server');
       get().addToast('Quick Intake Error', msg, 'warning');
       return null;
     }
@@ -366,45 +337,11 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
     }));
   },
 
-  resolveTicket: (ticketId) => {
-    const now = new Date();
-    const timeFinished = now.toTimeString().split(' ')[0];
-    const dateFinished = now.toISOString().split('T')[0];
+  resolveTicket: async (ticketId) => {
     const target = get().tickets.find((t) => t.id === ticketId);
-    const activeTechName =
-      target?.workedBy ?? get().currentUser?.name ?? 'Nathaniel D. Esguerra';
-
-    const resolveMsg: TicketChatMessage = {
-      id: 'msg-val-' + Date.now(),
-      senderRole: 'it',
-      senderName: `${activeTechName} (IT Support)`,
-      message:
-        '🔔 VALIDATION REQUEST: Repair marked completed by IT Support. Please test your equipment and click "Yes, Confirm Closure" to validate and close this ticket.',
-      timestamp: formatTimeAmPm(now),
-      isInternal: false,
-    };
-
-    set((state) => ({
-      tickets: state.tickets.map((t) => {
-        if (t.id !== ticketId) return t;
-        return {
-          ...t,
-          status: 'RESL',
-          validationRequested: true,
-          validationRequestedAt: now.toISOString(),
-          timeFinished,
-          dateFinished,
-          duration: t.duration ?? 0.65,
-          closureTokenHash: 'sha256:' + Math.random().toString(16).substring(2, 18),
-          messages: [...(t.messages ?? []), resolveMsg],
-        };
-      }),
-    }));
-    get().addToast(
-      `Validation Request Sent for ${target?.ticketCode ?? 'Ticket'}`,
-      `Sent to ${target?.requestor ?? 'requestor'} for closure validation.`,
-      'info'
-    );
+    if (!target) return;
+    const mode = target.mode || 'SITE';
+    await get().updateTicketStatusApi(ticketId, 'RESL', mode);
   },
 
   requestValidation: (ticketId) => {
@@ -548,8 +485,9 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
     return newTicket;
   },
 
-  assignTicket: (ticketId, technicianName, technicianId) => {
-    const target = get().tickets.find((t) => t.id === ticketId);
+  assignTicket: async (ticketId, technicianName, technicianId) => {
+    const previousTickets = get().tickets;
+    const target = previousTickets.find((t) => t.id === ticketId);
     const assignMsg: TicketChatMessage = {
       id: 'msg-' + Date.now(),
       senderRole: 'it',
@@ -558,6 +496,7 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
       timestamp: formatTimeAmPm(new Date()),
       isInternal: true,
     };
+    // Optimistic update
     set((state) => ({
       tickets: state.tickets.map((t) =>
         t.id === ticketId
@@ -566,15 +505,36 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
               status: t.status === 'OPEN' ? 'PROG' : t.status,
               workedBy: technicianName,
               workedById: technicianId,
+              assigned_tech_id: technicianId,
               messages: [...(t.messages ?? []), assignMsg],
             }
           : t
       ),
     }));
-    get().addToast(
-      `Assigned ${target?.ticketCode ?? 'Ticket'} to ${technicianName}`,
-      'Dispatch assignment updated successfully.',
-      'success'
-    );
+
+    if (target && !target.id.startsWith('t-') && !target.id.startsWith('tracked-')) {
+      try {
+        await ticketsApi.assignTicket(ticketId, technicianId);
+        get().addToast(
+          `Assigned ${target?.ticketCode ?? 'Ticket'} to ${technicianName}`,
+          'Dispatch assignment synchronized to database.',
+          'success'
+        );
+        await get().fetchQueueApi();
+        return true;
+      } catch (err: unknown) {
+        set({ tickets: previousTickets });
+        const msg = extractApiErrorMessage(err, 'Failed to assign technician on server');
+        get().addToast('Assignment Failed', msg, 'warning');
+        return false;
+      }
+    } else {
+      get().addToast(
+        `Assigned ${target?.ticketCode ?? 'Ticket'} to ${technicianName}`,
+        'Local mock ticket updated.',
+        'success'
+      );
+      return true;
+    }
   },
 });

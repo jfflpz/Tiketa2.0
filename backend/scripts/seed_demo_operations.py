@@ -18,10 +18,10 @@ from app.models import (
     MaintenancePlan,
     Ticket,
     TicketComment,
-    TicketCounter,
     TicketTechnician,
     User,
 )
+from app.services.tickets import synchronize_ticket_counter
 
 PUBLIC_KIOSK_ISSUES = {
     "PRN-TS",
@@ -587,17 +587,11 @@ async def seed():
                         )
                     )
 
-            # Ensure ticket counter is synchronized
-            month_key = now.strftime("%y%m")
-            stmt = (
-                insert(TicketCounter)
-                .values(month=month_key, value=150)
-                .on_conflict_do_update(
-                    index_elements=[TicketCounter.month],
-                    set_={"value": 150},
-                )
-            )
-            await session.execute(stmt)
+            # Reseeding must never rewind counters below existing live tickets.
+            months = {item["code"].split("-")[1] for item in DEMO_TICKETS}
+            months.add(local(now).strftime("%y%m"))
+            for month_key in sorted(months):
+                await synchronize_ticket_counter(session, month_key)
 
             print("--> 5. Seeding Fleet Maintenance Plans for PMS Compliance...")
             psy_loc = loc_map.get("PSY")

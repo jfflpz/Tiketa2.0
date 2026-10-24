@@ -29,7 +29,7 @@ Use a string of **1–50 ASCII digits**, for example `1042` or `0012`, with an e
 
 Use the same reusable validation in employee create/update and public/quick ticket intake. Reject prefixed, alphabetic, signed, decimal and embedded-space identifiers. Existing input trimming may normalize outer whitespace; document this consistently. Add the corresponding database constraint after data preflight so scripts and direct model writes follow the same rule.
 
-Employee lookup currently accepts either an Employee ID or email. Preserve email lookup as a separate supported query form; changing ID syntax does not silently remove that feature. Validate the numeric-ID query branch consistently, reject old prefixed ID input after cutover, and retain inactive/unknown-record handling and rate limits. The intake `employee_id` field itself accepts numeric IDs, not email addresses.
+Public employee intake replaces single-field lookup with two-factor matching (POST /api/v1/employees/match): employees enter their numeric Employee ID (1–50 ASCII digits, preserving leading zeros) and their registered email. Both must match the same active record to succeed. Unauthenticated callers cannot query by ID alone to discover email or full profile details. Generic mismatch responses prevent enumeration. Authenticated staff directory search preserves internal administrative query capabilities.
 
 ### Reported issue codes
 
@@ -146,7 +146,7 @@ Required populated migration cases: `FS-0012` → `0012`; already numeric `1042`
 - Confirm newly created users can actually authenticate and employees become available for lookup. Test deactivation while preserving historical references.
 - Update numeric IDs in both seeders, every affected fixture, request examples and active documentation. Do not replace company code `FS`; company codes and employee identifiers are different fields.
 - Coordinate frontend defaults/placeholders, fixed prefix removal, validation, clipboard/paste and `inputMode` behavior. Inputs remain strings; a numeric HTML input must not discard leading zeros.
-- Preserve lookup-by-email independently from the numeric employee identifier rule. Update the tested API error expectations for legacy IDs after cutover.
+- Public employee intake requires matching both numeric ID and registered email; unauthenticated single-field lookup is deprecated to eliminate employee email disclosure. Staff directory queries preserve administrative search capabilities.
 - Coordinate rollout so old frontend clients sending `FS-...` are not left serving an incompatible API. Complete API tests first; call manual UI acceptance complete only after the matching frontend changes exist.
 
 Update `docs/AI-CONTEXT.md`, database/API contracts and any conflicting active sprint/reporting rules with the implemented policy at handoff. During this review, source/code contracts still describe the current implementation; only planning documents are revised.

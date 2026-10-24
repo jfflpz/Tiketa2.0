@@ -2,6 +2,7 @@
 import React from 'react';
 import { CheckCircle2, Info, AlertTriangle, X } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
+import { readableError } from '../../utils/errorMessages';
 
 export const ToastContainer: React.FC = () => {
   const toasts = useAppStore((state) => state.toasts);
@@ -25,9 +26,9 @@ export const ToastContainer: React.FC = () => {
             {t.type === 'warning' && <AlertTriangle className="w-4 h-4 text-amber-400" />}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold leading-tight">{t.title}</p>
+            <p className="text-xs font-semibold leading-tight">{readableError(t.title, 'Notification')}</p>
             {t.description && (
-              <p className="text-[11px] text-zinc-400 mt-0.5 leading-snug">{t.description}</p>
+              <p className="text-[11px] text-zinc-400 mt-0.5 leading-snug">{readableError(t.description, 'The request could not be completed. Please try again.')}</p>
             )}
           </div>
           <button

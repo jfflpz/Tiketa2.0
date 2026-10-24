@@ -22,7 +22,7 @@ export interface TicketQueueKanbanBoardProps {
   onSelectTicket: (ticketId: string) => void;
   onClaimAndWork: (e: React.MouseEvent, ticket: Ticket) => void;
   onFocusWorkbench: (e: React.MouseEvent, ticket: Ticket) => void;
-  onResolveTicket: (ticketId: string) => void;
+  onResolveTicket: (ticket: Ticket) => void;
   onCopyVerification: (e: React.MouseEvent, ticketCode: string) => void;
   onAssignTicket: (ticketId: string, techName: string, techId: string) => void;
 }
@@ -237,7 +237,7 @@ export const TicketQueueKanbanBoard: React.FC<TicketQueueKanbanBoardProps> = ({
                   </button>
                   <button
                     type="button"
-                    onClick={() => onResolveTicket(t.id)}
+                    onClick={() => onResolveTicket(t)}
                     className="py-1.5 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center justify-center gap-1 shadow-sm transition-colors active:scale-95"
                   >
                     <CheckCircle2 className="w-3.5 h-3.5" />

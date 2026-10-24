@@ -3,6 +3,7 @@ from app.models.company import Company
 from app.models.department import Department
 from app.models.employee import Employee
 from app.models.location import Location
+from app.models.location_observation import LocationObservation
 from app.models.ticket import (
     LocationDepartment,
     MaintenancePlan,
@@ -22,6 +23,7 @@ __all__ = [
     "Employee",
     "Location",
     "LocationDepartment",
+    "LocationObservation",
     "MaintenancePlan",
     "TaskCategory",
     "Ticket",

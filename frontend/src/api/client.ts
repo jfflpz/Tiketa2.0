@@ -1,4 +1,6 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { readableError } from '../utils/errorMessages';
+import type { SupportMode, TicketStatus } from '../types/ticket';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
@@ -100,10 +102,61 @@ export interface EmployeeLookupResult {
     is_active: boolean;
 }
 
+export interface EmployeeScopeOut {
+    employee_id: string;
+    full_name: string;
+    company_id: string;
+    company_name: string;
+    location_id: string;
+    location_name: string;
+    department_id: string;
+    department_name: string;
+}
+
+export interface EmployeeMatchOut {
+    status: string;
+    match_token: string;
+    employee: EmployeeScopeOut;
+}
+
+export interface LocationObservationInput {
+    latitude: number;
+    longitude: number;
+    accuracy?: number | null;
+    session_id?: string | null;
+    captured_at?: string | null;
+}
+
+export interface LocationObservationOut {
+    observation_id: string;
+    status: string;
+}
+
 export interface PublicTicketResponse {
     ticket_code: string;
     status: string;
     created_at: string;
+}
+
+export interface StaffTicketResponse extends PublicTicketResponse {
+    id: string;
+    company_id: string;
+    location_id: string;
+    department_id: string;
+    requester_name: string;
+    task_code: string;
+    description: string;
+    mode: SupportMode | null;
+    month: string;
+    date_started: string;
+    date_finished: string | null;
+    time_started: string | null;
+    time_finished: string | null;
+    duration: string | number | null;
+    status: TicketStatus;
+    assigned_tech_id: string | null;
+    technician_name?: string | null;
+    user_confirmed_at: string | null;
 }
 
 export interface TicketCommentItem {
@@ -142,6 +195,25 @@ export const directoryApi = {
     });
     return res.data;
     },
+    matchEmployee: async (
+    payload: { employee_id: string; email: string },
+    sessionId?: string
+    ): Promise<EmployeeMatchOut> => {
+    const headers = sessionId ? { 'X-Kiosk-Session-ID': sessionId } : undefined;
+    const res = await apiClient.post<EmployeeMatchOut>('/employees/match', payload, { headers });
+    return res.data;
+    },
+};
+
+export const locationApi = {
+    recordObservation: async (
+    payload: LocationObservationInput,
+    sessionId?: string
+    ): Promise<LocationObservationOut> => {
+    const headers = sessionId ? { 'X-Kiosk-Session-ID': sessionId } : undefined;
+    const res = await apiClient.post<LocationObservationOut>('/locations/observations', payload, { headers });
+    return res.data;
+    },
 };
 
 export const ticketsApi = {
@@ -149,8 +221,11 @@ export const ticketsApi = {
     employee_id: string;
     task_code: string;
     description: string;
-    }): Promise<PublicTicketResponse> => {
-    const res = await apiClient.post<PublicTicketResponse>('/tickets/submit', payload);
+    match_token: string;
+    observation_id?: string | null;
+    }, sessionId?: string): Promise<PublicTicketResponse> => {
+    const headers = sessionId ? { 'X-Kiosk-Session-ID': sessionId } : undefined;
+    const res = await apiClient.post<PublicTicketResponse>('/tickets/submit', payload, { headers });
     return res.data;
     },
     trackTicket: async (code: string) => {
@@ -158,11 +233,17 @@ export const ticketsApi = {
     return res.data;
     },
     getQueue: async (params?: { status?: string; offset?: number; limit?: number }) => {
-    const res = await apiClient.get('/tickets', { params });
+    const res = await apiClient.get<StaffTicketResponse[]>('/tickets', { params });
     return res.data;
     },
     claimTicket: async (ticketId: string) => {
     const res = await apiClient.patch(`/tickets/${ticketId}/claim`);
+    return res.data;
+    },
+    assignTicket: async (ticketId: string, technicianId: string) => {
+    const res = await apiClient.patch(`/tickets/${ticketId}/assign`, {
+        technician_id: technicianId,
+    });
     return res.data;
     },
     updateStatus: async (
@@ -172,12 +253,20 @@ export const ticketsApi = {
     const res = await apiClient.patch(`/tickets/${ticketId}/status`, payload);
     return res.data;
     },
+    updateServiceRecord: async (
+    ticketId: string,
+    payload: { task_code?: string; diagnosis?: string; resolution_notes?: string }
+    ) => {
+    const res = await apiClient.patch(`/tickets/${ticketId}/service-record`, payload);
+    return res.data;
+    },
     quickIntake: async (payload: {
     employee_id: string;
     task_code: string;
     description: string;
-    }) => {
-    const res = await apiClient.post('/tickets/quick-intake', payload);
+    mode: SupportMode;
+    }): Promise<StaffTicketResponse> => {
+    const res = await apiClient.post<StaffTicketResponse>('/tickets/quick-intake', payload);
     return res.data;
     },
     getComments: async (ticketId: string) => {
@@ -256,6 +345,8 @@ export interface BackendUser {
     role: 'it' | 'admin';
     is_active: boolean;
     location_id?: string | null;
+    closed_repairs?: number;
+    active_bench?: number;
     token_version?: number;
     created_at?: string;
     updated_at?: string;
@@ -303,10 +394,7 @@ export const extractApiErrorMessage = (err: unknown, fallback: string): string =
     if (err && typeof err === 'object' && 'response' in err) {
         const axiosErr = err as { response?: { data?: { detail?: unknown } } };
         const detail = axiosErr.response?.data?.detail;
-        if (typeof detail === 'string') return detail;
-        if (Array.isArray(detail)) {
-            return detail.map((d: any) => d.msg || String(d)).join('; ');
-        }
+        return readableError(detail, fallback);
     }
     if (err instanceof Error) {
         return err.message;

@@ -28,6 +28,7 @@ from app.schemas import (
     ClosureInput,
     CommentInput,
     PublicTicket,
+    QuickIntakeInput,
     ServiceRecordUpdate,
     StatusInput,
     TicketInput,
@@ -44,12 +45,15 @@ queue_adapter = TypeAdapter(list[TicketOut])
 
 @router.post("/submit", status_code=201, response_model=PublicTicket)
 async def public_submit(body: TicketInput, request: Request, db: DB):
+    session_id = request.headers.get("X-Kiosk-Session-ID") or request.headers.get(
+        "x-kiosk-session-id"
+    )
     await rate_limit("submit:" + digest(request.client.host), 10, 60)
-    return await submit(db, body)
+    return await submit(db, body, creator_id=None, session_id=session_id)
 
 
 @router.post("/quick-intake", status_code=201, response_model=TicketOut)
-async def quick_intake(body: TicketInput, db: DB, user: CurrentUser):
+async def quick_intake(body: QuickIntakeInput, db: DB, user: CurrentUser):
     return ticket_view(await submit(db, body, user.id))
 
 
@@ -96,7 +100,19 @@ async def queue(
     if technician_id:
         query = query.where(Ticket.assigned_tech_id == technician_id)
 
-    rows = [ticket_view(row) for row in (await db.scalars(query)).all()]
+    ticket_rows = (await db.scalars(query)).all()
+    tech_ids = {t.assigned_tech_id for t in ticket_rows if t.assigned_tech_id}
+    tech_map: dict[UUID, str] = {}
+    if tech_ids:
+        users = (await db.scalars(select(User).where(User.id.in_(tech_ids)))).all()
+        tech_map = {u.id: u.full_name for u in users}
+
+    rows = []
+    for t in ticket_rows:
+        v = ticket_view(t)
+        if t.assigned_tech_id and t.assigned_tech_id in tech_map:
+            v["technician_name"] = tech_map[t.assigned_tech_id]
+        rows.append(v)
     payload = queue_adapter.dump_json(queue_adapter.validate_python(rows)).decode()
     await cache.set(key, encrypt(payload), ex=5)
     return Response(payload, media_type="application/json")
@@ -113,7 +129,9 @@ async def claim_ticket(ticket_id: UUID, db: DB, user: CurrentUser):
     await claim(db, row, user)
     await db.commit()
     await cache.incr("queue:version")
-    return ticket_view(row)
+    res = ticket_view(row)
+    res["technician_name"] = user.full_name
+    return res
 
 
 @router.patch("/{ticket_id}/service-record", response_model=TicketOut)
@@ -165,11 +183,15 @@ async def assign_ticket(
 
     target_tech = await db.get(User, body.technician_id)
     if not target_tech or target_tech.role != "it" or not target_tech.is_active:
-        raise HTTPException(422, "Target technician must be an active IT technician")
+        raise HTTPException(
+            422, "Target technician must be an active technician with IT role"
+        )
 
     # Idempotent no-op if already assigned to this technician
     if row.assigned_tech_id == target_tech.id:
-        return ticket_view(row)
+        res = ticket_view(row)
+        res["technician_name"] = target_tech.full_name
+        return res
 
     # Demote existing primary technician assignments
     tech_assignments = (
@@ -206,7 +228,9 @@ async def assign_ticket(
     row.updated_at = current_time
     await db.commit()
     await cache.incr("queue:version")
-    return ticket_view(row)
+    res = ticket_view(row)
+    res["technician_name"] = target_tech.full_name
+    return res
 
 
 @router.patch("/{ticket_id}/status", response_model=TicketOut)
@@ -215,7 +239,7 @@ async def status_ticket(ticket_id: UUID, body: StatusInput, db: DB, user: Curren
     closure_url: str | None = None
     if row.status == "OPEN" and body.status == "PROG":
         await claim(db, row, user)
-        row.mode = body.mode
+        row.mode = body.mode or row.mode
 
     elif row.status == "PROG" and body.status == "PROG":
         if body.mode:

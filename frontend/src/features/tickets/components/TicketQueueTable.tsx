@@ -18,7 +18,7 @@ export interface TicketQueueTableProps {
   onSelectTicket: (ticketId: string) => void;
   onClaimAndWork: (e: React.MouseEvent, ticket: Ticket) => void;
   onFocusWorkbench: (e: React.MouseEvent, ticket: Ticket) => void;
-  onResolveTicket: (e: React.MouseEvent, ticketId: string) => void;
+  onResolveTicket: (e: React.MouseEvent, ticket: Ticket) => void;
   onCopyVerification: (e: React.MouseEvent, ticketCode: string) => void;
   onAssignTicket: (ticketId: string, techName: string, techId: string) => void;
 }
@@ -191,7 +191,7 @@ export const TicketQueueTable: React.FC<TicketQueueTableProps> = ({
                           </button>
                           <button
                             type="button"
-                            onClick={(e) => onResolveTicket(e, ticket.id)}
+                            onClick={(e) => onResolveTicket(e, ticket)}
                             className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition-colors"
                           >
                             Resolve

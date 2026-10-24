@@ -106,8 +106,8 @@ const mapBackendUserToTeamMember = (
     department: dept,
     status: u.is_active ? 'active' : 'offline',
     primaryLocation: locationName,
-    ticketsClosed: 0,
-    activeTickets: 0,
+    ticketsClosed: u.closed_repairs ?? 0,
+    activeTickets: u.active_bench ?? 0,
     flameScore: 0,
     is_active: u.is_active,
   };

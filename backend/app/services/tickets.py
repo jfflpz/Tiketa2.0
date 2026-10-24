@@ -2,13 +2,19 @@ from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import Integer, cast, func, select
 from sqlalchemy.dialects.postgresql import insert
 
 from app.core.cache import cache
 from app.core.config import settings
-from app.core.security import decrypt, encrypt
-from app.models import TaskCategory, Ticket, TicketCounter, TicketTechnician
+from app.core.security import decrypt, encrypt, verify_match_token
+from app.models import (
+    LocationObservation,
+    TaskCategory,
+    Ticket,
+    TicketCounter,
+    TicketTechnician,
+)
 from app.services.directory import find_employee
 
 PUBLIC_KIOSK_ISSUES = {
@@ -29,20 +35,58 @@ def local(value):
     return value.astimezone(ZoneInfo(settings.BUSINESS_TIMEZONE))
 
 
+async def synchronize_ticket_counter(db, month):
+    """Lock the month and recover a missing/stale counter without rewinding it."""
+    await db.execute(
+        insert(TicketCounter)
+        .values(month=month, value=0)
+        .on_conflict_do_nothing(index_elements=[TicketCounter.month])
+    )
+    counter = await db.scalar(
+        select(TicketCounter).where(TicketCounter.month == month).with_for_update()
+    )
+    highest = await db.scalar(
+        select(func.max(cast(func.substring(Ticket.ticket_code, 8), Integer))).where(
+            Ticket.ticket_code.op("~")(f"^T-{month}-[0-9]{{4,}}$")
+        )
+    )
+    counter.value = max(counter.value, highest or 0)
+    return counter
+
+
 async def next_code(db, day):
     month = day.strftime("%y%m")
-    statement = insert(TicketCounter).values(month=month, value=1)
-    number = await db.scalar(
-        statement.on_conflict_do_update(
-            index_elements=[TicketCounter.month],
-            set_={"value": TicketCounter.value + 1},
-        ).returning(TicketCounter.value)
-    )
-    return f"T-{month}-{number:04d}"
+    counter = await synchronize_ticket_counter(db, month)
+    counter.value += 1
+    # Flush before another allocation in this transaction; the row lock is held
+    # until commit so concurrent submissions cannot allocate the same number.
+    await db.flush()
+    return f"T-{month}-{counter.value:04d}"
 
 
-async def submit(db, body, creator_id=None):
-    employee = await find_employee(db, body.employee_id)
+async def submit(db, body, creator_id=None, session_id=None):
+    is_public = creator_id is None
+    if is_public:
+        if body.match_token:
+            try:
+                verified_emp_id = verify_match_token(body.match_token, session_id or "")
+            except Exception:
+                raise HTTPException(
+                    403, "Invalid or expired match_token, or session mismatch"
+                )
+            employee = await find_employee(db, verified_emp_id)
+        elif body.employee_id and not session_id:
+            employee = await find_employee(db, body.employee_id)
+        else:
+            raise HTTPException(
+                403,
+                "Valid match_token bound to active session is required for public ticket submission",
+            )
+    else:
+        if not body.employee_id:
+            raise HTTPException(422, "employee_id is required")
+        employee = await find_employee(db, body.employee_id)
+
     if not await db.get(TaskCategory, body.task_code):
         raise HTTPException(422, "Unknown task code")
 
@@ -79,11 +123,17 @@ async def submit(db, body, creator_id=None):
         reported_issue_code=reported_issue,
         task_code=body.task_code,
         description_enc=encrypt(body.description),
+        mode=getattr(body, "mode", None) if creator_id else None,
         date_started=day,
         month=day.strftime("%B %Y"),
         status="OPEN",
     )
     db.add(row)
+    await db.flush()
+    if getattr(body, "observation_id", None):
+        obs = await db.get(LocationObservation, body.observation_id)
+        if obs and obs.ticket_id is None:
+            obs.ticket_id = row.id
     await db.commit()
     await cache.incr("queue:version")
     return row

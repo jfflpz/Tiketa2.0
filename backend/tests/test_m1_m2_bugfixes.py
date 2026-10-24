@@ -9,14 +9,23 @@ from app.models import Employee, Ticket, TicketTechnician, User
 
 
 async def test_numeric_employee_id_validation(client, accounts):
-    # Lookup non-numeric string rejected with 422
-    assert (await client.get("/api/v1/employees/lookup?q=FS-1042")).status_code == 422
-    assert (await client.get("/api/v1/employees/lookup?q=EMP-123")).status_code == 422
-    assert (await client.get("/api/v1/employees/lookup?q=10-42")).status_code == 422
-
-    # Lookup email works
+    # Staff lookup of non-numeric string rejected with 422
     assert (
-        await client.get("/api/v1/employees/lookup?q=maria.santos@example.com")
+        await client.get("/api/v1/employees/lookup?q=FS-1042", headers=accounts["tech"])
+    ).status_code == 422
+    assert (
+        await client.get("/api/v1/employees/lookup?q=EMP-123", headers=accounts["tech"])
+    ).status_code == 422
+    assert (
+        await client.get("/api/v1/employees/lookup?q=10-42", headers=accounts["tech"])
+    ).status_code == 422
+
+    # Staff lookup of email works
+    assert (
+        await client.get(
+            "/api/v1/employees/lookup?q=maria.santos@example.com",
+            headers=accounts["tech"],
+        )
     ).status_code == 200
 
     # Public submit rejects prefixed or non-digit employee ID

@@ -22,8 +22,9 @@ Requirements: BF-01, BF-02. Handoff: F-01/F-02; milestone M1.
 - [x] Reproduce intake requests with valid, short, missing and oversized descriptions; capture actual status/error shapes without treating the suspected toast crash as proven.
 - [x] Confirm login, refresh, logout, role and verification contracts for frontend routing.
 - [x] Publish the planned ticket, directory, conversation, repair-note, overview and location contracts, including nullable fields, errors, pagination and authorization.
+- [ ] Publish the updated Employee ID + registered email matching contract (`POST /api/v1/employees/match`), signed `match_token` issuance, generic mismatch response (preventing profile/email disclosure on ID alone), and Redis session cooldown limits.
 
-Acceptance: frontend has accurate request/response examples and a working test environment. Authentication remains limited to `it`/`admin`; explicit login does not confirm ticket closure.
+Acceptance: frontend has accurate request/response examples and a working test environment. Authentication remains limited to `it`/`admin`; explicit login does not confirm ticket closure; public intake contracts prevent profile disclosure and unvalidated submissions.
 
 ### B-02 — Persist reported issue, diagnosis and resolution
 
@@ -132,16 +133,16 @@ Requirement: BF-09. Dependency: B-03. Handoff: F-08; milestone M4.
 
 Acceptance: known-result tests cover RESL/CLSD, empty months, year boundaries, cross-month completion, reopening and technician scope. Returned counts agree with seeded records.
 
-### B-08 — Browser location observations
+### B-08 — Browser location observations (Optional Supporting Telemetry)
 
 Requirement: BF-12. Handoff: F-09; milestone M4.
 
-- [ ] Add separate storage/API for consented latitude, longitude, accuracy and capture/receipt timestamps.
-- [ ] Define an opaque visit association and authorized later linkage to an employee/ticket where applicable; prevent duplicate observation writes.
-- [ ] Validate coordinate/time values, document retention/access, and keep coordinates out of public tracking responses.
-- [ ] Preserve official terminal/location from the verified employee directory; missing browser coordinates do not block ticket creation.
+- [ ] Add separate storage/API (`POST /api/v1/locations/observations` backed by `location_observations` table) for consented latitude, longitude, accuracy and capture/receipt timestamps.
+- [ ] Define an opaque session association (`session_id`) and link observation to `Ticket.id` upon submission; prevent duplicate observation writes.
+- [ ] Validate coordinate (-90 to +90 lat, -180 to +180 lng) and timestamp values; keep coordinates out of public tracking responses.
+- [ ] Preserve official terminal/location from the verified employee directory; missing, denied, or timed-out browser coordinates do not block ticket creation, navigation, or staff login.
 
-Acceptance: accepted observations persist separately from official terminal; malformed/duplicate writes are handled consistently and unauthorized associations are rejected.
+Acceptance: accepted observations persist separately from official terminal; malformed/duplicate writes are handled consistently; unauthorized associations are rejected; reporting remains 100% usable when location is denied.
 
 ## Final backend handoff
 

@@ -87,3 +87,35 @@ def decode_token(token: str, kind: str) -> dict:
     if claims["type"] != kind:
         raise jwt.InvalidTokenError("Incorrect token type")
     return claims
+
+
+def issue_match_token(employee_id: str, session_id: str) -> str:
+    now = datetime.now(UTC)
+    claims = {
+        "sub": employee_id,
+        "type": "employee_match",
+        "sid": session_id,
+        "jti": str(uuid4()),
+        "iat": int(now.timestamp()),
+        "exp": int((now + timedelta(minutes=15)).timestamp()),
+        "iss": "tiketa",
+        "aud": "tiketa-intake",
+    }
+    return jwt.encode(claims, settings.SECRET_KEY, algorithm="HS256")
+
+
+def verify_match_token(token: str, session_id: str) -> str:
+    claims = jwt.decode(
+        token,
+        settings.SECRET_KEY,
+        algorithms=["HS256"],
+        audience="tiketa-intake",
+        issuer="tiketa",
+        options={"require": ["sub", "type", "sid", "jti", "iat", "exp"]},
+    )
+    if claims.get("type") != "employee_match":
+        raise jwt.InvalidTokenError("Incorrect token type")
+    if claims.get("sid") != session_id:
+        raise jwt.InvalidTokenError("Session mismatch")
+    return str(claims["sub"])
+

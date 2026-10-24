@@ -38,6 +38,8 @@ class UserOut(BaseModel):
     full_name: str
     role: Literal["it", "admin"]
     is_active: bool
+    closed_repairs: int = 0
+    active_bench: int = 0
 
 
 class TokenOut(BaseModel):
@@ -56,16 +58,53 @@ class EmployeeInput(Input):
     is_active: bool = True
 
 
+class EmployeeMatchInput(Input):
+    employee_id: str = Field(min_length=1, max_length=50, pattern=r"^[0-9]{1,50}$")
+    email: EmailStr = Field(max_length=150)
+
+
+class EmployeeScopeOut(BaseModel):
+    full_name: str
+    company_name: str
+    location_name: str
+    department_name: str
+
+
+class EmployeeMatchOut(BaseModel):
+    matched: bool = True
+    match_token: str
+    employee: EmployeeScopeOut
+
+
+class LocationObservationInput(Input):
+    session_id: str = Field(min_length=1, max_length=64)
+    latitude: float = Field(ge=-90.0, le=90.0)
+    longitude: float = Field(ge=-180.0, le=180.0)
+    accuracy: float = Field(ge=0.0)
+    captured_at: datetime | None = None
+
+
+class LocationObservationOut(BaseModel):
+    observation_id: UUID
+    status: str = "recorded"
+
+
 class ScopeInput(Input):
     location_id: UUID
     department_id: UUID
 
 
 class TicketInput(Input):
-    employee_id: str = Field(min_length=1, max_length=50, pattern=r"^[0-9]{1,50}$")
+    employee_id: str | None = Field(default=None, max_length=50, pattern=r"^[0-9]{1,50}$")
+    match_token: str | None = Field(default=None, max_length=1000)
     task_code: str = Field(min_length=1, max_length=50)
     reported_issue_code: str | None = Field(default=None, max_length=50)
     description: str = Field(min_length=10, max_length=20000)
+    observation_id: UUID | None = Field(default=None)
+
+
+class QuickIntakeInput(TicketInput):
+    mode: Literal["REM", "SITE"] | None = None
 
 
 class ServiceRecordUpdate(BaseModel):
@@ -141,6 +180,7 @@ class TicketOut(PublicTicket):
     time_finished: time | None
     duration: Decimal | None
     assigned_tech_id: UUID | None
+    technician_name: str | None = None
     updated_at: datetime
     user_confirmed_at: datetime | None
     transit_lag_days: float | None

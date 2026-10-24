@@ -1,3 +1,6 @@
+# Keep disposable tests separate from the development project's persistent services.
+name: tiketa-test
+
 services:
   db:
     image: postgres:16-alpine

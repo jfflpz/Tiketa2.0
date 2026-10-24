@@ -63,4 +63,16 @@
 ### `POST /api/v1/tickets/quick-intake`
 - **Access**: Protected (`role: 'it' | 'admin'`)
 - **Hotkey**: Triggered via `v` on the IT Queue.
-- **Payload**: Fast employee ID lookup + task categorization for walk-ins/Viber chats.
+- **Payload**: `employee_id` (1–50 ASCII digits, preserving leading zeros),
+  `task_code`, `description` (10–20,000 characters after trimming), and optional
+  `mode` (`REM` or `SITE`; omitted means unknown for older callers).
+- **Directory binding**: The backend requires an active employee with valid scope.
+  Requester name, company, terminal, department, and requester contact come from
+  that employee's registered profile. Manual scope/name overrides are rejected.
+- **Unlisted/inactive employee**: `404`; an administrator must add or correct the
+  directory profile before retrying. This endpoint does not create approval
+  requests or close rejected submissions as completed tickets.
+- **Persistence**: Saves the selected support mode and encrypted description;
+  description text does not create a chat comment. Returns the saved `TicketOut`.
+- **Errors**: Invalid fields return `422`; the frontend displays readable errors,
+  preserves entered details, and prevents submission until lookup succeeds.

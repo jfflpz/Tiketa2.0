@@ -149,11 +149,16 @@ export const EmployeeTicketScreen: React.FC = () => {
               <KioskIntakeForm
                 employeeId={intake.employeeId}
                 onEmployeeIdChange={intake.setEmployeeId}
-                declaredName={intake.declaredName}
-                isSearchingEmployee={intake.isSearchingEmployee}
-                employeeVerified={intake.employeeVerified}
-                lookupError={intake.lookupError}
-                employeeDetails={intake.employeeDetails}
+                registeredEmail={intake.registeredEmail}
+                onRegisteredEmailChange={intake.setRegisteredEmail}
+                isMatching={intake.isMatching}
+                isMatched={intake.isMatched}
+                matchError={intake.matchError}
+                cooldownSeconds={intake.cooldownSeconds}
+                onContinueMatching={intake.handleContinueMatching}
+                employeeProfile={intake.employeeProfile}
+                locationState={intake.locationState}
+                onCaptureLocation={intake.handleCaptureLocation}
                 activeHubName={intake.activeHub.name}
                 selectedTask={intake.selectedTask}
                 onSelectTask={intake.setSelectedTask}
