@@ -47,7 +47,7 @@ class TokenOut(BaseModel):
 
 
 class EmployeeInput(Input):
-    employee_id: str = Field(min_length=1, max_length=50)
+    employee_id: str = Field(min_length=1, max_length=50, pattern=r"^[0-9]{1,50}$")
     full_name: str = Field(min_length=2, max_length=150)
     email: EmailStr = Field(max_length=150)
     company_id: UUID
@@ -62,9 +62,39 @@ class ScopeInput(Input):
 
 
 class TicketInput(Input):
-    employee_id: str = Field(min_length=1, max_length=150)
+    employee_id: str = Field(min_length=1, max_length=50, pattern=r"^[0-9]{1,50}$")
     task_code: str = Field(min_length=1, max_length=50)
+    reported_issue_code: str | None = Field(default=None, max_length=50)
     description: str = Field(min_length=10, max_length=20000)
+
+
+class ServiceRecordUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    task_code: str | None = Field(default=None, max_length=50)
+    diagnosis: str | None = Field(default=None, max_length=20000)
+    resolution_notes: str | None = Field(default=None, max_length=20000)
+
+    @model_validator(mode="after")
+    def check_at_least_one_field_present(self):
+        if not self.model_fields_set:
+            raise ValueError("At least one service record field must be provided")
+        if "task_code" in self.model_fields_set:
+            if self.task_code is None or not self.task_code.strip():
+                raise ValueError("task_code cannot be null or empty")
+            self.task_code = self.task_code.strip()
+        if "diagnosis" in self.model_fields_set:
+            if self.diagnosis is not None:
+                cleaned = self.diagnosis.strip()
+                self.diagnosis = cleaned if cleaned else None
+        if "resolution_notes" in self.model_fields_set:
+            if self.resolution_notes is not None:
+                cleaned = self.resolution_notes.strip()
+                self.resolution_notes = cleaned if cleaned else None
+        return self
+
+
+class AssignInput(Input):
+    technician_id: UUID
 
 
 class StatusInput(Input):
@@ -96,8 +126,11 @@ class TicketOut(PublicTicket):
     location_id: UUID
     department_id: UUID
     requester_name: str
+    reported_issue_code: str | None = None
     task_code: str
     description: str
+    diagnosis: str | None = None
+    resolution_notes: str | None = None
     mode: Literal["REM", "SITE"] | None
     month: str
     date_started: date

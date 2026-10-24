@@ -53,12 +53,20 @@ def check_origin(request: Request):
         from urllib.parse import urlparse
 
         parsed = urlparse(norm_origin)
-        if parsed.hostname in ("localhost", "127.0.0.1", "0.0.0.0", "testserver") or (
+        if parsed.hostname in (
+            "localhost",
+            "127.0.0.1",
+            "0.0.0.0",
+            "testserver",
+            "::1",
+            "[::1]",
+        ) or (
             parsed.hostname
             and (
                 parsed.hostname.startswith("192.168.")
                 or parsed.hostname.startswith("10.")
                 or parsed.hostname.startswith("172.")
+                or parsed.hostname.startswith("169.254.")
             )
         ):
             return

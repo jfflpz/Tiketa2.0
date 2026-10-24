@@ -93,7 +93,7 @@ def report_row(**values):
             dict(
                 id="id",
                 ticket_code="T-2608-0001",
-                employee_id="e1",
+                employee_id="1001",
                 assigned_tech_id="t1",
                 technician="Tech One",
                 company="Five Star",
@@ -242,7 +242,7 @@ async def test_reports_endpoints_filters_and_authorization(client, accounts, tmp
             headers=accounts["admin"],
         )
     ).status_code == 422
-    profile = (await client.get("/api/v1/employees/lookup?q=FS-1042")).json()
+    profile = (await client.get("/api/v1/employees/lookup?q=1042")).json()
     plan = dict(
         location_id=profile["location_id"],
         department_id=profile["department_id"],

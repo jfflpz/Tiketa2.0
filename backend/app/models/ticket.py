@@ -91,8 +91,13 @@ class Ticket(Base, TimestampMixin):
     department_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("departments.id"))
     requester_name: Mapped[str] = mapped_column(String(150))
     requester_contact_enc: Mapped[str | None] = mapped_column(Text)
+    reported_issue_code: Mapped[str | None] = mapped_column(
+        ForeignKey("task_categories.code"), nullable=True
+    )
     task_code: Mapped[str] = mapped_column(ForeignKey("task_categories.code"))
     description_enc: Mapped[str] = mapped_column(Text)
+    diagnosis_enc: Mapped[str | None] = mapped_column(Text, nullable=True)
+    resolution_notes_enc: Mapped[str | None] = mapped_column(Text, nullable=True)
     mode: Mapped[str | None] = mapped_column(String(20))
     month: Mapped[str] = mapped_column(String(30))
     date_started: Mapped[date] = mapped_column(Date)

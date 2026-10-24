@@ -1,6 +1,21 @@
 {
   "components": {
     "schemas": {
+      "AssignInput": {
+        "additionalProperties": false,
+        "properties": {
+          "technician_id": {
+            "format": "uuid",
+            "title": "Technician Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "technician_id"
+        ],
+        "title": "AssignInput",
+        "type": "object"
+      },
       "Body_upload_api_v1_tickets__ticket_id__attachments_post": {
         "properties": {
           "file": {
@@ -74,6 +89,7 @@
           "employee_id": {
             "maxLength": 50,
             "minLength": 1,
+            "pattern": "^[0-9]{1,50}$",
             "title": "Employee Id",
             "type": "string"
           },
@@ -235,6 +251,49 @@
         "title": "ScopeInput",
         "type": "object"
       },
+      "ServiceRecordUpdate": {
+        "additionalProperties": false,
+        "properties": {
+          "diagnosis": {
+            "anyOf": [
+              {
+                "maxLength": 20000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diagnosis"
+          },
+          "resolution_notes": {
+            "anyOf": [
+              {
+                "maxLength": 20000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolution Notes"
+          },
+          "task_code": {
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Code"
+          }
+        },
+        "title": "ServiceRecordUpdate",
+        "type": "object"
+      },
       "StatusInput": {
         "additionalProperties": false,
         "properties": {
@@ -290,10 +349,23 @@
             "type": "string"
           },
           "employee_id": {
-            "maxLength": 150,
+            "maxLength": 50,
             "minLength": 1,
+            "pattern": "^[0-9]{1,50}$",
             "title": "Employee Id",
             "type": "string"
+          },
+          "reported_issue_code": {
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reported Issue Code"
           },
           "task_code": {
             "maxLength": 50,
@@ -383,6 +455,17 @@
             "title": "Description",
             "type": "string"
           },
+          "diagnosis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diagnosis"
+          },
           "duration": {
             "anyOf": [
               {
@@ -435,9 +518,31 @@
             "title": "Month",
             "type": "string"
           },
+          "reported_issue_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reported Issue Code"
+          },
           "requester_name": {
             "title": "Requester Name",
             "type": "string"
+          },
+          "resolution_notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolution Notes"
           },
           "resolved_at": {
             "anyOf": [
@@ -1761,7 +1866,8 @@
                     "OPEN",
                     "PROG",
                     "RESL",
-                    "CLSD"
+                    "CLSD",
+                    "ALL"
                   ],
                   "type": "string"
                 },
@@ -1770,6 +1876,23 @@
                 }
               ],
               "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "technician_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Technician Id"
             }
           },
           {
@@ -2005,6 +2128,64 @@
           }
         ],
         "summary": "Detail",
+        "tags": [
+          "Tickets"
+        ]
+      }
+    },
+    "/api/v1/tickets/{ticket_id}/assign": {
+      "patch": {
+        "operationId": "assign_ticket_api_v1_tickets__ticket_id__assign_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ticket_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ticket Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Assign Ticket",
         "tags": [
           "Tickets"
         ]
@@ -2383,6 +2564,64 @@
           }
         },
         "summary": "Confirm",
+        "tags": [
+          "Tickets"
+        ]
+      }
+    },
+    "/api/v1/tickets/{ticket_id}/service-record": {
+      "patch": {
+        "operationId": "update_service_record_api_v1_tickets__ticket_id__service_record_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ticket_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ticket Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServiceRecordUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Service Record",
         "tags": [
           "Tickets"
         ]
