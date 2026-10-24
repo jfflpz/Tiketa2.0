@@ -28,6 +28,7 @@ export default function App() {
   const setActiveView = useAppStore((state) => state.setActiveView);
   const verifyTicketCode = useAppStore((state) => state.verifyTicketCode);
   const isHydratingAuth = useAppStore((state) => state.isHydratingAuth);
+  const fetchQueueApi = useAppStore((state) => state.fetchQueueApi);
   const hydrateAuthApi = useAppStore((state) => state.hydrateAuthApi);
 
   const [currentPath, setCurrentPath] = useState(() =>
@@ -56,6 +57,26 @@ export default function App() {
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
   }, [currentUser, setActiveView]);
+  useEffect(() => {
+    if (!currentUser) return;
+    fetchQueueApi();
+
+    const onFocus = () => {
+      fetchQueueApi();
+    };
+    window.addEventListener('focus', onFocus);
+
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchQueueApi();
+      }
+    }, 15000);
+
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      clearInterval(interval);
+    };
+  }, [currentUser, fetchQueueApi]);
 
   if (isHydratingAuth) {
     return (
