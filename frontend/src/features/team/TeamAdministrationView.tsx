@@ -1,5 +1,5 @@
 // @spec UI-TEAM-01: IT Support Specialist Roster, Employee Directory & Account Governance
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { UserPlus, Plus, Briefcase, Fingerprint, Clock, Search, RefreshCw, Loader2 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { TeamKpiSummaryCards } from './components/TeamKpiSummaryCards';
@@ -24,6 +24,7 @@ export const TeamAdministrationView: React.FC = () => {
   const isLoadingTeam = useAppStore((state) => state.isLoadingTeam);
 
   const tickets = useAppStore((state) => state.tickets);
+  const fetchQueueApi = useAppStore((state) => state.fetchQueueApi);
   const setSelectedTicketId = useAppStore((state) => state.setSelectedTicketId);
   const setActiveView = useAppStore((state) => state.setActiveView);
   const currentUser = useAppStore((state) => state.currentUser);
@@ -41,7 +42,8 @@ export const TeamAdministrationView: React.FC = () => {
     fetchDictionaries();
     fetchITMembers();
     fetchEmployees();
-  }, [fetchDictionaries, fetchITMembers, fetchEmployees]);
+    fetchQueueApi();
+  }, [fetchDictionaries, fetchITMembers, fetchEmployees, fetchQueueApi]);
 
   // Operational metrics
   const activeTechCount = itTeamMembers.filter((m) => m.status === 'active').length;
@@ -73,6 +75,28 @@ export const TeamAdministrationView: React.FC = () => {
     );
   });
 
+  // Calculate live closed and active repairs dynamically per staff member
+  const itStaffWithLiveMetrics = useMemo(() => {
+    return filteredITStaff.map((m) => {
+      const userTickets = tickets.filter(
+        (t) =>
+          t.assigned_tech_id === m.id ||
+          t.workedById === m.id ||
+          (t.workedBy && t.workedBy.toLowerCase() === m.name.toLowerCase())
+      );
+      const ticketsClosed = userTickets.filter(
+        (t) => t.status === 'CLSD' || t.status === 'RESL'
+      ).length;
+      const activeTickets = userTickets.filter((t) => t.status === 'PROG').length;
+
+      return {
+        ...m,
+        ticketsClosed,
+        activeTickets,
+      };
+    });
+  }, [filteredITStaff, tickets]);
+
   return (
     <div className="space-y-5 pb-8">
       {/* Page Title & Action Controls Row */}
@@ -99,6 +123,7 @@ export const TeamAdministrationView: React.FC = () => {
             onClick={() => {
               fetchITMembers();
               fetchEmployees();
+              fetchQueueApi();
             }}
             className="p-2 rounded-xl border border-[#ECEEF2] bg-white hover:bg-zinc-50 text-zinc-600 transition-colors shadow-sm disabled:opacity-50 press-fx"
             title="Refresh directory from server"
@@ -216,7 +241,7 @@ export const TeamAdministrationView: React.FC = () => {
           {/* TAB 1: IT SUPPORT SPECIALISTS ROSTER */}
           {activeTab === 'IT_STAFF' && (
             <ITStaffTable
-              staff={filteredITStaff}
+              staff={itStaffWithLiveMetrics}
               currentUserEmail={currentUser?.email}
               onDeleteMember={(id, name) => {
                 deleteITMemberApi(id, name);
@@ -251,13 +276,29 @@ export const TeamAdministrationView: React.FC = () => {
         isOpen={isAddITModalOpen}
         onClose={() => setAddITModalOpen(false)}
         onSubmit={async (data) => {
-          return await createITMemberApi({
+          const success = await createITMemberApi({
             username: data.username,
             password: data.password,
             full_name: data.name,
             email: data.email,
             role: data.systemRole,
           });
+          if (success) {
+            try {
+              localStorage.setItem(
+                `tiketa_staff_meta_${data.username}`,
+                JSON.stringify({
+                  roleTitle: data.role,
+                  department: data.department,
+                  primaryLocation: data.primaryLocation,
+                })
+              );
+              fetchITMembers();
+            } catch (e) {
+              // Ignore storage errors
+            }
+          }
+          return success;
         }}
       />
 

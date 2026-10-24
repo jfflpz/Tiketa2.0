@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapPin, Briefcase, Flame, Trash2, ShieldAlert } from 'lucide-react';
+import { MapPin, Briefcase, Trash2, ShieldAlert } from 'lucide-react';
 import type { TeamMember } from '../../../types/team';
 
 export interface ITStaffTableProps {
@@ -129,9 +129,8 @@ export const ITStaffTable: React.FC<ITStaffTableProps> = ({
               </div>
 
               <div className="pt-2 border-t border-[#ECEEF2] flex items-center justify-between">
-                <span className="px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-bold flex items-center gap-1">
-                  <Flame className="w-3 h-3 text-orange-500 fill-orange-400" />
-                  {member.flameScore} Rating
+                <span className="text-[10px] font-mono text-zinc-400">
+                  {member.systemRole === 'admin' ? 'System Administrator' : 'IT Specialist'}
                 </span>
 
                 {!isCurrentUser && !isDeactivated && (

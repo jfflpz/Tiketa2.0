@@ -58,24 +58,57 @@ const mapBackendUserToTeamMember = (
 ): TeamMember => {
   const isAdm = u.role === 'admin';
   const loc = dictionaries?.locations.find((l) => l.id === u.location_id);
-  const locationName = loc ? `${loc.name} (${loc.code})` : 'Main HQ / Regional Fleet';
+  let locationName = loc ? `${loc.name} (${loc.code})` : 'Main HQ / Regional Fleet';
+  let dept = isAdm ? 'IT Systems Administration' : 'Terminal Support & Operations';
+  let roleTitle: TeamRole = isAdm ? 'Admin' : 'Field Technician';
+
+  try {
+    const raw =
+      localStorage.getItem(`tiketa_staff_meta_${u.username}`) ||
+      localStorage.getItem(`tiketa_staff_meta_${u.id}`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed.primaryLocation) locationName = parsed.primaryLocation;
+      if (parsed.department) dept = parsed.department;
+      if (parsed.roleTitle) roleTitle = parsed.roleTitle as TeamRole;
+    }
+  } catch (e) {
+    // Ignore storage parse error
+  }
+
+  // Pre-seed canonical technician hubs and departments if not overridden
+  if (!localStorage.getItem(`tiketa_staff_meta_${u.username}`)) {
+    if (u.username === 'technician') {
+      dept = 'Terminal Operations & PMS';
+      locationName = 'Caloocan Terminal (CAL)';
+      roleTitle = 'Field Technician';
+    } else if (u.username === 'tech_support') {
+      dept = 'IT Infrastructure & Support';
+      locationName = 'Pasay Terminal (PSY)';
+      roleTitle = 'Field Technician';
+    } else if (u.username === 'admin') {
+      dept = 'IT Systems Administration';
+      locationName = 'Main HQ / Central Fleet';
+      roleTitle = 'Admin';
+    }
+  }
 
   return {
     id: u.id,
     name: u.full_name,
     username: u.username,
     email: u.email,
-    role: isAdm ? 'Admin' : 'Field Technician',
+    role: roleTitle,
     systemRole: u.role,
     avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(
       u.username
     )}&backgroundColor=${isAdm ? 'fed7aa' : 'b6e3f4'}`,
-    department: isAdm ? 'IT Systems Administration' : 'Terminal Support & Operations',
+    department: dept,
     status: u.is_active ? 'active' : 'offline',
     primaryLocation: locationName,
     ticketsClosed: 0,
     activeTickets: 0,
-    flameScore: isAdm ? 30 : 20,
+    flameScore: 0,
     is_active: u.is_active,
   };
 };
