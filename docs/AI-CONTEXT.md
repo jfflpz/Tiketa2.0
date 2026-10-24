@@ -28,7 +28,7 @@ Direct your search to these targeted documentation modules:
 
 ## 3. Account & Ticket Intake Architecture
 1. **Public/Intranet Intake (`/report`)**:
-   - Employees input their **Employee ID No.** (e.g. `FS-1042`).
+   - Employees input their **Employee ID No.** (1–50 ASCII digits, e.g. `1042`, preserving leading zeros).
    - Backend auto-fetches verified profile from `employees` table and **hard-locks Location and Department**.
    - Employee taps 1 of 6 visual category buttons and submits.
    - Guarded against rapid-typing race conditions; submission blocked until active ID is verified.

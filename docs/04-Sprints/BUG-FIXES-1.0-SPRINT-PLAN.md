@@ -1,6 +1,6 @@
 # Tiketa — Bug Fixes 1.0 Sprint Plan
 
-Updated: 2026-10-23. Status: planned; implementation has not started under this plan.
+Updated: 2026-10-24. Status: planned; implementation has not started under this plan.
 
 ## 1. Sprint structure
 
@@ -15,6 +15,7 @@ Execution documents:
 | Document | Purpose |
 | --- | --- |
 | [Backend track](BUG-FIXES-1.0-BACKEND-PLAN.md) | Person 1's tasks, dependencies, deliverables and checks |
+| [Corrected backend M1/M2 plan](BUG-FIXES-1.0-BACKEND-M1-M2-IMPLEMENTATION-PLAN.md) | Reviewed migration/API strategy for B-01–B-04, including numeric-only IDs |
 | [Frontend track](BUG-FIXES-1.0-FRONTEND-PLAN.md) | Person 2's tasks, dependencies, deliverables and checks |
 | [Requirement backlog](BUG-FIXES-1.0.md) | Original findings, intended behavior and BF-01–BF-12 acceptance criteria |
 
@@ -35,7 +36,7 @@ All items start as Planned. B/F identifiers below refer to tasks in the two exec
 | BF-05 — Bell/messages/dispatch | B-03/B-05: durable claim/assignment and conversation summaries | F-04/F-05: all action entry points, current bell/dispatch and persistent message summaries |
 | BF-06 — Employee/technician chat | B-05: message storage and participant authorization | F-05: real conversation reads/writes and refresh/retry handling |
 | BF-07 — Repair notes/checklists | B-06: persisted library and independent ticket checklist instances | F-06: create/edit/delete/apply and saved checklist progress |
-| BF-08 — Accounts/employees | B-04: existing directory APIs, validation, roles and password handling | F-07: staff/employee forms and lists, password input and fixed ID prefix |
+| BF-08 — Accounts/employees | B-04: directory APIs, numeric-ID migration/validation, roles and password handling | F-07: staff/employee forms and lists, password input and numeric-only employee IDs |
 | BF-09 — Overview charts | B-07: scoped monthly aggregates and documented metrics | F-08: live chart data, dynamic year and correct labels |
 | BF-10 — Drawer/workbench UX | B-02/B-05: diagnosis save and conversation behavior | F-03/F-05: Service Record & Diagnosis default, shortcuts and internal-note control removal |
 | BF-11 — Modal backdrop | No API dependency | F-09: full-viewport overlays, stacking, scrolling and focus |
@@ -72,7 +73,7 @@ Person 2 connects the real endpoint and demonstrates a save/read after reload be
 - Reproduce the white screen. Validation objects reaching React toast content are a hypothesis until the failure is observed.
 - Define stable six-button issue labels, original description, diagnosis and resolution fields together. Preserve historical records and canonical 15-field job-log exports.
 - Use consistent statuses: OPEN = awaiting technician, PROG = in progress, RESL = repaired/awaiting verification, CLSD = verified/closed. RESL and CLSD appear in completed history.
-- Audit existing employee IDs before enforcing `FS-` plus digits; preserve leading zeros and do not rewrite existing IDs automatically.
+- Apply the updated numeric-only employee-ID requirement through a collision-checked migration that preserves UUIDs and leading zeros. Recommended bounds are 1–50 ASCII digits. Coordinate frontend prefix removal and backend enforcement; see the corrected M1/M2 plan.
 - Document accountless employee conversation access and recovery. Ticket code or Employee ID alone must not expose a conversation. Staff login must never act as employee closure confirmation.
 - Agree repair-library edit/delete permissions and retain applied ticket records when templates change.
 - Define overview completion-month/personal/fleet scope separately from creation-month SLA reports.

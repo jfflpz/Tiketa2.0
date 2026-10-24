@@ -1,6 +1,6 @@
 # Bug Fixes 1.0 — Frontend Track
 
-Updated: 2026-10-23. Owner: Person 2 (frontend). Status: Planned.
+Updated: 2026-10-24. Owner: Person 2 (frontend). Status: Planned.
 
 This is the frontend track of the [single Bug Fixes 1.0 sprint](BUG-FIXES-1.0-SPRINT-PLAN.md). Work alongside Person 1 using the [backend track](BUG-FIXES-1.0-BACKEND-PLAN.md). All acceptance criteria remain in the [requirement backlog](BUG-FIXES-1.0.md).
 
@@ -89,7 +89,7 @@ Requirement: BF-08. Backend contract: B-04 and existing directory APIs. Mileston
 
 - [ ] Load real staff and employee lists from the API with pagination and server dictionaries.
 - [ ] Add username and password fields to account creation; allow only `it`/`admin` authorization roles and align password validation with the server.
-- [ ] Connect Add Employee Profile and related mutations; implement a fixed `FS-` prefix with numeric suffix under the agreed compatibility policy, preserving leading zeros.
+- [ ] Connect Add Employee Profile and related mutations using numeric-only employee IDs stored as text. Remove the fixed `FS-` prefix and update intake/quick-intake defaults, placeholders and validation while preserving leading zeros. Coordinate deployment with the ID migration and API contract in the [M1/M2 plan](BUG-FIXES-1.0-BACKEND-M1-M2-IMPLEMENTATION-PLAN.md); recommended bounds are 1–50 ASCII digits.
 - [ ] Use valid company/location/department mappings, display duplicate/validation errors, and refresh lists after successful changes.
 
 Acceptance: created accounts can log in; created employees can be found in intake; records survive reload. Passwords are not exposed in tables or retained unnecessarily after success.
