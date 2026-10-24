@@ -23,6 +23,8 @@ Direct your search to these targeted documentation modules:
   - Backend Track: `docs/04-Sprints/BACKEND-SPRINT-PLAN.md`
   - Frontend Track: `docs/04-Sprints/FRONTEND-SPRINT-PLAN.md`
 - **Git Rebase & Standards**: `docs/05-Standards/GIT-REBASE-WORKFLOW.md`
+- **Backend Setup & Developer Onboarding**: `docs/05-Standards/BACKEND-SETUP-GUIDE.md` (Prerequisites, local venv setup, Docker Postgres/Redis, demo seeds & troubleshooting)
+- **Backend Operations & Deployment Runbook**: `docs/05-Standards/BACKEND-OPERATIONS.md`
 
 ---
 

@@ -257,7 +257,6 @@ export const TeamAdministrationView: React.FC = () => {
             full_name: data.name,
             email: data.email,
             role: data.systemRole,
-            location_id: data.locationId ?? null,
           });
         }}
       />

@@ -267,7 +267,6 @@ export interface UserCreateInput {
     full_name: string;
     role: 'it' | 'admin';
     password: string;
-    location_id?: string | null;
 }
 
 export interface UserUpdateInput {
@@ -275,7 +274,6 @@ export interface UserUpdateInput {
     role?: 'it' | 'admin' | null;
     is_active?: boolean | null;
     password?: string | null;
-    location_id?: string | null;
 }
 
 export interface EmployeeCreateInput {
