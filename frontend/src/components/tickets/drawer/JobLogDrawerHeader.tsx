@@ -3,7 +3,6 @@ import {
   X,
   MapPin,
   Building2,
-  Wrench,
   Copy,
   MessageSquare,
   FileSpreadsheet,
@@ -16,7 +15,7 @@ export interface JobLogDrawerHeaderProps {
   drawerTab: 'CHAT' | 'JOB_LOG';
   messageCount: number;
   onSelectTab: (tab: 'CHAT' | 'JOB_LOG') => void;
-  onOpenWorkbench: () => void;
+  
   onCopyShareLink: () => void;
   onRequestValidation: () => void;
   onClose: () => void;
@@ -27,7 +26,7 @@ export const JobLogDrawerHeader: React.FC<JobLogDrawerHeaderProps> = ({
   drawerTab,
   messageCount,
   onSelectTab,
-  onOpenWorkbench,
+  
   onCopyShareLink,
   onRequestValidation,
   onClose,
@@ -63,15 +62,6 @@ export const JobLogDrawerHeader: React.FC<JobLogDrawerHeaderProps> = ({
           </p>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
-          <button
-            type="button"
-            onClick={onOpenWorkbench}
-            className="px-2.5 py-1.5 rounded-xl bg-orange-500 hover:bg-orange-600 active:scale-95 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-sm transition-all press-fx"
-            title="Open this ticket in Active Workbench"
-          >
-            <Wrench className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Active Workbench</span>
-          </button>
           <button
             type="button"
             onClick={onCopyShareLink}

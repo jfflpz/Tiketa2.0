@@ -52,7 +52,7 @@ export const JobLogDrawerRecordForm: React.FC<JobLogDrawerRecordFormProps> = ({
     },
     { no: '13', label: 'Status', value: ticket.status },
     { no: '15', label: 'Worked By', value: ticket.workedBy ?? 'Unassigned (General Pool)' },
-    { no: '06', label: 'Description', value: ticket.description },
+    { no: '06', label: 'Diagnosis & Resolution', value: ticket.technicianDiagnosis || ticket.description },
   ];
 
   const timeFields = [
@@ -99,7 +99,7 @@ export const JobLogDrawerRecordForm: React.FC<JobLogDrawerRecordFormProps> = ({
 
         <div className="space-y-1.5">
           <label className="block text-[11px] font-medium text-ink-subtle">
-            Symptom &amp; Repair Notes (Job Log Column #06)
+            Technician Diagnosis &amp; Findings (Job Log Column #06)
           </label>
           <div className="flex gap-2">
             <input
@@ -115,7 +115,7 @@ export const JobLogDrawerRecordForm: React.FC<JobLogDrawerRecordFormProps> = ({
               className="px-3 py-1.5 rounded-xl bg-surface hover:bg-zinc-100 text-ink border border-line text-xs font-semibold inline-flex items-center gap-1 transition-colors press-fx"
             >
               <Save className="w-3.5 h-3.5 text-ink-subtle" />
-              <span>{isSavingNotes ? 'Saving...' : 'Save Job Log'}</span>
+              <span>{isSavingNotes ? 'Saving...' : 'Save Service Record'}</span>
             </button>
           </div>
         </div>

@@ -167,7 +167,7 @@ export const ticketsApi = {
     },
     updateStatus: async (
     ticketId: string,
-    payload: { status: 'PROG' | 'RESL' | 'CLSD'; mode?: 'REM' | 'SITE' }
+    payload: { status: 'PROG' | 'RESL' | 'CLSD'; mode?: 'REM' | 'SITE'; task_code?: string }
     ) => {
     const res = await apiClient.patch(`/tickets/${ticketId}/status`, payload);
     return res.data;
