@@ -116,10 +116,10 @@ export const TerminalHubDetailModal: React.FC<TerminalHubDetailModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto animate-fade-in">
       <div className="fixed inset-0" onClick={onClose} aria-hidden="true" />
 
-      <div className="relative z-10 w-full max-w-4xl bg-white border border-[#ECEEF2] rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="relative z-10 w-full max-w-4xl bg-white border border-[#ECEEF2] rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] my-auto">
         {/* Header Bar */}
         <div className="px-6 py-5 bg-[#FAFAFB] border-b border-[#ECEEF2] flex items-center justify-between">
           <div className="flex items-center gap-3.5">

@@ -9,6 +9,7 @@ import type {
 } from '../../types/ticket';
 import { TASK_CATEGORIES } from '../../constants/domain';
 import { ticketsApi } from '../../api/client';
+import { normalizeApiError } from '../../utils/errorUtils';
 
 export interface TicketOperationsSlice {
   // Staff Quick Intake modal & mutation
@@ -29,8 +30,7 @@ export interface TicketOperationsSlice {
   updateTicketStatusApi: (
     ticketId: string,
     status: TicketStatus,
-    mode?: SupportMode
-  ) => Promise<boolean>;
+    mode?: SupportMode, task_code?: string) => Promise<boolean>;
   fetchTicketCommentsApi: (ticketId: string) => Promise<void>;
   sendTicketMessageApi: (
     ticketId: string,
@@ -121,7 +121,7 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
 
       return newTicket;
     } catch (err: any) {
-      const msg = err.response?.data?.detail || 'Failed to submit quick intake ticket to server';
+      const msg = normalizeApiError(err, 'Failed to submit quick intake ticket to server');
       get().addToast('Quick Intake Error', msg, 'warning');
       return null;
     }
@@ -148,13 +148,13 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
       return true;
     } catch (err: any) {
       set({ tickets: previousTickets });
-      const msg = err.response?.data?.detail || 'Ticket could not be claimed (already assigned)';
+      const msg = normalizeApiError(err, 'Ticket could not be claimed (already assigned)');
       get().addToast('Claim Conflict', msg, 'warning');
       return false;
     }
   },
 
-  updateTicketStatusApi: async (ticketId: string, status: TicketStatus, mode?: SupportMode) => {
+  updateTicketStatusApi: async (ticketId: string, status: TicketStatus, mode?: SupportMode, task_code?: string) => {
     const target = get().tickets.find((t) => t.id === ticketId);
     if (!target) return false;
 
@@ -182,8 +182,7 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
     try {
       const res = await ticketsApi.updateStatus(ticketId, {
         status: status as any,
-        mode: mode || (target.mode as any),
-      });
+        mode: mode || (target.mode as any), task_code: task_code || target.taskCode });
       get().addToast('Status Updated', `${target.ticketCode} is now ${status}`, 'info');
 
       // Development / Test: Backend returns closure_url when transitioning to RESL
@@ -210,7 +209,7 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
 
       return true;
     } catch (err: any) {
-      const msg = err.response?.data?.detail || 'Failed to update ticket status';
+      const msg = normalizeApiError(err, 'Failed to update ticket status');
       get().addToast('Error', msg, 'warning');
       get().fetchQueueApi();
       return false;
@@ -322,7 +321,17 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
     const taskName = category?.name ?? target.task;
     set((state) => ({
       tickets: state.tickets.map((t) =>
-        t.id === ticketId ? { ...t, taskCode, task: taskName } : t
+        t.id === ticketId
+          ? {
+              ...t,
+              reportedIssue: t.reportedIssue || t.task,
+              reportedDetails: t.reportedDetails || t.description,
+              taskCode,
+              task: taskName,
+              diagnosedTaskCode: taskCode,
+              diagnosedTaskName: taskName,
+            }
+          : t
       ),
     }));
     get().addToast(
@@ -330,12 +339,20 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
       `Reclassified to ${taskName} (${taskCode})`,
       'success'
     );
+    get().updateTicketStatusApi(ticketId, target.status, target.mode, taskCode);
   },
 
   updateTicketDescription: (ticketId, description) => {
     set((state) => ({
       tickets: state.tickets.map((t) =>
-        t.id === ticketId ? { ...t, description } : t
+        t.id === ticketId
+          ? {
+              ...t,
+              reportedDetails: t.reportedDetails || t.description,
+              technicianDiagnosis: description,
+              description: description,
+            }
+          : t
       ),
     }));
     get().addToast(

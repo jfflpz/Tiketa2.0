@@ -135,13 +135,84 @@ export const authApi = {
     },
 };
 
+export interface ServerDictionaryItem {
+  id: string;
+  code: string;
+  name: string;
+}
+
+export interface ServerDictionaries {
+  companies: ServerDictionaryItem[];
+  locations: ServerDictionaryItem[];
+  departments: ServerDictionaryItem[];
+  tasks: ServerDictionaryItem[];
+  location_departments: Array<{ location_id: string; department_id: string }>;
+}
+
+export interface AdminUserItem {
+  id: string;
+  username: string;
+  email: string;
+  full_name: string;
+  role: 'it' | 'admin';
+  is_active: boolean;
+}
+
+export interface AdminEmployeeItem {
+  id: string;
+  employee_id: string;
+  full_name: string;
+  email: string;
+  company_id: string;
+  company_name: string;
+  location_id: string;
+  location_name: string;
+  department_id: string;
+  department_name: string;
+  is_active: boolean;
+}
+
 export const directoryApi = {
-    lookupEmployee: async (query: string): Promise<EmployeeLookupResult> => {
+  lookupEmployee: async (query: string): Promise<EmployeeLookupResult> => {
     const res = await apiClient.get<EmployeeLookupResult>('/employees/lookup', {
-        params: { q: query },
+      params: { q: query },
     });
     return res.data;
-    },
+  },
+  getDictionaries: async (): Promise<ServerDictionaries> => {
+    const res = await apiClient.get<ServerDictionaries>('/dictionaries');
+    return res.data;
+  },
+  getAdminUsers: async (params?: { offset?: number; limit?: number }): Promise<AdminUserItem[]> => {
+    const res = await apiClient.get<AdminUserItem[]>('/admin/users', { params });
+    return res.data;
+  },
+  createAdminUser: async (payload: {
+    username: string;
+    email: string;
+    full_name: string;
+    role: 'it' | 'admin';
+    password: string;
+  }): Promise<AdminUserItem> => {
+    const res = await apiClient.post<AdminUserItem>('/admin/users', payload);
+    return res.data;
+  },
+  getAdminEmployees: async (params?: { offset?: number; limit?: number }): Promise<AdminEmployeeItem[]> => {
+    const res = await apiClient.get<AdminEmployeeItem[]>('/admin/employees', { params });
+    return res.data;
+  },
+  createAdminEmployee: async (payload: {
+    employee_id: string;
+    full_name: string;
+    email: string;
+    company_id: string;
+    location_id: string;
+    department_id: string;
+    is_active?: boolean;
+  }): Promise<AdminEmployeeItem> => {
+    const res = await apiClient.post<AdminEmployeeItem>('/admin/employees', payload);
+    return res.data;
+  },
 };
 
 export const ticketsApi = {
@@ -167,7 +238,7 @@ export const ticketsApi = {
     },
     updateStatus: async (
     ticketId: string,
-    payload: { status: 'PROG' | 'RESL' | 'CLSD'; mode?: 'REM' | 'SITE' }
+    payload: { status: 'PROG' | 'RESL' | 'CLSD'; mode?: 'REM' | 'SITE'; task_code?: string }
     ) => {
     const res = await apiClient.patch(`/tickets/${ticketId}/status`, payload);
     return res.data;

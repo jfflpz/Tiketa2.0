@@ -46,13 +46,13 @@ export const StaffLoginModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/35 backdrop-blur-[2px]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto animate-fade-in">
       <div
         className="fixed inset-0"
         onClick={() => !isAuthenticating && closeLoginModal()}
         aria-hidden="true"
       />
-      <div className="relative z-10 w-full max-w-md bg-surface border border-line rounded-3xl shadow-2xl overflow-hidden">
+      <div className="relative z-10 w-full max-w-md bg-surface border border-line rounded-3xl shadow-2xl overflow-hidden my-auto">
         {/* Header */}
         <div className="px-6 py-5 bg-canvas border-b border-line flex items-center justify-between">
           <div className="flex items-center gap-2.5">

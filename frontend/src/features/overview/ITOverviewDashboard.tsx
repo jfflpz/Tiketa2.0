@@ -17,6 +17,7 @@ import {
   CheckCircle2,
   ArrowRight,
   RefreshCw,
+  Inbox,
   BookOpen,
 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
@@ -132,11 +133,12 @@ export const ITOverviewDashboard: React.FC = () => {
 
           <button
             type="button"
-            onClick={() => setActiveView('notes')}
+            onClick={() => setActiveView('tickets')}
             className="px-3.5 py-2 rounded-xl bg-white hover:bg-zinc-50 text-ink border border-[#ECEEF2] text-xs font-semibold inline-flex items-center gap-1.5 shadow-card transition-colors press-fx"
+            title="View Active Tickets"
           >
-            <BookOpen className="w-3.5 h-3.5 text-orange-500" />
-            <span>Saved Repair Notes ({savedRepairNotes.length})</span>
+            <Inbox className="w-3.5 h-3.5 text-orange-500" />
+            <span>View Active Tickets</span>
           </button>
         </div>
       </div>
