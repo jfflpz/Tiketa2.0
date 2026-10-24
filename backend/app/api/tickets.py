@@ -11,15 +11,24 @@ from fastapi import APIRouter, HTTPException, Query, Request, Response, UploadFi
 from pydantic import TypeAdapter
 from sqlalchemy import select
 
-from app.api.deps import DB, CurrentUser
+from app.api.deps import DB, Admin, CurrentUser
 from app.core.cache import cache, rate_limit
 from app.core.config import settings
 from app.core.security import decrypt, decrypt_bytes, digest, encrypt, encrypt_bytes
-from app.models import TaskCategory, Ticket, TicketAttachment, TicketComment
+from app.models import (
+    TaskCategory,
+    Ticket,
+    TicketAttachment,
+    TicketComment,
+    TicketTechnician,
+    User,
+)
 from app.schemas import (
+    AssignInput,
     ClosureInput,
     CommentInput,
     PublicTicket,
+    ServiceRecordUpdate,
     StatusInput,
     TicketInput,
     TicketOut,
@@ -57,14 +66,17 @@ async def track(code: str, request: Request, db: DB):
 async def queue(
     db: DB,
     user: CurrentUser,
-    status: Literal["OPEN", "PROG", "RESL", "CLSD"] | None = None,
+    status: Literal["OPEN", "PROG", "RESL", "CLSD", "ALL"] | None = None,
+    technician_id: UUID | None = None,
     offset: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
 ):
     # Every reader is authenticated before accessing this shared, encrypted cache.
     # Versioned keys prevent a fill racing a committed mutation from being reused.
     version = await cache.get("queue:version") or "0"
-    key = f"queue:{version}:{status}:{offset}:{limit}"
+    status_key = status or "DEFAULT"
+    tech_key = str(technician_id) if technician_id else "NONE"
+    key = f"queue:{version}:{status_key}:{tech_key}:{offset}:{limit}"
     cached = await cache.get(key)
     if cached:
         return Response(decrypt(cached), media_type="application/json")
@@ -74,11 +86,16 @@ async def queue(
         .offset(offset)
         .limit(limit)
     )
-    query = (
-        query.where(Ticket.status == status)
-        if status
-        else query.where(Ticket.status.in_(["OPEN", "PROG", "RESL"]))
-    )
+    if status == "ALL":
+        pass
+    elif status in ("OPEN", "PROG", "RESL", "CLSD"):
+        query = query.where(Ticket.status == status)
+    else:
+        query = query.where(Ticket.status.in_(["OPEN", "PROG", "RESL"]))
+
+    if technician_id:
+        query = query.where(Ticket.assigned_tech_id == technician_id)
+
     rows = [ticket_view(row) for row in (await db.scalars(query)).all()]
     payload = queue_adapter.dump_json(queue_adapter.validate_python(rows)).decode()
     await cache.set(key, encrypt(payload), ex=5)
@@ -99,15 +116,103 @@ async def claim_ticket(ticket_id: UUID, db: DB, user: CurrentUser):
     return ticket_view(row)
 
 
-@router.patch("/{ticket_id}/status", response_model=TicketOut)
-async def status_ticket(ticket_id: UUID, body: StatusInput, db: DB, user: CurrentUser):
+@router.patch("/{ticket_id}/service-record", response_model=TicketOut)
+async def update_service_record(
+    ticket_id: UUID,
+    body: ServiceRecordUpdate,
+    db: DB,
+    user: CurrentUser,
+):
     row = await get_ticket(db, ticket_id, lock=True)
-    closure_url: str | None = None
-    if body.task_code:
+    if user.role != "admin" and row.assigned_tech_id != user.id:
+        raise HTTPException(
+            403,
+            "Only the assigned technician or administrator can update the service record",
+        )
+
+    if "task_code" in body.model_fields_set:
         cat = await db.get(TaskCategory, body.task_code)
         if not cat:
             raise HTTPException(422, "Invalid task category code")
         row.task_code = body.task_code
+
+    if "diagnosis" in body.model_fields_set:
+        row.diagnosis_enc = encrypt(body.diagnosis) if body.diagnosis else None
+
+    if "resolution_notes" in body.model_fields_set:
+        row.resolution_notes_enc = (
+            encrypt(body.resolution_notes) if body.resolution_notes else None
+        )
+
+    row.updated_at = now()
+    await db.commit()
+    await cache.incr("queue:version")
+    return ticket_view(row)
+
+
+@router.patch("/{ticket_id}/assign", response_model=TicketOut)
+async def assign_ticket(
+    ticket_id: UUID,
+    body: AssignInput,
+    db: DB,
+    admin: Admin,
+):
+    row = await get_ticket(db, ticket_id, lock=True)
+    if row.status in ("RESL", "CLSD"):
+        raise HTTPException(
+            409, f"Cannot reassign ticket in {row.status} status; reopen ticket first"
+        )
+
+    target_tech = await db.get(User, body.technician_id)
+    if not target_tech or target_tech.role != "it" or not target_tech.is_active:
+        raise HTTPException(422, "Target technician must be an active IT technician")
+
+    # Idempotent no-op if already assigned to this technician
+    if row.assigned_tech_id == target_tech.id:
+        return ticket_view(row)
+
+    # Demote existing primary technician assignments
+    tech_assignments = (
+        await db.scalars(
+            select(TicketTechnician).where(TicketTechnician.ticket_id == row.id)
+        )
+    ).all()
+
+    target_assoc = None
+    for assoc in tech_assignments:
+        assoc.is_primary = False
+        if assoc.technician_id == target_tech.id:
+            target_assoc = assoc
+
+    current_time = now()
+    if target_assoc:
+        target_assoc.is_primary = True
+        target_assoc.assigned_at = current_time
+    else:
+        db.add(
+            TicketTechnician(
+                ticket_id=row.id,
+                technician_id=target_tech.id,
+                assigned_at=current_time,
+                is_primary=True,
+            )
+        )
+
+    if row.status == "OPEN":
+        row.status = "PROG"
+        row.started_at = current_time
+
+    row.assigned_tech_id = target_tech.id
+    row.updated_at = current_time
+    await db.commit()
+    await cache.incr("queue:version")
+    return ticket_view(row)
+
+
+@router.patch("/{ticket_id}/status", response_model=TicketOut)
+async def status_ticket(ticket_id: UUID, body: StatusInput, db: DB, user: CurrentUser):
+    row = await get_ticket(db, ticket_id, lock=True)
+    closure_url: str | None = None
     if row.status == "OPEN" and body.status == "PROG":
         await claim(db, row, user)
         row.mode = body.mode
@@ -175,6 +280,17 @@ async def status_ticket(ticket_id: UUID, body: StatusInput, db: DB, user: Curren
         row.date_finished = None
     else:
         raise HTTPException(409, "Invalid status transition")
+
+    if body.task_code:
+        if user.role != "admin" and row.assigned_tech_id != user.id:
+            raise HTTPException(
+                403,
+                "Only the assigned technician or administrator can modify task classification",
+            )
+        cat = await db.get(TaskCategory, body.task_code)
+        if not cat:
+            raise HTTPException(422, "Invalid task category code")
+        row.task_code = body.task_code
     await db.commit()
     await cache.incr("queue:version")
     response_data = ticket_view(row)

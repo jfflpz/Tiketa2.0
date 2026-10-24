@@ -36,7 +36,10 @@ async def lookup(
     request: Request, db: DB, q: Annotated[str, Query(min_length=1, max_length=150)]
 ):
     await rate_limit("lookup:" + digest(request.client.host), 60, 60)
-    return await employee_view(db, await find_employee(db, q))
+    query_str = q.strip()
+    if "@" not in query_str and not query_str.isdigit():
+        raise HTTPException(422, "Employee ID query must consist only of ASCII digits")
+    return await employee_view(db, await find_employee(db, query_str))
 
 
 @router.get("/dictionaries")
