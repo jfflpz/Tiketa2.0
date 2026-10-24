@@ -1,6 +1,6 @@
 // @spec UI-TEAM-01: IT Support Specialist Roster, Employee Directory & Account Governance
-import React, { useState } from 'react';
-import { UserPlus, Plus, Briefcase, Fingerprint, Clock, Search } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { UserPlus, Plus, Briefcase, Fingerprint, Clock, Search, RefreshCw } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { TeamKpiSummaryCards } from './components/TeamKpiSummaryCards';
 import { ITStaffTable } from './components/ITStaffTable';
@@ -11,11 +11,14 @@ import { AddEmployeeModal } from './components/AddEmployeeModal';
 
 export const TeamAdministrationView: React.FC = () => {
   const itTeamMembers = useAppStore((state) => state.itTeamMembers);
-  const createITMember = useAppStore((state) => state.createITMember);
-  const deleteITMember = useAppStore((state) => state.deleteITMember);
+    const deleteITMember = useAppStore((state) => state.deleteITMember);
   const verifiedEmployeesList = useAppStore((state) => state.verifiedEmployeesList);
-  const createEmployee = useAppStore((state) => state.createEmployee);
-  const deleteEmployee = useAppStore((state) => state.deleteEmployee);
+    const deleteEmployee = useAppStore((state) => state.deleteEmployee);
+  const createITMemberApi = useAppStore((state) => state.createITMemberApi);
+  const createEmployeeApi = useAppStore((state) => state.createEmployeeApi);
+  const fetchDictionariesApi = useAppStore((state) => state.fetchDictionariesApi);
+  const fetchTeamDataApi = useAppStore((state) => state.fetchTeamDataApi);
+  const isLoadingTeam = useAppStore((state) => state.isLoadingTeam);
   const tickets = useAppStore((state) => state.tickets);
   const setSelectedTicketId = useAppStore((state) => state.setSelectedTicketId);
   const setActiveView = useAppStore((state) => state.setActiveView);
@@ -25,6 +28,11 @@ export const TeamAdministrationView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'IT_STAFF' | 'EMPLOYEES' | 'ACTIVITY'>('IT_STAFF');
   const [employeeSearch, setEmployeeSearch] = useState('');
   const [itSearch, setItSearch] = useState('');
+  useEffect(() => {
+    fetchDictionariesApi();
+    fetchTeamDataApi();
+  }, [fetchDictionariesApi, fetchTeamDataApi]);
+
 
   // Modals state
   const [isAddITModalOpen, setAddITModalOpen] = useState(false);
@@ -78,6 +86,17 @@ export const TeamAdministrationView: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            disabled={isLoadingTeam}
+            onClick={() => fetchTeamDataApi()}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-zinc-50 border border-[#ECEEF2] text-xs font-semibold text-ink shadow-sm transition-colors press-fx"
+            title="Refresh directory rosters"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 text-zinc-500 ${isLoadingTeam ? 'animate-spin text-orange-500' : ''}`} />
+            <span>{isLoadingTeam ? 'Syncing...' : 'Sync Directory'}</span>
+          </button>
+
           <button
             type="button"
             onClick={() => setAddITModalOpen(true)}
@@ -219,9 +238,8 @@ export const TeamAdministrationView: React.FC = () => {
       <CreateITStaffModal
         isOpen={isAddITModalOpen}
         onClose={() => setAddITModalOpen(false)}
-        onSubmit={(data) => {
-          createITMember(data);
-          addToast('Account Created', `Provisioned IT specialist account for ${data.name}.`, 'success');
+        onSubmit={async (data) => {
+          return await createITMemberApi(data);
         }}
       />
 
@@ -229,9 +247,15 @@ export const TeamAdministrationView: React.FC = () => {
       <AddEmployeeModal
         isOpen={isAddEmployeeModalOpen}
         onClose={() => setAddEmployeeModalOpen(false)}
-        onSubmit={(data) => {
-          createEmployee(data);
-          addToast('Profile Saved', `Registered ${data.full_name} (${data.employee_id}) in employee directory.`, 'success');
+        onSubmit={async (data) => {
+          return await createEmployeeApi({
+            employee_id: data.employee_id,
+            full_name: data.full_name,
+            email: data.email,
+            company_id: data.company_id,
+            location_id: data.location_id,
+            department_id: data.department_id,
+          });
         }}
       />
     </div>

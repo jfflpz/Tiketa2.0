@@ -48,6 +48,16 @@ export const QuickIntakeModal: React.FC = () => {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isQuickIntakeOpen && !isSubmitting) {
+        handleClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isQuickIntakeOpen, isSubmitting]);
+
+  useEffect(() => {
     const upper = employeeIdInput.trim().toUpperCase();
     if (!upper || upper.length < 2) return;
     lookupEmployeeApi(upper).then((matched) => {
@@ -126,13 +136,13 @@ export const QuickIntakeModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto animate-fade-in">
       <div
         className="fixed inset-0"
         onClick={handleClose}
         aria-hidden="true"
       />
-      <div className="relative z-10 w-full max-w-lg bg-surface border border-line rounded-3xl shadow-2xl overflow-hidden">
+      <div className="relative z-10 w-full max-w-lg bg-surface border border-line rounded-3xl shadow-2xl overflow-hidden my-auto max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="px-6 py-4 bg-canvas border-b border-line flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -264,7 +274,7 @@ export const QuickIntakeModal: React.FC = () => {
           </div>
         ) : (
           /* FORM VIEW: INTAKE WITH EMPLOYEE ID AUTO-BINDING */
-          <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
             {/* Employee ID Auto-Binding Row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
