@@ -5,7 +5,7 @@ import { createAuthSlice, type AuthSlice } from './slices/authSlice';
 import { createTicketQueueSlice, type TicketQueueSlice } from './slices/ticketQueueSlice';
 import { createTicketOperationsSlice, type TicketOperationsSlice } from './slices/ticketOperationsSlice';
 import { createPublicIntakeSlice, type PublicIntakeSlice } from './slices/publicIntakeSlice';
-import { createNotesSlice, type NotesSlice, DEFAULT_SOP_STEPS, INITIAL_SAVED_REPAIR_NOTES } from './slices/notesSlice';
+import { createNotesSlice, type NotesSlice } from './slices/notesSlice';
 import { createReportsSlice, type ReportsSlice } from './slices/reportsSlice';
 import { createTeamSlice, type TeamSlice } from './slices/teamSlice';
 import { createTicketVerificationSlice, type TicketVerificationSlice } from './slices/ticketVerificationSlice';
@@ -40,5 +40,3 @@ export type {
   TeamSlice,
   TicketVerificationSlice,
 };
-
-export { DEFAULT_SOP_STEPS, INITIAL_SAVED_REPAIR_NOTES };

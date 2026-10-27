@@ -108,6 +108,9 @@ class Ticket(Base, TimestampMixin):
     status: Mapped[str] = mapped_column(String(20), default="OPEN")
     assigned_tech_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
     closure_token_hash: Mapped[str | None] = mapped_column(String(64))
+    closure_token_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     user_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     historical_hash: Mapped[str | None] = mapped_column(String(64), unique=True)
 
@@ -128,7 +131,13 @@ class TicketComment(Base, TimestampMixin):
     __tablename__ = "ticket_comments"
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     ticket_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tickets.id"), index=True)
-    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id"), nullable=True
+    )
+    author_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    author_role: Mapped[str | None] = mapped_column(
+        String(20), default="it", nullable=True
+    )
     body_enc: Mapped[str] = mapped_column(Text)
     is_internal: Mapped[bool] = mapped_column(Boolean, default=True)
 

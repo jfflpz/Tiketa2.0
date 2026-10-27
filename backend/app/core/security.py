@@ -104,7 +104,7 @@ def issue_match_token(employee_id: str, session_id: str) -> str:
     return jwt.encode(claims, settings.SECRET_KEY, algorithm="HS256")
 
 
-def verify_match_token(token: str, session_id: str) -> str:
+def verify_match_token(token: str, session_id: str | None = None) -> str:
     claims = jwt.decode(
         token,
         settings.SECRET_KEY,
@@ -115,7 +115,51 @@ def verify_match_token(token: str, session_id: str) -> str:
     )
     if claims.get("type") != "employee_match":
         raise jwt.InvalidTokenError("Incorrect token type")
-    if claims.get("sid") != session_id:
+    if session_id and claims.get("sid") != session_id:
         raise jwt.InvalidTokenError("Session mismatch")
     return str(claims["sub"])
+
+
+def issue_employee_ticket_token(
+    ticket_id: str,
+    ticket_code: str,
+    employee_id: str,
+    session_id: str = "",
+    can_close: bool = False,
+    can_reopen: bool = False,
+    closure_hash: str | None = None,
+    scope: str = "ticket_conversation",
+) -> str:
+    now = datetime.now(UTC)
+    claims = {
+        "sub": ticket_id,
+        "ticket_code": ticket_code,
+        "employee_id": employee_id,
+        "type": "employee_ticket_access",
+        "scope": scope,
+        "sid": session_id,
+        "can_close": can_close,
+        "can_reopen": can_reopen,
+        "closure_hash": closure_hash,
+        "jti": str(uuid4()),
+        "iat": int(now.timestamp()),
+        "exp": int((now + timedelta(hours=2)).timestamp()),
+        "iss": "tiketa",
+        "aud": "tiketa-ticket-access",
+    }
+    return jwt.encode(claims, settings.SECRET_KEY, algorithm="HS256")
+
+
+def verify_employee_ticket_token(token: str) -> dict:
+    claims = jwt.decode(
+        token,
+        settings.SECRET_KEY,
+        algorithms=["HS256"],
+        audience="tiketa-ticket-access",
+        issuer="tiketa",
+        options={"require": ["sub", "ticket_code", "type", "jti", "iat", "exp"]},
+    )
+    if claims.get("type") != "employee_ticket_access":
+        raise jwt.InvalidTokenError("Incorrect token type")
+    return claims
 

@@ -7,7 +7,7 @@ from sqlalchemy import func, select
 
 from app.core.config import settings
 from app.db.session import AsyncSessionLocal
-from app.models import Ticket, User
+from app.models import RepairNote, Ticket, TicketChecklist, User
 from app.schemas import UserCreate
 from app.services.mail import send_closure
 from scripts.bootstrap_admin import bootstrap
@@ -53,7 +53,13 @@ async def test_seed_demo_operations_idempotent():
     await seed_demo_ops()
     async with AsyncSessionLocal() as db:
         tickets_count = await db.scalar(select(func.count()).select_from(Ticket))
+        notes_count = await db.scalar(select(func.count()).select_from(RepairNote))
+        checklists_count = await db.scalar(
+            select(func.count()).select_from(TicketChecklist)
+        )
         assert tickets_count > 0
+        assert notes_count == 6
+        assert checklists_count >= 1
 
 
 def test_export_openapi_check(monkeypatch):

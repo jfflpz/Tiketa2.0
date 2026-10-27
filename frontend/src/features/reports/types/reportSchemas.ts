@@ -15,11 +15,12 @@ export interface MonthlySlaRow {
   totalRequests: number;
   completed: number;
   pending: number;
-  completionRate: number;
+  completionRate: number | null;
   remoteMode: number;
   siteMode: number;
-  avgResolutionHours: number;
-  sameDayResolutionRate: number;
+  avgResolutionHours: number | null;
+  sameDayResolutionRate: number | null;
+  slaComplianceRate: number | null;
 }
 
 export interface StaffUtilizationRow {
@@ -28,7 +29,7 @@ export interface StaffUtilizationRow {
   completed: number;
   pending: number;
   totalHoursLogged: number;
-  avgTimePerTask: number;
+  avgTimePerTask: number | null;
   primaryLocation: string;
   mostFrequentTask: string;
 }
@@ -58,10 +59,11 @@ export interface TransitLagRow {
   location: string;
   supportMode: string;
   completedTickets: number;
-  meanLaborMins: number;
-  meanTurnaroundDays: number;
-  meanTransitLagDays: number;
-  lagToLaborRatio: number;
+  meanLaborMins: number | null;
+  meanTurnaroundDays: number | null;
+  meanTransitLagDays: number | null;
+  lagToLaborRatio: number | null;
+  dataReviewRequired: boolean;
   recommendedAction: string;
 }
 
@@ -70,7 +72,7 @@ export interface HardwareVulnerabilityRow {
   company: string;
   topFailureTask: string;
   incidentsLogged: number;
-  totalDownTimeHours: number;
+  laborHours: number;
   severityRiskScore: number;
   stagingRecommendation: string;
 }
@@ -78,12 +80,12 @@ export interface HardwareVulnerabilityRow {
 export interface PmsComplianceRow {
   terminalLocation: string;
   department: string;
-  totalDevices: number;
+  expectedServices: number | null;
   pmsConducted: number;
-  complianceRate: number;
-  lastCompletedDate: string;
-  servicedBy: string;
-  status: 'Compliant' | 'Due' | 'Critical Overdue';
+  complianceRate: number | null;
+  lastCompletedDate: string | null;
+  servicedBy: string | null;
+  status: 'compliant' | 'due' | 'overdue' | 'critical' | 'unplanned' | 'company-filtered';
 }
 
 export interface ChronicRequestorRow {
@@ -92,7 +94,7 @@ export interface ChronicRequestorRow {
   location: string;
   repeatIncidents: number;
   dominantTask: string;
-  remoteResolutionRate: number;
+  remoteResolutionRate: number | null;
   sopTrainingTarget: string;
 }
 

@@ -80,12 +80,12 @@ Acceptance: authorized participants exchange messages in separate browsers and r
 
 Requirement: BF-07. Backend contract: B-06. Milestone M3.
 
-- [ ] Replace sample/local-only library state with API-backed loading and create/edit/delete actions.
-- [ ] Wire the existing edit/delete controls and show loading, empty, validation and failure states.
-- [ ] Apply saved guides and save checklist additions, edits, removals and completion progress through the API.
-- [ ] Respect author/admin permissions and retain the original employee report when applying a guide.
+- [x] Replace sample/local-only library state with API-backed loading and create/edit/delete actions.
+- [x] Wire the existing edit/delete controls and show loading, empty, validation and failure states.
+- [x] Apply saved guides and save checklist additions, edits, removals and completion progress through the API.
+- [x] Respect author/admin permissions and retain the original employee report when applying a guide.
 
-Acceptance: create/edit/delete/apply and checklist progress remain correct in a second browser. Editing/deleting a template does not erase an applied ticket record. Success appears only after a persisted write.
+Acceptance: create/edit/delete/apply and checklist progress remain correct in a second browser. Editing/deleting a template does not erase an applied ticket record. Success appears only after a persisted write. Verified with 21 unit/component tests and production build.
 
 ### F-07 — IT accounts and employee profiles
 

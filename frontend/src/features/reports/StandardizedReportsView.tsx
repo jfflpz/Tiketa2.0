@@ -1,5 +1,5 @@
 // @spec SR-02: 8 Standardized Operational & Strategic Reports Suite with Tailored Recharts Visualizations
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { Download, FileSpreadsheet, Layers } from 'lucide-react';
 
 import { BarcodeDivider } from '../../components/common/TickMeter';
@@ -25,14 +25,19 @@ import { TransitLagTable } from './components/tables/TransitLagTable';
 import { HardwareVulnerabilityTable } from './components/tables/HardwareVulnerabilityTable';
 import { PmsComplianceTable } from './components/tables/PmsComplianceTable';
 import { ChronicRequestorTable } from './components/tables/ChronicRequestorTable';
+import { ExportPptxModal } from './components/ExportPptxModal';
+import { formatPeriodDisplay } from './export/pmsDateValidation';
 
 export const StandardizedReportsView: React.FC = () => {
-  const addToast = useAppStore((state) => state.addToast);
   const activeReportId = useAppStore((state) => state.activeReportId);
   const setActiveReportId = useAppStore((state) => state.setActiveReportId);
   const fetchReportApi = useAppStore((state) => state.fetchReportApi);
   const downloadReportCSVApi = useAppStore((state) => state.downloadReportCSVApi);
   const activeReportData = useAppStore((state) => state.activeReportData);
+  const reportDateRange = useAppStore((state) => state.reportDateRange);
+  const reportFilters = useAppStore((state) => state.reportFilters);
+
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   const activeTabMeta = REPORT_TABS.find((t) => t.id === activeReportId) || REPORT_TABS[0];
   const currentSlug = REPORT_SLUGS[activeReportId] || 'monthly-sla';
@@ -56,13 +61,9 @@ export const StandardizedReportsView: React.FC = () => {
     downloadReportCSVApi(currentSlug);
   };
 
-  const handleExportDeck = () => {
-    addToast(
-      'Executive Slide Deck (.pptx)',
-      'Generated 8-Report Management Presentation Summary for Executive Review.',
-      'success'
-    );
-  };
+  const activePeriodText = reportDateRange
+    ? formatPeriodDisplay(reportDateRange.date_from, reportDateRange.date_to)
+    : 'Active Period';
 
   return (
     <div className="space-y-5 pb-8">
@@ -94,7 +95,7 @@ export const StandardizedReportsView: React.FC = () => {
           </button>
           <button
             type="button"
-            onClick={handleExportDeck}
+            onClick={() => setIsExportModalOpen(true)}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-semibold shadow-sm transition-colors press-fx"
           >
             <Download className="w-3.5 h-3.5" />
@@ -124,7 +125,7 @@ export const StandardizedReportsView: React.FC = () => {
 
         <div className="flex items-center gap-2 text-xs text-zinc-400 font-mono">
           <Layers className="w-4 h-4 text-orange-500" />
-          <span>Active Data Window: Q3-Q4 2026</span>
+          <span>Active Data Window: {activePeriodText}</span>
         </div>
       </div>
 
@@ -162,6 +163,15 @@ export const StandardizedReportsView: React.FC = () => {
         {activeReportId === 7 && <PmsComplianceTable data={report7Data} />}
         {activeReportId === 8 && <ChronicRequestorTable data={report8Data} />}
       </div>
+
+      {/* Shared PPTX Export Configuration Modal */}
+      <ExportPptxModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        initialReportId={activeReportId}
+        initialDateRange={reportDateRange ? { dateFrom: reportDateRange.date_from, dateTo: reportDateRange.date_to } : undefined}
+        filterParams={reportFilters}
+      />
     </div>
   );
 };

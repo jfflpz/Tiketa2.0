@@ -1,5 +1,7 @@
 # Tiketa — Bug Fixes 1.0 Sprint Plan
 
+> **2026-10-27 execution update:** use the [shared integration sprint](INTEGRATION-SPRINT-PLAN.md) and [API map](../03-Contracts/API-INTEGRATION-MAP.md) for delivery order and merge gates. All BF-01–BF-12 requirements remain. The current no-runtime-mock policy supersedes the development-fixture allowance below; fixtures are limited to isolated automated tests.
+
 Updated: 2026-10-24. Status: planned; implementation has not started under this plan.
 
 ## 1. Sprint structure

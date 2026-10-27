@@ -160,8 +160,8 @@ export const ReportChartCard: React.FC<ReportChartCardProps> = ({
               <YAxis tick={tickStyle} />
               <Tooltip contentStyle={tooltipStyle} />
               <Legend wrapperStyle={legendStyle} />
-              <Bar dataKey="totalDevices" name="Total Devices on File" fill="#18181B" radius={[6, 6, 0, 0]} />
-              <Bar dataKey="pmsConducted" name="PMS Audits Done" fill="#10B981" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="expectedServices" name="Expected Services" fill="#18181B" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="pmsConducted" name="Services Conducted" fill="#10B981" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         )}

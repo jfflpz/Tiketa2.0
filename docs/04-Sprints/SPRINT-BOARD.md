@@ -1,5 +1,7 @@
 # Sprint Board & Execution Log
 
+**Current integration execution plan (2026-10-27):** [Shared frontend/backend sprint](INTEGRATION-SPRINT-PLAN.md) and [central endpoint map](../03-Contracts/API-INTEGRATION-MAP.md). Use S0–S5 for coordinated work and per-merge acceptance; existing BF-01–BF-12 scope remains. Status: planned after source review; live integration not verified. The dated logs below are historical evidence, not acceptance of the current checkout.
+
 **Project**: Tiketa 2.0  
 **Current Milestone**: Backend sprints 1–5 integration and verification  
 **Specification Baseline**: SRS v2.1.0 (`ARCH/01-Projects/Tiketa/SRS.md`)  

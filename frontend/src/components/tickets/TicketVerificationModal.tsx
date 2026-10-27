@@ -21,16 +21,19 @@ export const TicketVerificationModal: React.FC = () => {
     (state) => state.closeVerificationModal
   );
   const tickets = useAppStore((state) => state.tickets);
+  const verifiedTicket = useAppStore((state) => state.verifiedTicket);
   const currentUser = useAppStore((state) => state.currentUser);
-  const confirmClosure = useAppStore((state) => state.confirmClosure);
-  const reopenTicket = useAppStore((state) => state.reopenTicket);
-  const sendTicketMessage = useAppStore((state) => state.sendTicketMessage);
+  const confirmVerifiedClosure = useAppStore((state) => state.confirmVerifiedClosure);
+  const reopenVerifiedTicket = useAppStore((state) => state.reopenVerifiedTicket);
 
-  const ticket = tickets.find((t) => t.id === verificationModalTicketId) ?? null;
+  const ticket =
+    (verifiedTicket && verifiedTicket.id === verificationModalTicketId
+      ? verifiedTicket
+      : tickets.find((t) => t.id === verificationModalTicketId)) ?? null;
 
-  // Local state for verification checks and feedback
-  const [equipmentTested, setEquipmentTested] = useState(true);
-  const [issueResolved, setIssueResolved] = useState(true);
+  // Local state for verification checks and feedback (started unchecked by default)
+  const [equipmentTested, setEquipmentTested] = useState(false);
+  const [issueResolved, setIssueResolved] = useState(false);
   const [remarks, setRemarks] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -42,8 +45,8 @@ export const TicketVerificationModal: React.FC = () => {
   // Reset form whenever ticket changes
   useEffect(() => {
     if (verificationModalTicketId) {
-      setEquipmentTested(true);
-      setIssueResolved(true);
+      setEquipmentTested(false);
+      setIssueResolved(false);
       setRemarks('');
       setShowReopenPrompt(false);
       setReopenReason('');
@@ -67,7 +70,7 @@ export const TicketVerificationModal: React.FC = () => {
 
   const isStaff = Boolean(currentUser);
   const activeTechName = ticket.workedBy || 'Assigned Technician';
-  const durationText = ticket.duration ? `${ticket.duration} hrs` : '0.65 hrs';
+  const durationText = ticket.duration ? `${ticket.duration} hrs` : 'Unavailable';
   const modeText =
     ticket.mode === 'SITE' ? 'On-Site Visit (SITE)' : 'Remote Support (REM)';
 
@@ -80,24 +83,14 @@ export const TicketVerificationModal: React.FC = () => {
     }
 
     setIsSubmitting(true);
+    setErrorMsg(null);
     try {
-      // If employee or staff left remarks, log to ticket conversation thread
-      if (remarks.trim()) {
-        const senderRole = isStaff ? 'it' : 'employee';
-        const senderName = isStaff
-          ? currentUser?.name ?? 'IT Support'
-          : ticket.requestor;
-        sendTicketMessage(
-          ticket.id,
-          senderRole,
-          senderName,
-          `✅ Closure Sign-Off Verified:\n📝 Remarks: "${remarks.trim()}"`,
-          false
-        );
+      const success = await confirmVerifiedClosure(ticket.id, remarks.trim() || undefined);
+      if (success) {
+        closeVerificationModal();
+      } else {
+        setErrorMsg('Failed to confirm ticket closure on the server.');
       }
-
-      await confirmClosure(ticket.id);
-      closeVerificationModal();
     } finally {
       setIsSubmitting(false);
     }
@@ -110,21 +103,14 @@ export const TicketVerificationModal: React.FC = () => {
     }
 
     setIsSubmitting(true);
+    setErrorMsg(null);
     try {
-      const senderRole = isStaff ? 'it' : 'employee';
-      const senderName = isStaff
-        ? currentUser?.name ?? 'IT Support'
-        : ticket.requestor;
-      sendTicketMessage(
-        ticket.id,
-        senderRole,
-        senderName,
-        `⚠️ TICKET REOPENED: Issue persists after resolution attempt.\nReason: "${reopenReason.trim()}"`,
-        false
-      );
-
-      await reopenTicket(ticket.id);
-      closeVerificationModal();
+      const success = await reopenVerifiedTicket(ticket.id, reopenReason.trim());
+      if (success) {
+        closeVerificationModal();
+      } else {
+        setErrorMsg('Failed to reopen ticket on the server.');
+      }
     } finally {
       setIsSubmitting(false);
     }

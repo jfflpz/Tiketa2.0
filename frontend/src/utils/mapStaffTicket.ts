@@ -22,6 +22,7 @@ export const mapStaffTicket = (
     department: department?.name ?? row.department_id,
     departmentCode: department?.code ?? '',
     requestor: row.requester_name,
+    employeeId: row.employee_id_number ?? undefined,
     task: dictionaries?.tasks.find((item) => item.code === row.task_code)?.name ?? task?.name ?? row.task_code,
     taskCode: row.task_code as TaskCategoryCode,
     description: row.description,

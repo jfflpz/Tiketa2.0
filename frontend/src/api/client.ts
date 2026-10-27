@@ -6,12 +6,19 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
 // In-Memory Access Token (ADR-003: RAM only, zero localStorage exposure)
 let inMemoryAccessToken: string | null = null;
+let inMemoryEmployeeToken: string | null = null;
 
 export const setAccessToken = (token: string | null) => {
     inMemoryAccessToken = token;
 };
 
 export const getAccessToken = () => inMemoryAccessToken;
+
+export const setEmployeeToken = (token: string | null) => {
+    inMemoryEmployeeToken = token;
+};
+
+export const getEmployeeToken = () => inMemoryEmployeeToken;
 
 export const apiClient = axios.create({
     baseURL: BASE_URL,
@@ -23,8 +30,12 @@ export const apiClient = axios.create({
 
 // Request Interceptor: Attach Bearer JWT
 apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-    if (inMemoryAccessToken && config.headers) {
-    config.headers.Authorization = `Bearer ${inMemoryAccessToken}`;
+    if (config.headers && !config.headers.Authorization) {
+        if (inMemoryAccessToken) {
+            config.headers.Authorization = `Bearer ${inMemoryAccessToken}`;
+        } else if (inMemoryEmployeeToken) {
+            config.headers.Authorization = `Bearer ${inMemoryEmployeeToken}`;
+        }
     }
     return config;
 });
@@ -144,6 +155,7 @@ export interface StaffTicketResponse extends PublicTicketResponse {
     location_id: string;
     department_id: string;
     requester_name: string;
+    employee_id_number?: string | null;
     task_code: string;
     description: string;
     mode: SupportMode | null;
@@ -161,12 +173,30 @@ export interface StaffTicketResponse extends PublicTicketResponse {
 
 export interface TicketCommentItem {
     id: string;
-    user_id: string;
+    ticket_id?: string;
+    user_id?: string | null;
+    author_name?: string | null;
+    author_role?: string | null;
     sender_name?: string;
     sender_role?: 'employee' | 'it';
     body: string;
     is_internal: boolean;
     created_at: string;
+}
+
+export interface TicketVerifyAccessOut {
+    access_token: string;
+    ticket: StaffTicketResponse;
+    can_close: boolean;
+    can_reopen: boolean;
+}
+
+export interface ReissueVerificationOut {
+    ticket_code?: string;
+    status?: string;
+    closure_token?: string;
+    closure_url: string | null;
+    expires_in_hours?: number;
 }
 
 export const authApi = {
@@ -205,6 +235,29 @@ export const directoryApi = {
     },
 };
 
+export interface LocationDepartmentSummary {
+    id: string;
+    code: string;
+    name: string;
+    active_tickets_count: number;
+}
+
+export interface HubSummaryOut {
+    id: string;
+    code: string;
+    name: string;
+    open_count: number;
+    in_progress_count: number;
+    resolved_count: number;
+    closed_this_month_count: number;
+    total_active_count: number;
+    top_issue_task_code: string | null;
+    top_issue_task_name: string | null;
+    top_issue_count: number;
+    top_issue_window: string;
+    departments: LocationDepartmentSummary[];
+}
+
 export const locationApi = {
     recordObservation: async (
     payload: LocationObservationInput,
@@ -212,6 +265,10 @@ export const locationApi = {
     ): Promise<LocationObservationOut> => {
     const headers = sessionId ? { 'X-Kiosk-Session-ID': sessionId } : undefined;
     const res = await apiClient.post<LocationObservationOut>('/locations/observations', payload, { headers });
+    return res.data;
+    },
+    getHubSummaries: async (): Promise<HubSummaryOut[]> => {
+    const res = await apiClient.get<HubSummaryOut[]>('/locations/hub-summaries');
     return res.data;
     },
 };
@@ -232,8 +289,18 @@ export const ticketsApi = {
     const res = await apiClient.get(`/tickets/track/${code}`);
     return res.data;
     },
-    getQueue: async (params?: { status?: string; offset?: number; limit?: number }) => {
+    getQueue: async (params?: {
+    status?: string;
+    offset?: number;
+    limit?: number;
+    location_id?: string;
+    order?: 'asc' | 'desc';
+    }) => {
     const res = await apiClient.get<StaffTicketResponse[]>('/tickets', { params });
+    return res.data;
+    },
+    getTicket: async (ticketId: string): Promise<StaffTicketResponse> => {
+    const res = await apiClient.get<StaffTicketResponse>(`/tickets/${ticketId}`);
     return res.data;
     },
     claimTicket: async (ticketId: string) => {
@@ -275,9 +342,52 @@ export const ticketsApi = {
     },
     addComment: async (
     ticketId: string,
-    payload: { body: string; is_internal: boolean }
+    payload: { body: string; is_internal?: boolean }
     ) => {
-    const res = await apiClient.post(`/tickets/${ticketId}/comments`, payload);
+    const res = await apiClient.post<TicketCommentItem>(`/tickets/${ticketId}/comments`, {
+        body: payload.body,
+        is_internal: payload.is_internal ?? false,
+    });
+    return res.data;
+    },
+    verifyAccess: async (
+    codeOrId: string,
+    payload?: { employee_id?: string; token?: string; match_token?: string }
+    ): Promise<TicketVerifyAccessOut> => {
+    const res = await apiClient.post<TicketVerifyAccessOut>(
+        `/tickets/${codeOrId}/verify-access`,
+        payload || {}
+    );
+    return res.data;
+    },
+    reissueVerification: async (ticketId: string): Promise<ReissueVerificationOut> => {
+    const res = await apiClient.post<ReissueVerificationOut>(
+        `/tickets/${ticketId}/reissue-verification`
+    );
+    return res.data;
+    },
+    getMyTickets: async (): Promise<StaffTicketResponse[]> => {
+    const res = await apiClient.get<StaffTicketResponse[]>('/tickets/my-tickets');
+    return res.data;
+    },
+    confirmClosure: async (
+    ticketId: string,
+    payload?: { token?: string; remarks?: string }
+    ): Promise<StaffTicketResponse> => {
+    const res = await apiClient.post<StaffTicketResponse>(
+        `/tickets/${ticketId}/confirm-closure`,
+        payload || {}
+    );
+    return res.data;
+    },
+    reopenTicket: async (
+    ticketId: string,
+    payload: { reason: string; token?: string }
+    ): Promise<StaffTicketResponse> => {
+    const res = await apiClient.post<StaffTicketResponse>(
+        `/tickets/${ticketId}/reopen`,
+        payload
+    );
     return res.data;
     },
 };
@@ -311,11 +421,12 @@ export const reportsApi = {
         company_id?: string;
         location_id?: string;
         department_id?: string;
-    }
+    },
+    signal?: AbortSignal
     ) => {
     const res = await apiClient.get<{ date_from: string; date_to: string; rows: any[] }>(
         `/reports/${reportName}`,
-        { params: { ...params, format: 'json' } }
+        { params: { ...params, format: 'json' }, signal }
     );
     return res.data;
     },
@@ -327,11 +438,13 @@ export const reportsApi = {
         company_id?: string;
         location_id?: string;
         department_id?: string;
-    }
+    },
+    signal?: AbortSignal
     ) => {
     const res = await apiClient.get(`/reports/${reportName}`, {
         params: { ...params, format: 'csv' },
         responseType: 'blob',
+        signal,
     });
     return res.data;
     },

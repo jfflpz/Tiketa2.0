@@ -10,7 +10,15 @@ from redis.exceptions import RedisError
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
-from app.api import auth, directory, locations, reports, tickets
+from app.api import (
+    auth,
+    checklists,
+    directory,
+    locations,
+    repair_notes,
+    reports,
+    tickets,
+)
 from app.core.cache import cache
 from app.core.config import settings
 from app.db.session import engine
@@ -41,8 +49,10 @@ app.add_middleware(
 )
 for router in (
     auth.router,
+    checklists.router,
     directory.router,
     locations.router,
+    repair_notes.router,
     tickets.router,
     reports.router,
 ):
@@ -52,7 +62,8 @@ for router in (
 @app.exception_handler(IntegrityError)
 async def integrity_error(request: Request, exc: IntegrityError):
     return JSONResponse(
-        status_code=409, content={"detail": "Duplicate record or invalid relationship"}
+        status_code=409,
+        content={"detail": "Duplicate record or invalid relationship"},
     )
 
 

@@ -1,38 +1,35 @@
 import React, { useState } from 'react';
-import { Lock, ShieldCheck } from 'lucide-react';
-import type { Ticket } from '../../../types/ticket';
+import { Lock, ShieldCheck, Loader2 } from 'lucide-react';
 import { useAppStore } from '../../../store/useAppStore';
 
 export interface KioskVerifyCodeCardProps {
-  ticket: Ticket;
+  ticketCode: string;
   onUnlocked: () => void;
 }
 
-export const KioskVerifyCodeCard: React.FC<KioskVerifyCodeCardProps> = ({ ticket, onUnlocked }) => {
-  const unlockTicketVerification = useAppStore((state) => state.unlockTicketVerification);
+export const KioskVerifyCodeCard: React.FC<KioskVerifyCodeCardProps> = ({ ticketCode, onUnlocked }) => {
+  const verifyEmployeeIdentity = useAppStore((state) => state.verifyEmployeeIdentity);
+  const isVerifyingIdentity = useAppStore((state) => state.isVerifyingIdentity);
+  const verificationErrorMessage = useAppStore((state) => state.verificationErrorMessage);
   const [empInput, setEmpInput] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const upper = empInput.trim().toUpperCase();
-    if (!upper) return;
+    const cleanId = empInput.trim();
+    if (!cleanId) return;
 
-    const isMatch =
-      !ticket.employeeId ||
-      ticket.employeeId.toUpperCase() === upper ||
-      upper === ticket.requestor.toUpperCase();
-
-    if (isMatch) {
-      unlockTicketVerification(ticket.ticketCode);
+    setLocalError(null);
+    const success = await verifyEmployeeIdentity(cleanId);
+    if (success) {
       onUnlocked();
-    } else {
-      setError(`Employee ID "${upper}" does not match the requestor on this ticket (${ticket.requestor}).`);
     }
   };
 
+  const error = localError || verificationErrorMessage;
+
   return (
-    <div className="bg-surface border border-line rounded-3xl p-6 shadow-card space-y-4 max-w-md mx-auto text-center">
+    <div className="bg-surface border border-line rounded-3xl p-6 shadow-card space-y-4 max-w-md mx-auto text-center animate-fade-in">
       <div className="w-12 h-12 rounded-2xl bg-zinc-900 text-white flex items-center justify-center mx-auto shadow-sm">
         <Lock className="w-6 h-6 text-emerald-400" />
       </div>
@@ -40,7 +37,7 @@ export const KioskVerifyCodeCard: React.FC<KioskVerifyCodeCardProps> = ({ ticket
       <div className="space-y-1">
         <h3 className="font-bold text-sm text-ink">Verify Identity to Access Ticket</h3>
         <p className="text-xs text-ink-subtle">
-          Please confirm your Employee ID No. to view ticket <strong>{ticket.ticketCode}</strong>
+          Please enter your Employee ID No. to verify access for ticket <strong>{ticketCode}</strong>
         </p>
       </div>
 
@@ -48,20 +45,33 @@ export const KioskVerifyCodeCard: React.FC<KioskVerifyCodeCardProps> = ({ ticket
         <input
           type="text"
           value={empInput}
-          onChange={(e) => setEmpInput(e.target.value.toUpperCase())}
-          placeholder="e.g. FS-1042"
+          onChange={(e) => {
+            setEmpInput(e.target.value.toUpperCase());
+            setLocalError(null);
+          }}
+          disabled={isVerifyingIdentity}
+          placeholder="e.g. 2015"
           className="w-full px-4 py-3 bg-canvas border border-line rounded-2xl text-center font-bold text-xs uppercase tracking-wider focus:outline-none focus:border-zinc-500"
         />
 
-        {error && <p className="text-xs text-rose-600 text-center">{error}</p>}
+        {error && <p className="text-xs text-rose-600 text-center font-medium">{error}</p>}
 
         <button
           type="submit"
-          disabled={!empInput.trim()}
+          disabled={!empInput.trim() || isVerifyingIdentity}
           className="w-full py-3 px-4 rounded-xl bg-zinc-900 hover:bg-zinc-800 disabled:opacity-40 text-white font-bold text-xs flex items-center justify-center gap-2 press-fx shadow-sm"
         >
-          <ShieldCheck className="w-4 h-4 text-emerald-400" />
-          <span>Unlock &amp; View Ticket</span>
+          {isVerifyingIdentity ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Verifying Identity...</span>
+            </>
+          ) : (
+            <>
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <span>Unlock &amp; View Ticket</span>
+            </>
+          )}
         </button>
       </form>
     </div>

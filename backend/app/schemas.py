@@ -89,13 +89,38 @@ class LocationObservationOut(BaseModel):
     status: str = "recorded"
 
 
+class LocationDepartmentSummary(BaseModel):
+    id: UUID
+    code: str
+    name: str
+    active_tickets_count: int = 0
+
+
+class HubSummaryOut(BaseModel):
+    id: UUID
+    code: str
+    name: str
+    open_count: int = 0
+    in_progress_count: int = 0
+    resolved_count: int = 0
+    closed_this_month_count: int = 0
+    total_active_count: int = 0
+    top_issue_task_code: str | None = None
+    top_issue_task_name: str | None = None
+    top_issue_count: int = 0
+    top_issue_window: str = "Last 30 Days"
+    departments: list[LocationDepartmentSummary] = []
+
+
 class ScopeInput(Input):
     location_id: UUID
     department_id: UUID
 
 
 class TicketInput(Input):
-    employee_id: str | None = Field(default=None, max_length=50, pattern=r"^[0-9]{1,50}$")
+    employee_id: str | None = Field(
+        default=None, max_length=50, pattern=r"^[0-9]{1,50}$"
+    )
     match_token: str | None = Field(default=None, max_length=1000)
     task_code: str = Field(min_length=1, max_length=50)
     reported_issue_code: str | None = Field(default=None, max_length=50)
@@ -143,12 +168,35 @@ class StatusInput(Input):
 
 
 class ClosureInput(Input):
-    token: str = Field(min_length=40, max_length=100)
+    token: str | None = Field(default=None, max_length=100)
+    remarks: str | None = Field(default=None, max_length=2000)
+
+
+class ReopenInput(Input):
+    reason: str = Field(min_length=5, max_length=2000)
+    token: str | None = Field(default=None, max_length=100)
+
+
+class TicketVerifyAccessInput(Input):
+    ticket_code: str | None = Field(default=None, max_length=50)
+    employee_id: str | None = Field(default=None, max_length=50)
+    token: str | None = Field(default=None, max_length=100)
+    match_token: str | None = Field(default=None, max_length=1000)
 
 
 class CommentInput(Input):
     body: str = Field(min_length=1, max_length=20000)
     is_internal: bool = True
+
+
+class CommentOut(BaseModel):
+    id: UUID
+    body: str
+    is_internal: bool
+    user_id: UUID | None = None
+    author_name: str | None = None
+    author_role: str | None = None
+    created_at: datetime
 
 
 class PublicTicket(BaseModel):
@@ -160,6 +208,7 @@ class PublicTicket(BaseModel):
 class TicketOut(PublicTicket):
     id: UUID
     employee_id: UUID | None
+    employee_id_number: str | None = None
     creator_id: UUID | None
     company_id: UUID
     location_id: UUID
@@ -187,6 +236,14 @@ class TicketOut(PublicTicket):
     closure_url: str | None = None
 
 
+class TicketVerifyAccessOut(BaseModel):
+    authorized: bool
+    access_token: str
+    ticket: TicketOut
+    can_close: bool = False
+    can_reopen: bool = False
+
+
 class PlanInput(ScopeInput):
     task_code: Literal["PC-PMS", "PRN-PMS"]
     month_start: date
@@ -204,3 +261,111 @@ class PlanInput(ScopeInput):
                 "month_start must be first day; due_date must be in that month"
             )
         return self
+
+
+class RepairNoteStepCreate(Input):
+    position: int = Field(ge=0)
+    text: str = Field(min_length=1, max_length=1000)
+
+
+class RepairNoteStepOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    position: int
+    text: str
+
+
+class RepairNoteCreate(Input):
+    title: str = Field(min_length=1, max_length=200)
+    task_code: str = Field(min_length=1, max_length=50)
+    symptom_and_fix: str = Field(min_length=1, max_length=10000)
+    steps: list[str] = Field(default_factory=list, max_length=100)
+    source_ticket_id: UUID | None = None
+
+
+class RepairNoteUpdate(Input):
+    expected_revision: int = Field(gt=0)
+    title: str | None = Field(default=None, min_length=1, max_length=200)
+    task_code: str | None = Field(default=None, min_length=1, max_length=50)
+    symptom_and_fix: str | None = Field(default=None, min_length=1, max_length=10000)
+    steps: list[str] | None = Field(default=None, max_length=100)
+
+
+class RepairNoteOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    title: str
+    task_code: str
+    task_name: str
+    symptom_and_fix: str
+    author_id: UUID
+    author_name: str
+    updated_by_id: UUID
+    updated_by_name: str
+    source_ticket_id: UUID | None = None
+    source_ticket_code: str | None = None
+    revision: int
+    created_at: datetime
+    updated_at: datetime
+    steps: list[RepairNoteStepOut] = []
+    can_edit: bool = False
+
+
+class RepairNoteListResponse(BaseModel):
+    items: list[RepairNoteOut]
+    total: int
+    offset: int
+    limit: int
+
+
+class TicketChecklistStepCreate(Input):
+    expected_checklist_revision: int = Field(gt=0)
+    text: str = Field(min_length=1, max_length=1000)
+
+
+class TicketChecklistStepUpdate(Input):
+    expected_checklist_revision: int = Field(gt=0)
+    text: str | None = Field(default=None, min_length=1, max_length=1000)
+    completed: bool | None = None
+
+
+class TicketChecklistStepOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    checklist_id: UUID
+    position: int
+    text: str
+    completed: bool
+    completed_at: datetime | None = None
+    completed_by_id: UUID | None = None
+    completed_by_name: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class TicketChecklistApplyRequest(Input):
+    repair_note_id: UUID
+    expected_note_revision: int = Field(gt=0)
+    expected_checklist_revision: int | None = Field(default=None, gt=0)
+    replace_existing: bool = False
+
+
+class TicketChecklistOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID | None = None
+    ticket_id: UUID
+    source_repair_note_id: UUID | None = None
+    source_revision: int | None = None
+    guide_title_snapshot: str | None = None
+    guide_task_code_snapshot: str | None = None
+    guide_task_name_snapshot: str | None = None
+    guide_body: str | None = None
+    applied_by_id: UUID | None = None
+    applied_by_name: str | None = None
+    applied_at: datetime | None = None
+    created_by_id: UUID | None = None
+    updated_by_id: UUID | None = None
+    revision: int = 0
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    steps: list[TicketChecklistStepOut] = []

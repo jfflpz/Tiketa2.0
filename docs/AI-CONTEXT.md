@@ -17,6 +17,8 @@ Direct your search to these targeted documentation modules:
 - **System Architecture & Frontend Slices**: `docs/01-Architecture/SYSTEM-ARCHITECTURE.md` (Contains 9-slice Zustand map, component directory topology, and strict async/store invariants)
 - **Database Schema & 15 Canonical Fields**: `docs/02-Database/DATA-DICTIONARY.md`
 - **REST API Contracts**: `docs/03-Contracts/OPENAPI-CONTRACTS.md`
+- **Current Frontend/Backend Endpoint Map**: `docs/03-Contracts/API-INTEGRATION-MAP.md` (Screen-to-endpoint mapping, current gaps, schema authority; start here for integration work)
+- **Current Shared Integration Sprint**: `docs/04-Sprints/INTEGRATION-SPRINT-PLAN.md` (Concise backend/frontend assignments, no runtime mock data, per-merge persistence checks)
 - **Reporting Business Rules**: `docs/03-Contracts/REPORTING-RULES.md`
 - **Active Sprints & Engineering Logs**: `docs/04-Sprints/SPRINT-BOARD.md`
   - Master Engineering Plan: `docs/04-Sprints/MASTER-SPRINT-PLAN.md`

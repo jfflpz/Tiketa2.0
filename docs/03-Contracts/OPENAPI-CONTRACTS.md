@@ -1,5 +1,7 @@
 # OpenAPI REST Contracts & Endpoint Specifications
 
+> **Historical baseline — integration update 2026-10-27:** start with the [API integration map](API-INTEGRATION-MAP.md), generated [OpenAPI](../../backend/openapi.json) and backend schemas. Examples below are not current implementation contracts: employee IDs are numeric strings, `/employees/lookup` requires staff authentication, public matching uses `/employees/match`, and public submission requires verified matching. Do not implement from these older examples without reconciling the current contract.
+
 **System**: Tiketa 2.0  
 **Status**: Specification Baseline  
 **Base URL**: `/api/v1`

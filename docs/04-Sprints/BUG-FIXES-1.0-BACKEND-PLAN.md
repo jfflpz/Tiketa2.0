@@ -116,12 +116,12 @@ Acceptance: authorized participants exchange messages across browsers and reload
 
 Requirement: BF-07. Dependency: B-02. Handoff: F-06; milestone M3.
 
-- [ ] Add persistent repair notes, ordered guide steps and independent ticket checklist instances with authorship/timestamps and optional source ticket.
-- [ ] Implement list/create/edit/delete/apply operations and ticket step/progress updates with documented staff/admin permissions.
-- [ ] Applying a guide copies its content into the intended service-record/checklist fields and preserves the original employee report.
-- [ ] Editing/deleting a source guide preserves already applied ticket records and progress.
+- [x] Add persistent repair notes, ordered guide steps and independent ticket checklist instances with authorship/timestamps and optional source ticket.
+- [x] Implement list/create/edit/delete/apply operations and ticket step/progress updates with documented staff/admin permissions.
+- [x] Applying a guide copies its content into the intended service-record/checklist fields and preserves the original employee report.
+- [x] Editing/deleting a source guide preserves already applied ticket records and progress.
 
-Acceptance: all mutations remain correct when fetched in a second session; failed or unauthorized writes make no partial changes. Production reads do not rely on sample notes.
+Acceptance: all mutations remain correct when fetched in a second session; failed or unauthorized writes make no partial changes. Production reads do not rely on sample notes. Verified with 62 integration tests and 93.59% backend test coverage.
 
 ### B-07 — Overview metrics from the database
 

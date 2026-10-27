@@ -1,6 +1,6 @@
 // @spec SR-03: Slide-out 15-Column Canonical Job Log Drawer, Repair Controls & Two-Way Employee Chat
 // @spec FR-VERIF-02: Closure Verification Modal Gate
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   CheckCircle2,
   RotateCcw,
@@ -19,12 +19,14 @@ export const JobLogDrawer: React.FC = () => {
   const tickets = useAppStore((state) => state.tickets);
   const selectedTicketId = useAppStore((state) => state.selectedTicketId);
   const setSelectedTicketId = useAppStore((state) => state.setSelectedTicketId);
+  const inspectedTicket = useAppStore((state) => state.inspectedTicket);
+  const isInspectingTicket = useAppStore((state) => state.isInspectingTicket);
+  const inspectTicketError = useAppStore((state) => state.inspectTicketError);
   const currentUser = useAppStore((state) => state.currentUser);
   const claimTicketApi = useAppStore((state) => state.claimTicketApi);
   const updateTicketStatusApi = useAppStore((state) => state.updateTicketStatusApi);
   const fetchTicketCommentsApi = useAppStore((state) => state.fetchTicketCommentsApi);
   const sendTicketMessageApi = useAppStore((state) => state.sendTicketMessageApi);
-  const claimTicket = useAppStore((state) => state.claimTicket);
   const assignTicket = useAppStore((state) => state.assignTicket);
   const itTeamMembers = useAppStore((state) => state.itTeamMembers);
   const updateTicketMode = useAppStore((state) => state.updateTicketMode);
@@ -38,10 +40,83 @@ export const JobLogDrawer: React.FC = () => {
   const setActiveView = useAppStore((state) => state.setActiveView);
   const addToast = useAppStore((state) => state.addToast);
 
-  const ticket = tickets.find((t) => t.id === selectedTicketId);
+  const ticket = tickets.find((t) => t.id === selectedTicketId) ?? inspectedTicket;
   const [notesDraft, setNotesDraft] = useState('');
   const [drawerTab, setDrawerTab] = useState<'CHAT' | 'JOB_LOG'>('CHAT');
   const [isSavingNotes, setIsSavingNotes] = useState(false);
+
+  const drawerRef = useRef<HTMLDivElement>(null);
+  const triggerElementRef = useRef<HTMLElement | null>(null);
+
+  // Focus capture and restoration lifecycle
+  useEffect(() => {
+    if (!selectedTicketId) return;
+    if (!triggerElementRef.current) {
+      triggerElementRef.current = document.activeElement as HTMLElement | null;
+    }
+
+    return () => {
+      if (triggerElementRef.current && document.body.contains(triggerElementRef.current)) {
+        triggerElementRef.current.focus();
+      }
+      triggerElementRef.current = null;
+    };
+  }, [selectedTicketId]);
+
+  // Transfer focus appropriately whenever drawer state changes (loading -> loaded, or error)
+  useEffect(() => {
+    if (!selectedTicketId) return;
+    const transferFocus = () => {
+      const container = drawerRef.current;
+      if (!container) return;
+      const focusable = container.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusable.length > 0) {
+        focusable[0].focus();
+      } else {
+        container.focus();
+      }
+    };
+    transferFocus();
+  }, [selectedTicketId, isInspectingTicket, Boolean(ticket), Boolean(inspectTicketError)]);
+
+  // Keyboard Escape listener (capture phase: drawer handles first as topmost overlay)
+  useEffect(() => {
+    if (!selectedTicketId) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        setSelectedTicketId(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, [selectedTicketId, setSelectedTicketId]);
+
+  // Focus containment (Tab trap inside topmost drawer)
+  const handleDrawerKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Tab' && drawerRef.current) {
+      const focusable = drawerRef.current.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    }
+  }, []);
 
   useEffect(() => {
     if (!ticket) return;
@@ -60,6 +135,67 @@ export const JobLogDrawer: React.FC = () => {
     }
   }, [ticket]);
 
+  if (!selectedTicketId) return null;
+
+  if (isInspectingTicket && !ticket) {
+    return (
+      <div className="fixed inset-0 z-[70] flex justify-end bg-black/30 backdrop-blur-[1px] transition-opacity">
+        <div
+          className="fixed inset-0"
+          onClick={() => setSelectedTicketId(null)}
+          aria-hidden="true"
+        />
+        <aside
+          ref={drawerRef}
+          tabIndex={-1}
+          onKeyDown={handleDrawerKeyDown}
+          aria-label="Loading Ticket Drawer"
+          className="relative z-10 w-full max-w-xl bg-surface h-full shadow-2xl border-l border-line flex flex-col items-center justify-center p-8 space-y-3 focus:outline-none"
+        >
+          <Clock className="w-8 h-8 animate-spin text-orange-500" />
+          <p className="text-sm font-bold text-ink">Loading Ticket Record...</p>
+          <p className="text-xs text-zinc-500">Fetching canonical log from server</p>
+          <button
+            type="button"
+            onClick={() => setSelectedTicketId(null)}
+            className="mt-4 px-3.5 py-1.5 rounded-xl border border-line text-xs font-semibold text-zinc-600 hover:text-ink hover:bg-zinc-100 transition-colors"
+          >
+            Cancel Loading
+          </button>
+        </aside>
+      </div>
+    );
+  }
+
+  if (inspectTicketError && !ticket) {
+    return (
+      <div className="fixed inset-0 z-[70] flex justify-end bg-black/30 backdrop-blur-[1px] transition-opacity">
+        <div
+          className="fixed inset-0"
+          onClick={() => setSelectedTicketId(null)}
+          aria-hidden="true"
+        />
+        <aside
+          ref={drawerRef}
+          tabIndex={-1}
+          onKeyDown={handleDrawerKeyDown}
+          aria-label="Error Loading Ticket Drawer"
+          className="relative z-10 w-full max-w-xl bg-surface h-full shadow-2xl border-l border-line flex flex-col items-center justify-center p-8 space-y-3 text-center focus:outline-none"
+        >
+          <p className="text-sm font-bold text-rose-600">Failed to Load Ticket Record</p>
+          <p className="text-xs text-zinc-500 max-w-sm">{inspectTicketError}</p>
+          <button
+            type="button"
+            onClick={() => setSelectedTicketId(null)}
+            className="px-4 py-2 bg-zinc-800 text-white rounded-xl text-xs font-bold"
+          >
+            Close
+          </button>
+        </aside>
+      </div>
+    );
+  }
+
   if (!ticket) return null;
 
   const messages = ticket.messages ?? [];
@@ -67,9 +203,7 @@ export const JobLogDrawer: React.FC = () => {
   const isAdmin = currentUser?.role === 'admin';
 
   const handleOpenWorkbench = () => {
-    if (ticket.status === 'OPEN') {
-      claimTicket(ticket.id, currentUser?.name, currentUser?.id);
-    }
+    // Preserve explicit claiming: opening a ticket or workbench must not claim it automatically
     setActiveWorkbenchTicketId(ticket.id);
     setSelectedTicketId(null);
     setActiveView('workbench');
@@ -84,13 +218,17 @@ export const JobLogDrawer: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/25 backdrop-blur-[1px] transition-opacity">
+    <div className="fixed inset-0 z-[70] flex justify-end bg-black/25 backdrop-blur-[1px] transition-opacity">
       <div
         className="fixed inset-0"
         onClick={() => setSelectedTicketId(null)}
         aria-hidden="true"
       />
-      <aside className="relative z-10 w-full max-w-xl bg-surface h-full shadow-2xl border-l border-line flex flex-col justify-between overflow-hidden">
+      <aside
+        ref={drawerRef}
+        onKeyDown={handleDrawerKeyDown}
+        className="relative z-10 w-full max-w-xl bg-surface h-full shadow-2xl border-l border-line flex flex-col justify-between overflow-hidden"
+      >
         {/* Drawer Header */}
         <JobLogDrawerHeader
           ticket={ticket}
@@ -115,8 +253,7 @@ export const JobLogDrawer: React.FC = () => {
                     Pending Employee Closure Verification
                   </h3>
                   <p className="text-xs text-peach-text/90 mt-1 leading-relaxed">
-                    Technician <strong>{ticket.workedBy}</strong> marked this repair resolved in{' '}
-                    <strong>{ticket.duration ?? 0.65} hrs</strong>. Confirm terminal resolution or
+                    Technician <strong>{ticket.workedBy}</strong> marked this repair resolved. Confirm terminal resolution or
                     reopen if the issue persists.
                   </p>
                 </div>

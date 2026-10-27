@@ -58,10 +58,15 @@ export const ITOverviewDashboard: React.FC = () => {
     const currentUser = useAppStore((state) => state.currentUser);
   const tickets = useAppStore((state) => state.tickets);
   const savedRepairNotes = useAppStore((state) => state.savedRepairNotes);
+  const fetchSavedRepairNotes = useAppStore((state) => state.fetchSavedRepairNotes);
   const setSelectedTicketId = useAppStore((state) => state.setSelectedTicketId);
   const setActiveView = useAppStore((state) => state.setActiveView);
   const fetchQueueApi = useAppStore((state) => state.fetchQueueApi);
   const isFetchingQueue = useAppStore((state) => state.isFetchingQueue);
+
+  React.useEffect(() => {
+    fetchSavedRepairNotes();
+  }, [fetchSavedRepairNotes]);
   const kpis = useAppStore((state) => state.kpis);
   const fetchKPIsApi = useAppStore((state) => state.fetchKPIsApi);
 

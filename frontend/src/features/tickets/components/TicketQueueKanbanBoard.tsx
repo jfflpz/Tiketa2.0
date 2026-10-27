@@ -283,7 +283,7 @@ export const TicketQueueKanbanBoard: React.FC<TicketQueueKanbanBoardProps> = ({
                     {t.ticketCode}
                   </span>
                   <span className="text-[10px] font-mono font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded">
-                    {t.duration ?? 0.65} hrs logged
+                    {t.duration != null ? `${t.duration} hrs logged` : 'Resolved'}
                   </span>
                 </div>
 

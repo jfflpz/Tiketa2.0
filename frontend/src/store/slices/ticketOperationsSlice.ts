@@ -49,7 +49,7 @@ export interface TicketOperationsSlice {
   resolveTicket: (ticketId: string) => Promise<void>;
   requestValidation: (ticketId: string) => void;
   confirmClosure: (ticketId: string) => Promise<void>;
-  reopenTicket: (ticketId: string) => Promise<void>;
+  reopenTicket: (ticketId: string, reason?: string) => Promise<void>;
   createTicket: (input: NewTicketInput) => Ticket;
   assignTicket: (
     ticketId: string,
@@ -60,6 +60,27 @@ export interface TicketOperationsSlice {
 
 const formatTimeAmPm = (date: Date) =>
   date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+const updateTicketInState = (
+  state: any,
+  ticketId: string,
+  updater: (t: Ticket) => Ticket
+) => ({
+  tickets: state.tickets.map((t: Ticket) => (t.id === ticketId ? updater(t) : t)),
+  inspectedTicket:
+    state.inspectedTicket?.id === ticketId
+      ? updater(state.inspectedTicket)
+      : state.inspectedTicket,
+  workbenchTicket:
+    state.workbenchTicket?.id === ticketId
+      ? updater(state.workbenchTicket)
+      : state.workbenchTicket,
+});
+
+const findTargetTicket = (state: any, ticketId: string): Ticket | undefined =>
+  state.tickets.find((t: Ticket) => t.id === ticketId) ??
+  (state.inspectedTicket?.id === ticketId ? state.inspectedTicket : undefined) ??
+  (state.workbenchTicket?.id === ticketId ? state.workbenchTicket : undefined);
 
 export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice> = (set, get) => ({
   isQuickIntakeOpen: false,
@@ -89,6 +110,7 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
         'Saved to the support queue.',
         'success'
       );
+      get().invalidateHubSummaries();
 
       return newTicket;
     } catch (err: unknown) {
@@ -99,34 +121,69 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
   },
 
   claimTicketApi: async (ticketId: string) => {
-    const previousTickets = get().tickets;
-    const target = previousTickets.find((t) => t.id === ticketId);
-    const techName = get().currentUser?.name || 'IT Specialist';
+    const sessionAtStart = get().authSessionId;
+    const sessionUser = get().currentUser;
+    if (!sessionUser) return false;
 
-    set((state) => ({
-      tickets: state.tickets.map((t) =>
-        t.id === ticketId ? { ...t, status: 'PROG', workedBy: techName } : t
-      ),
-    }));
-    get().addToast(
-      `Claimed ${target?.ticketCode || 'Ticket'}`,
-      `Assigned to ${techName} • In Progress`,
-      'success'
-    );
+    const target = findTargetTicket(get(), ticketId);
+    if (!target) return false;
 
     try {
-      await ticketsApi.claimTicket(ticketId);
+      const res = await ticketsApi.claimTicket(ticketId);
+      // Invalidate if session changed or logged out while request was in-flight
+      if (get().authSessionId !== sessionAtStart || !get().currentUser) return false;
+
+      const techName = res?.technician_name || sessionUser.name;
+      const techId = res?.assigned_tech_id || sessionUser.id;
+
+      set((state) =>
+        updateTicketInState(state, ticketId, (t) => ({
+          ...t,
+          status: 'PROG',
+          workedBy: techName,
+          workedById: techId,
+          assigned_tech_id: techId,
+        }))
+      );
+
+      get().addToast(
+        `Claimed ${target.ticketCode || 'Ticket'}`,
+        `Assigned to ${techName} • In Progress`,
+        'success'
+      );
+
+      try {
+        const queueRefreshed = await get().fetchQueueApi();
+        if (queueRefreshed === false) {
+          get().addToast(
+            'Stale Preview',
+            'Ticket was claimed successfully, but background queue sync timed out.',
+            'warning'
+          );
+        }
+        get().invalidateHubSummaries();
+      } catch {
+        get().addToast(
+          'Stale Preview',
+          'Ticket was claimed successfully, but background queue sync timed out.',
+          'warning'
+        );
+      }
       return true;
-    } catch (err: any) {
-      set({ tickets: previousTickets });
-      const msg = err.response?.data?.detail || 'Ticket could not be claimed (already assigned)';
+    } catch (err: unknown) {
+      if (get().authSessionId !== sessionAtStart || !get().currentUser) return false;
+      const msg = extractApiErrorMessage(err, 'Ticket could not be claimed (already assigned)');
       get().addToast('Claim Conflict', msg, 'warning');
       return false;
     }
   },
 
   updateTicketStatusApi: async (ticketId: string, status: TicketStatus, mode?: SupportMode) => {
-    const target = get().tickets.find((t) => t.id === ticketId);
+    const sessionAtStart = get().authSessionId;
+    const sessionUser = get().currentUser;
+    if (!sessionUser) return false;
+
+    const target = findTargetTicket(get(), ticketId);
     if (!target) return false;
 
     if (target.status === 'CLSD' && status === 'PROG') {
@@ -144,73 +201,146 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
       }
     }
 
-    set((state) => ({
-      tickets: state.tickets.map((t) =>
-        t.id === ticketId ? { ...t, status, mode: mode || t.mode } : t
-      ),
-    }));
+    const prevStatus = target.status;
+    const prevMode = target.mode;
+
+    // Narrow optimistic update for this ticket only
+    set((state) =>
+      updateTicketInState(state, ticketId, (t) => ({
+        ...t,
+        status,
+        mode: mode || t.mode,
+      }))
+    );
 
     try {
       const res = await ticketsApi.updateStatus(ticketId, {
         status: status as any,
         mode: mode || (target.mode as any),
       });
+
+      if (get().authSessionId !== sessionAtStart || !get().currentUser) return false;
+
       get().addToast('Status Updated', `${target.ticketCode} is now ${status}`, 'info');
 
       // Development / Test: Backend returns closure_url when transitioning to RESL
       const closureUrl = (res as any)?.closure_url;
       if (closureUrl) {
-        set((state) => ({
-          tickets: state.tickets.map((t) =>
-            t.id === ticketId ? { ...t, closureUrl } : t
-          ),
-        }));
+        set((state) =>
+          updateTicketInState(state, ticketId, (t) => ({
+            ...t,
+            closureUrl,
+          }))
+        );
+        let copied = false;
         try {
           if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(closureUrl);
+            copied = true;
           }
         } catch {
           // Fallback if clipboard API restricted
         }
+        if (copied) {
+          get().addToast(
+            'Viber Closure Link Copied!',
+            `Direct resolution link copied: ${closureUrl}`,
+            'success'
+          );
+        } else {
+          get().addToast(
+            'Verification Link Generated',
+            `Share link with employee: ${closureUrl}`,
+            'info'
+          );
+        }
+      } else if (status === 'RESL') {
         get().addToast(
-          'Viber Closure Link Copied!',
-          `Direct resolution link copied: ${closureUrl}`,
-          'success'
+          'Verification Email Sent',
+          'A secure closure verification email has been delivered to the employee.',
+          'info'
         );
       }
 
+      try {
+        const queueRefreshed = await get().fetchQueueApi();
+        if (queueRefreshed === false) {
+          get().addToast(
+            'Stale Preview',
+            'Ticket was claimed successfully, but background queue sync timed out.',
+            'warning'
+          );
+        }
+        get().invalidateHubSummaries();
+      } catch {
+        get().addToast(
+          'Stale Preview',
+          'Ticket was claimed successfully, but background queue sync timed out.',
+          'warning'
+        );
+      }
       return true;
-    } catch (err: any) {
-      const msg = err.response?.data?.detail || 'Failed to update ticket status';
+    } catch (err: unknown) {
+      if (get().authSessionId !== sessionAtStart || !get().currentUser) return false;
+
+      // Narrow rollback ONLY on this ticket
+      set((state) =>
+        updateTicketInState(state, ticketId, (t) => ({
+          ...t,
+          status: prevStatus,
+          mode: prevMode,
+        }))
+      );
+      const msg = extractApiErrorMessage(err, 'Failed to update ticket status');
       get().addToast('Error', msg, 'warning');
-      get().fetchQueueApi();
       return false;
     }
   },
 
   fetchTicketCommentsApi: async (ticketId: string) => {
+    const sessionAtStart = get().authSessionId;
     try {
       const comments = await ticketsApi.getComments(ticketId);
+      // Guard against late responses and logged-out session
+      if (get().authSessionId !== sessionAtStart || !get().currentUser) return;
+      if (
+        get().selectedTicketId !== ticketId &&
+        get().activeWorkbenchTicketId !== ticketId &&
+        !get().tickets.some((t) => t.id === ticketId)
+      ) {
+        return;
+      }
+
       if (Array.isArray(comments)) {
-        set((state) => ({
-          tickets: state.tickets.map((t) =>
-            t.id === ticketId
-              ? {
-                  ...t,
-                  messages: comments.map((c) => ({
-                    id: c.id,
-                    senderRole: c.is_internal ? 'it' : (c.sender_role || 'it'),
-                    senderName: c.sender_name || (c.is_internal ? '🔒 Internal IT Note' : 'IT Support'),
-                    message: c.body,
-                    isInternal: Boolean(c.is_internal), // Preserved from backend API contract
-                    timestamp: c.created_at
-                      ? new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                      : '',
-                  })),
-                }
-              : t
-          ),
+        const serverMessages: TicketChatMessage[] = comments.map((c) => ({
+          id: c.id,
+          senderRole: c.is_internal ? 'it' : (c.sender_role || 'it'),
+          senderName: c.sender_name || (c.is_internal ? '🔒 Internal IT Note' : 'IT Support'),
+          message: c.body,
+          isInternal: Boolean(c.is_internal),
+          timestamp: c.created_at
+            ? new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            : '',
         }));
+
+        set((state) =>
+          updateTicketInState(state, ticketId, (t) => {
+            const currentMsgs = t.messages ?? [];
+            const serverIdSet = new Set(serverMessages.map((m) => m.id));
+            // Keep pending or local optimistic messages that are not yet in server comments
+            const pendingOrLocal = currentMsgs.filter(
+              (m) => m.id.startsWith('temp-msg-') || !serverIdSet.has(m.id)
+            );
+            // Deduplicate: avoid duplicating messages whose exact text is already in server comments
+            const remainingLocal = pendingOrLocal.filter(
+              (p) => !serverMessages.some((s) => s.message === p.message && s.isInternal === p.isInternal)
+            );
+            return {
+              ...t,
+              messages: [...serverMessages, ...remainingLocal],
+            };
+          })
+        );
       }
     } catch {
       // silent catch for polling
@@ -221,19 +351,72 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
     const trimmed = message.trim();
     if (!trimmed) return false;
 
-    get().sendTicketMessage(
-      ticketId,
-      'it',
-      isInternal ? '🔒 Internal Note' : (get().currentUser?.name || 'IT Support'),
-      trimmed,
-      isInternal
+    const sessionAtStart = get().authSessionId;
+    const sessionUser = get().currentUser;
+    if (!sessionUser) return false;
+
+    const target = findTargetTicket(get(), ticketId);
+    if (!target) return false;
+
+    const currentSenderName = isInternal
+      ? '🔒 Internal Note'
+      : (sessionUser.name || 'IT Support');
+
+    const tempId = 'temp-msg-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+    const optimisticMsg: TicketChatMessage = {
+      id: tempId,
+      senderRole: 'it',
+      senderName: currentSenderName,
+      message: trimmed,
+      timestamp: formatTimeAmPm(new Date()),
+      isInternal,
+    };
+
+    // Optimistically add message
+    set((state) =>
+      updateTicketInState(state, ticketId, (t) => ({
+        ...t,
+        messages: [...(t.messages ?? []), optimisticMsg],
+      }))
     );
 
     try {
-      await ticketsApi.addComment(ticketId, { body: trimmed, is_internal: isInternal });
+      const serverComment = await ticketsApi.addComment(ticketId, {
+        body: trimmed,
+        is_internal: isInternal,
+      });
+
+      if (get().authSessionId !== sessionAtStart || !get().currentUser) return false;
+
+      // Reconcile with canonical server comment ID and timestamp
+      const canonicalId = serverComment?.id || tempId;
+      const canonicalTime = serverComment?.created_at
+        ? new Date(serverComment.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        : optimisticMsg.timestamp;
+
+      set((state) =>
+        updateTicketInState(state, ticketId, (t) => ({
+          ...t,
+          messages: (t.messages ?? []).map((m) =>
+            m.id === tempId
+              ? { ...m, id: canonicalId, timestamp: canonicalTime }
+              : m
+          ),
+        }))
+      );
       return true;
-    } catch {
-      get().addToast('Chat Error', 'Message failed to send to server', 'warning');
+    } catch (err: unknown) {
+      if (get().authSessionId !== sessionAtStart || !get().currentUser) return false;
+
+      // Failed! Remove optimistic message so it does not falsely appear delivered
+      set((state) =>
+        updateTicketInState(state, ticketId, (t) => ({
+          ...t,
+          messages: (t.messages ?? []).filter((m) => m.id !== tempId),
+        }))
+      );
+      const msg = extractApiErrorMessage(err, 'Message failed to send to server');
+      get().addToast('Chat Error', msg, 'warning');
       return false;
     }
   },
@@ -241,7 +424,7 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
   claimTicket: (ticketId, techName, techId) => {
     const activeTechName = techName ?? get().currentUser?.name ?? 'Nathaniel D. Esguerra';
     const activeTechId = techId ?? get().currentUser?.id ?? 'tm-2';
-    const target = get().tickets.find((t) => t.id === ticketId);
+    const target = findTargetTicket(get(), ticketId);
 
     const claimMsg: TicketChatMessage = {
       id: 'msg-' + Date.now(),
@@ -252,19 +435,16 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
       isInternal: false,
     };
 
-    set((state) => ({
-      tickets: state.tickets.map((t) =>
-        t.id === ticketId
-          ? {
-              ...t,
-              status: 'PROG',
-              workedBy: activeTechName,
-              workedById: activeTechId,
-              messages: [...(t.messages ?? []), claimMsg],
-            }
-          : t
-      ),
-    }));
+    set((state) =>
+      updateTicketInState(state, ticketId, (t) => ({
+        ...t,
+        status: 'PROG',
+        workedBy: activeTechName,
+        workedById: activeTechId,
+        assigned_tech_id: activeTechId,
+        messages: [...(t.messages ?? []), claimMsg],
+      }))
+    );
     get().addToast(
       `Claimed ${target?.ticketCode ?? 'Ticket'}`,
       `Assigned to ${activeTechName} • Status → In Progress`,
@@ -273,12 +453,13 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
   },
 
   updateTicketMode: (ticketId, mode) => {
-    const target = get().tickets.find((t) => t.id === ticketId);
-    set((state) => ({
-      tickets: state.tickets.map((t) =>
-        t.id === ticketId ? { ...t, mode } : t
-      ),
-    }));
+    const target = findTargetTicket(get(), ticketId);
+    set((state) =>
+      updateTicketInState(state, ticketId, (t) => ({
+        ...t,
+        mode,
+      }))
+    );
     get().addToast(
       'Support Mode Updated',
       `${target?.ticketCode ?? 'Ticket'} set to ${mode === 'SITE' ? 'On-Site (SITE)' : 'Remote (REM)'}`,
@@ -288,14 +469,16 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
 
   updateTicketTask: (ticketId, taskCode) => {
     const category = TASK_CATEGORIES.find((c) => c.code === taskCode);
-    const target = get().tickets.find((t) => t.id === ticketId);
+    const target = findTargetTicket(get(), ticketId);
     if (!target) return;
     const taskName = category?.name ?? target.task;
-    set((state) => ({
-      tickets: state.tickets.map((t) =>
-        t.id === ticketId ? { ...t, taskCode, task: taskName } : t
-      ),
-    }));
+    set((state) =>
+      updateTicketInState(state, ticketId, (t) => ({
+        ...t,
+        taskCode,
+        task: taskName,
+      }))
+    );
     get().addToast(
       'Diagnosed Task Updated',
       `Reclassified to ${taskName} (${taskCode})`,
@@ -304,11 +487,12 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
   },
 
   updateTicketDescription: (ticketId, description) => {
-    set((state) => ({
-      tickets: state.tickets.map((t) =>
-        t.id === ticketId ? { ...t, description } : t
-      ),
-    }));
+    set((state) =>
+      updateTicketInState(state, ticketId, (t) => ({
+        ...t,
+        description,
+      }))
+    );
     get().addToast(
       'Job Log Notes Saved',
       'Technical symptoms & repair summary updated',
@@ -328,17 +512,16 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
       isInternal,
     };
 
-    set((state) => ({
-      tickets: state.tickets.map((t) =>
-        t.id === ticketId
-          ? { ...t, messages: [...(t.messages ?? []), newMsg] }
-          : t
-      ),
-    }));
+    set((state) =>
+      updateTicketInState(state, ticketId, (t) => ({
+        ...t,
+        messages: [...(t.messages ?? []), newMsg],
+      }))
+    );
   },
 
   resolveTicket: async (ticketId) => {
-    const target = get().tickets.find((t) => t.id === ticketId);
+    const target = findTargetTicket(get(), ticketId);
     if (!target) return;
     const mode = target.mode || 'SITE';
     await get().updateTicketStatusApi(ticketId, 'RESL', mode);
@@ -346,7 +529,7 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
 
   requestValidation: (ticketId) => {
     const now = new Date();
-    const target = get().tickets.find((t) => t.id === ticketId);
+    const target = findTargetTicket(get(), ticketId);
     const activeTechName =
       target?.workedBy ?? get().currentUser?.name ?? 'Nathaniel D. Esguerra';
 
@@ -360,18 +543,14 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
       isInternal: false,
     };
 
-    set((state) => ({
-      tickets: state.tickets.map((t) =>
-        t.id === ticketId
-          ? {
-              ...t,
-              validationRequested: true,
-              validationRequestedAt: now.toISOString(),
-              messages: [...(t.messages ?? []), valMsg],
-            }
-          : t
-      ),
-    }));
+    set((state) =>
+      updateTicketInState(state, ticketId, (t) => ({
+        ...t,
+        validationRequested: true,
+        validationRequestedAt: now.toISOString(),
+        messages: [...(t.messages ?? []), valMsg],
+      }))
+    );
     get().addToast(
       'Validation Request Sent',
       `Sent closure reminder to ${target?.requestor ?? 'requestor'}.`,
@@ -380,57 +559,93 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
   },
 
   confirmClosure: async (ticketId) => {
-    const target = get().tickets.find((t) => t.id === ticketId);
-    set((state) => ({
-      tickets: state.tickets.map((t) =>
-        t.id === ticketId
-          ? {
-              ...t,
-              status: 'CLSD',
-              userConfirmedAt: new Date().toISOString(),
-            }
-          : t
-      ),
-    }));
-    get().addToast(
-      `Verified & Closed ${target?.ticketCode ?? 'Ticket'}`,
-      'Ticket closure confirmed and archived in 15-column Job Log.',
-      'success'
-    );
-    if (target && !target.id.startsWith('t-') && !target.id.startsWith('tracked-')) {
-      try {
-        await ticketsApi.updateStatus(ticketId, { status: 'CLSD' });
-      } catch {
-        // Keep optimistic sign-off
+    const sessionAtStart = get().authSessionId;
+    const target = findTargetTicket(get(), ticketId);
+    if (!target) return;
+    try {
+      if (!target.id.startsWith('t-') && !target.id.startsWith('tracked-')) {
+        await ticketsApi.confirmClosure(ticketId);
       }
+      if (get().authSessionId !== sessionAtStart || !get().currentUser) return;
+      set((state) =>
+        updateTicketInState(state, ticketId, (t) => ({
+          ...t,
+          status: 'CLSD',
+          userConfirmedAt: new Date().toISOString(),
+        }))
+      );
+      get().addToast(
+        `Verified & Closed ${target.ticketCode}`,
+        'Ticket closure confirmed and archived in central records.',
+        'success'
+      );
+      try {
+        const queueRefreshed = await get().fetchQueueApi();
+        if (queueRefreshed === false) {
+          get().addToast(
+            'Stale Preview',
+            'Ticket was claimed successfully, but background queue sync timed out.',
+            'warning'
+          );
+        }
+        get().invalidateHubSummaries();
+      } catch {
+        get().addToast(
+          'Stale Preview',
+          'Ticket was claimed successfully, but background queue sync timed out.',
+          'warning'
+        );
+      }
+    } catch (err: unknown) {
+      if (get().authSessionId !== sessionAtStart || !get().currentUser) return;
+      const msg = extractApiErrorMessage(err, 'Failed to confirm ticket closure');
+      get().addToast('Closure Failed', msg, 'warning');
     }
   },
 
-  reopenTicket: async (ticketId) => {
-    const target = get().tickets.find((t) => t.id === ticketId);
-    set((state) => ({
-      tickets: state.tickets.map((t) =>
-        t.id === ticketId
-          ? {
-              ...t,
-              status: 'PROG',
-              timeFinished: undefined,
-              dateFinished: undefined,
-            }
-          : t
-      ),
-    }));
-    get().addToast(
-      `Reopened ${target?.ticketCode ?? 'Ticket'}`,
-      'Returned to IT Support active repairs',
-      'warning'
-    );
-    if (target && !target.id.startsWith('t-') && !target.id.startsWith('tracked-')) {
-      try {
-        await ticketsApi.updateStatus(ticketId, { status: 'PROG' });
-      } catch {
-        // Keep optimistic reopen
+  reopenTicket: async (ticketId, reason = 'Reopened via verification modal') => {
+    const sessionAtStart = get().authSessionId;
+    const target = findTargetTicket(get(), ticketId);
+    if (!target) return;
+    try {
+      if (!target.id.startsWith('t-') && !target.id.startsWith('tracked-')) {
+        await ticketsApi.reopenTicket(ticketId, { reason });
       }
+      if (get().authSessionId !== sessionAtStart || !get().currentUser) return;
+      set((state) =>
+        updateTicketInState(state, ticketId, (t) => ({
+          ...t,
+          status: 'PROG',
+          timeFinished: undefined,
+          dateFinished: undefined,
+        }))
+      );
+      get().addToast(
+        `Reopened ${target.ticketCode}`,
+        'Returned to IT Support active repairs.',
+        'info'
+      );
+      try {
+        const queueRefreshed = await get().fetchQueueApi();
+        if (queueRefreshed === false) {
+          get().addToast(
+            'Stale Preview',
+            'Ticket was claimed successfully, but background queue sync timed out.',
+            'warning'
+          );
+        }
+        get().invalidateHubSummaries();
+      } catch {
+        get().addToast(
+          'Stale Preview',
+          'Ticket was claimed successfully, but background queue sync timed out.',
+          'warning'
+        );
+      }
+    } catch (err: unknown) {
+      if (get().authSessionId !== sessionAtStart || !get().currentUser) return;
+      const msg = extractApiErrorMessage(err, 'Failed to reopen ticket');
+      get().addToast('Reopen Failed', msg, 'warning');
     }
   },
 
@@ -486,51 +701,85 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
   },
 
   assignTicket: async (ticketId, technicianName, technicianId) => {
-    const previousTickets = get().tickets;
-    const target = previousTickets.find((t) => t.id === ticketId);
+    const sessionAtStart = get().authSessionId;
+    const target = findTargetTicket(get(), ticketId);
+    if (!target) return false;
+
+    const prevWorkedBy = target.workedBy;
+    const prevWorkedById = target.workedById;
+    const prevStatus = target.status;
+
     const assignMsg: TicketChatMessage = {
       id: 'msg-' + Date.now(),
       senderRole: 'it',
       senderName: 'Dispatch Admin',
-      message: `Ticket (${target?.ticketCode ?? ''}) has been assigned to ${technicianName} by Administrator.`,
+      message: `Ticket (${target.ticketCode}) has been assigned to ${technicianName} by Administrator.`,
       timestamp: formatTimeAmPm(new Date()),
       isInternal: true,
     };
-    // Optimistic update
-    set((state) => ({
-      tickets: state.tickets.map((t) =>
-        t.id === ticketId
-          ? {
-              ...t,
-              status: t.status === 'OPEN' ? 'PROG' : t.status,
-              workedBy: technicianName,
-              workedById: technicianId,
-              assigned_tech_id: technicianId,
-              messages: [...(t.messages ?? []), assignMsg],
-            }
-          : t
-      ),
-    }));
 
-    if (target && !target.id.startsWith('t-') && !target.id.startsWith('tracked-')) {
+    // Narrow optimistic update for this ticket only
+    set((state) =>
+      updateTicketInState(state, ticketId, (t) => ({
+        ...t,
+        status: t.status === 'OPEN' ? 'PROG' : t.status,
+        workedBy: technicianName,
+        workedById: technicianId,
+        assigned_tech_id: technicianId,
+        messages: [...(t.messages ?? []), assignMsg],
+      }))
+    );
+
+    if (!target.id.startsWith('t-') && !target.id.startsWith('tracked-')) {
       try {
         await ticketsApi.assignTicket(ticketId, technicianId);
+        if (get().authSessionId !== sessionAtStart || !get().currentUser) return false;
+
         get().addToast(
-          `Assigned ${target?.ticketCode ?? 'Ticket'} to ${technicianName}`,
+          `Assigned ${target.ticketCode} to ${technicianName}`,
           'Dispatch assignment synchronized to database.',
           'success'
         );
-        await get().fetchQueueApi();
+
+        try {
+          const queueRefreshed = await get().fetchQueueApi();
+          if (queueRefreshed === false) {
+            get().addToast(
+              'Stale Preview',
+              'Assigned successfully, but background ticket queue sync timed out.',
+              'warning'
+            );
+          }
+          get().invalidateHubSummaries();
+        } catch {
+          get().addToast(
+            'Stale Preview',
+            'Assigned successfully, but background ticket queue sync timed out.',
+            'warning'
+          );
+        }
         return true;
       } catch (err: unknown) {
-        set({ tickets: previousTickets });
+        if (get().authSessionId !== sessionAtStart || !get().currentUser) return false;
+
+        // Narrow rollback for this ticket only
+        set((state) =>
+          updateTicketInState(state, ticketId, (t) => ({
+            ...t,
+            status: prevStatus,
+            workedBy: prevWorkedBy,
+            workedById: prevWorkedById,
+            assigned_tech_id: prevWorkedById,
+            messages: (t.messages ?? []).filter((m) => m.id !== assignMsg.id),
+          }))
+        );
         const msg = extractApiErrorMessage(err, 'Failed to assign technician on server');
         get().addToast('Assignment Failed', msg, 'warning');
         return false;
       }
     } else {
       get().addToast(
-        `Assigned ${target?.ticketCode ?? 'Ticket'} to ${technicianName}`,
+        `Assigned ${target.ticketCode} to ${technicianName}`,
         'Local mock ticket updated.',
         'success'
       );

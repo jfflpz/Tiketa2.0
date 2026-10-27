@@ -1,5 +1,7 @@
 # Tiketa 2.0 — Frontend Engineering Sprint Plan (Strict TypeScript + Pure Employee ID Intake)
 
+> **Current frontend assignments:** follow the frontend column of [S0–S5 in the shared integration sprint](INTEGRATION-SPRINT-PLAN.md#one-sprint-two-coordinated-tracks). Use the [central API map](../03-Contracts/API-INTEGRATION-MAP.md) for exact endpoints. The older timeline and examples below are historical; premature optimistic success, public staff lookup and local-only business actions are superseded by the current plan.
+
 ## Goal Description
 Formulate a dedicated, production-grade **Frontend Sprint Plan** for **Tiketa 2.0**, strictly synchronized with the **Backend Sprint Plan ([`BACKEND-SPRINT-PLAN.md`](file:///C:/Users/Kanor/Documents/FS_Projects/Tiketa/docs/04-Sprints/BACKEND-SPRINT-PLAN.md))** and grounded on the refined **Pure Employee ID Validated Intake** model (zero workforce accounts, zero device tokens, zero client-side setup).
 

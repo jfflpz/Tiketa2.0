@@ -1,5 +1,5 @@
 // @spec FR-QUEUE-02 & FR-TICK-03: Two-State Active Workbench Hub (Bench Picker ⇄ Focused Repair Console)
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Wrench,
   CheckCircle2,
@@ -15,11 +15,14 @@ import {
   Check,
   UserCheck,
   Inbox,
+  AlertCircle,
+  RefreshCw,
 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { SupportMode, Ticket } from '../../types/ticket';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { DiagnosedTaskSelector } from '../../components/tickets/DiagnosedTaskSelector';
+import { TicketChecklistSection } from '../../components/tickets/checklist/TicketChecklistSection';
 
 const WORKBENCH_QUICK_REPLIES = [
   'Please share your AnyDesk ID so I can check remotely.',
@@ -32,6 +35,11 @@ export const ITWorkbenchBoardView: React.FC = () => {
   const tickets = useAppStore((state) => state.tickets);
   const activeWorkbenchTicketId = useAppStore((state) => state.activeWorkbenchTicketId);
   const setActiveWorkbenchTicketId = useAppStore((state) => state.setActiveWorkbenchTicketId);
+  const workbenchTicket = useAppStore((state) => state.workbenchTicket);
+  const isWorkbenchLoading = useAppStore((state) => state.isWorkbenchLoading);
+  const workbenchError = useAppStore((state) => state.workbenchError);
+  const fetchWorkbenchTicketApi = useAppStore((state) => state.fetchWorkbenchTicketApi);
+  const fetchTicketCommentsApi = useAppStore((state) => state.fetchTicketCommentsApi);
   const updateTicketMode = useAppStore((state) => state.updateTicketMode);
   const resolveTicket = useAppStore((state) => state.resolveTicket);
   const requestValidation = useAppStore((state) => state.requestValidation);
@@ -47,8 +55,27 @@ export const ITWorkbenchBoardView: React.FC = () => {
   const openTickets = tickets.filter((t) => t.status === 'OPEN');
 
   const focusedTicket = activeWorkbenchTicketId
-    ? tickets.find((t) => t.id === activeWorkbenchTicketId) ?? null
+    ? tickets.find((t) => t.id === activeWorkbenchTicketId) ?? workbenchTicket
     : null;
+
+  // Poll comments for focused ticket
+  useEffect(() => {
+    if (!focusedTicket?.id) return;
+    fetchTicketCommentsApi(focusedTicket.id);
+
+    const interval = setInterval(() => {
+      fetchTicketCommentsApi(focusedTicket.id);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [focusedTicket?.id, fetchTicketCommentsApi]);
+
+  // Load ticket by ID if absent from tickets and workbenchTicket
+  useEffect(() => {
+    if (activeWorkbenchTicketId && !focusedTicket && !isWorkbenchLoading && !workbenchError) {
+      fetchWorkbenchTicketApi(activeWorkbenchTicketId);
+    }
+  }, [activeWorkbenchTicketId, focusedTicket, isWorkbenchLoading, workbenchError, fetchWorkbenchTicketApi]);
 
   const [chatDraft, setChatDraft] = useState('');
   const [copiedLink, setCopiedLink] = useState(false);
@@ -60,7 +87,10 @@ export const ITWorkbenchBoardView: React.FC = () => {
     if (!focusedTicket || !chatDraft.trim()) return;
     const msg = chatDraft.trim();
     setChatDraft('');
-    await sendTicketMessageApi(focusedTicket.id, msg, false);
+    const res = await sendTicketMessageApi(focusedTicket.id, msg, false);
+    if (res === false) {
+      setChatDraft(msg);
+    }
   };
 
   const handleCopyLink = async () => {
@@ -97,6 +127,55 @@ export const ITWorkbenchBoardView: React.FC = () => {
         return 'bg-zinc-100 text-zinc-600 border-zinc-200';
     }
   };
+
+  if (activeWorkbenchTicketId && isWorkbenchLoading && !focusedTicket) {
+    return (
+      <div className="space-y-6 pb-12 animate-fade-in">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setActiveWorkbenchTicketId(null)}
+            className="py-1.5 px-3 rounded-xl bg-white border border-[#ECEEF2] text-xs font-semibold text-zinc-600 hover:text-ink transition-colors"
+          >
+            ← Back to Workbench List
+          </button>
+        </div>
+        <div className="p-16 text-center bg-white border border-[#ECEEF2] rounded-3xl shadow-card space-y-3">
+          <RefreshCw className="w-8 h-8 animate-spin mx-auto text-orange-500" />
+          <h3 className="text-sm font-bold text-ink">Loading Workbench Ticket...</h3>
+          <p className="text-xs text-zinc-500">Fetching canonical ticket record from server</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (activeWorkbenchTicketId && workbenchError && !focusedTicket) {
+    return (
+      <div className="space-y-6 pb-12 animate-fade-in">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setActiveWorkbenchTicketId(null)}
+            className="py-1.5 px-3 rounded-xl bg-white border border-[#ECEEF2] text-xs font-semibold text-zinc-600 hover:text-ink transition-colors"
+          >
+            ← Back to Workbench List
+          </button>
+        </div>
+        <div className="p-16 text-center bg-white border border-rose-200 rounded-3xl shadow-card space-y-3">
+          <AlertCircle className="w-8 h-8 mx-auto text-rose-500" />
+          <h3 className="text-sm font-bold text-rose-700">Failed to Load Workbench Ticket</h3>
+          <p className="text-xs text-zinc-500 max-w-sm mx-auto">{workbenchError}</p>
+          <button
+            type="button"
+            onClick={() => fetchWorkbenchTicketApi(activeWorkbenchTicketId)}
+            className="px-4 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold transition-colors"
+          >
+            Retry Loading
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (!focusedTicket) {
     return (
@@ -426,17 +505,30 @@ export const ITWorkbenchBoardView: React.FC = () => {
                 )}
               </button>
 
-              <button
-                type="button"
-                    onClick={async () => {
+              {focusedTicket.status === 'OPEN' ? (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await claimTicketApi(focusedTicket.id);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-sm transition-colors press-fx"
+                >
+                  <UserCheck className="w-4 h-4" />
+                  <span>Claim & Start Repair</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={async () => {
                     resolveTicket(focusedTicket.id);
                     await updateTicketStatusApi(focusedTicket.id, 'RESL', focusedTicket.mode);
-                }}
-                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-sm transition-colors press-fx"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Mark Repair Resolved</span>
-              </button>
+                  }}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-sm transition-colors press-fx"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Mark Repair Resolved</span>
+                </button>
+              )}
 
               {/* Arrow Button to Open Slide-Out Side Drawer */}
               <button
@@ -543,6 +635,13 @@ export const ITWorkbenchBoardView: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* SOP Checklist & Saved Repair Guides */}
+        <TicketChecklistSection
+          ticketId={focusedTicket.id}
+          ticketStatus={focusedTicket.status}
+          ticketTaskCode={focusedTicket.taskCode}
+        />
 
         {/* 2. Full-Width Live Chat with Employee */}
         <div className="w-full bg-[#F4F6F9] border border-[#ECEEF2] rounded-2xl p-4 space-y-3">

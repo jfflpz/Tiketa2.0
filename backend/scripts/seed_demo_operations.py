@@ -16,12 +16,16 @@ from app.models import (
     Location,
     LocationDepartment,
     MaintenancePlan,
+    RepairNoteStep,
     Ticket,
+    TicketChecklist,
+    TicketChecklistStep,
     TicketComment,
     TicketTechnician,
     User,
 )
 from app.services.tickets import synchronize_ticket_counter
+from scripts.seed_repair_notes import seed_repair_notes
 
 PUBLIC_KIOSK_ISSUES = {
     "PRN-TS",
@@ -467,7 +471,9 @@ async def seed():
 
             print("--> 3. Resolving IT Technicians...")
             tech_user = await session.scalar(
-                select(User).where(User.role == "it", User.is_active)
+                select(User).where(User.username == "technician")
+            ) or await session.scalar(
+                select(User).where(User.email == "technician@fivestar.com.ph")
             )
             if tech_user:
                 tech_user.password_hash = hash_password("Tiketa2026!Pass")
@@ -485,7 +491,9 @@ async def seed():
                 await session.flush()
 
             admin_user = await session.scalar(
-                select(User).where(User.role == "admin", User.is_active)
+                select(User).where(User.username == "admin")
+            ) or await session.scalar(
+                select(User).where(User.email == "admin@fivestar.com.ph")
             )
             if admin_user:
                 admin_user.password_hash = hash_password("Tiketa2026!Pass")
@@ -625,6 +633,66 @@ async def seed():
                     .on_conflict_do_nothing()
                 )
                 await session.execute(stmt)
+
+            print("--> 6. Seeding Saved Repair Notes & SOP Checklists...")
+            seeded_notes = await seed_repair_notes(session)
+
+            prog_ticket = await session.scalar(
+                select(Ticket).where(Ticket.ticket_code == "T-2610-0109")
+            )
+            if prog_ticket:
+                existing_chk = await session.scalar(
+                    select(TicketChecklist).where(
+                        TicketChecklist.ticket_id == prog_ticket.id
+                    )
+                )
+                if not existing_chk:
+                    matching_guide = next(
+                        (n for n in seeded_notes if "POST 3 Short Beeps" in n.title),
+                        seeded_notes[0] if seeded_notes else None,
+                    )
+                    if matching_guide:
+                        guide_steps = (
+                            await session.scalars(
+                                select(RepairNoteStep)
+                                .where(
+                                    RepairNoteStep.repair_note_id == matching_guide.id
+                                )
+                                .order_by(RepairNoteStep.position)
+                            )
+                        ).all()
+
+                        chk_author = tech_user or admin_user
+                        chk = TicketChecklist(
+                            ticket_id=prog_ticket.id,
+                            source_repair_note_id=matching_guide.id,
+                            source_revision=matching_guide.revision,
+                            guide_title_snapshot=matching_guide.title,
+                            guide_task_code_snapshot=matching_guide.task_code,
+                            guide_body_enc=matching_guide.symptom_and_fix_enc,
+                            applied_by_id=chk_author.id if chk_author else None,
+                            applied_at=now,
+                            created_by_id=chk_author.id if chk_author else None,
+                            updated_by_id=chk_author.id if chk_author else None,
+                            revision=1,
+                        )
+                        session.add(chk)
+                        await session.flush()
+
+                        for s in guide_steps:
+                            is_done = s.position < 2
+                            step_item = TicketChecklistStep(
+                                checklist_id=chk.id,
+                                position=s.position,
+                                text_enc=s.text_enc,
+                                completed=is_done,
+                                completed_at=now if is_done else None,
+                                completed_by_id=chk_author.id
+                                if is_done and chk_author
+                                else None,
+                            )
+                            session.add(step_item)
+                        await session.flush()
 
     print(
         "SUCCESS: Demo operational database populated with realistic multi-terminal data."

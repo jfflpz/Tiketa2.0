@@ -34,7 +34,6 @@ export const TicketListsView: React.FC = () => {
   const setActiveView = useAppStore((state) => state.setActiveView);
   const copyTicketShareLink = useAppStore((state) => state.copyTicketShareLink);
   const setActiveWorkbenchTicketId = useAppStore((state) => state.setActiveWorkbenchTicketId);
-  const addToast = useAppStore((state) => state.addToast);
 
   const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
@@ -85,10 +84,12 @@ export const TicketListsView: React.FC = () => {
 
   const handleCopyVerification = async (e: React.MouseEvent, ticketCode: string) => {
     e.stopPropagation();
-    await copyTicketShareLink(ticketCode);
-    setCopiedCode(ticketCode);
-    addToast('Link Copied', `Employee verification URL copied for ${ticketCode}`, 'success');
-    setTimeout(() => setCopiedCode(null), 2000);
+    const target = tickets.find((t) => t.ticketCode === ticketCode);
+    const res = await copyTicketShareLink(ticketCode, target?.id);
+    if (res.success) {
+      setCopiedCode(ticketCode);
+      setTimeout(() => setCopiedCode(null), 2000);
+    }
   };
 
   useEffect(() => {

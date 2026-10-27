@@ -165,7 +165,7 @@ async def claim(db, row, user):
     )
 
 
-def ticket_view(row):
+def ticket_view(row, employee_id_number: str | None = None):
     fields = (
         "id",
         "ticket_code",
@@ -191,6 +191,7 @@ def ticket_view(row):
         "user_confirmed_at",
     )
     result = {key: getattr(row, key, None) for key in fields}
+    result["employee_id_number"] = employee_id_number
     result["description"] = decrypt(row.description_enc) if row.description_enc else ""
     result["diagnosis"] = (
         decrypt(row.diagnosis_enc) if getattr(row, "diagnosis_enc", None) else None

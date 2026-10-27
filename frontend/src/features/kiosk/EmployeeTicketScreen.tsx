@@ -1,5 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, ListFilter, Search } from 'lucide-react';
+import {
+  Plus,
+  ListFilter,
+  Search,
+  Loader2,
+  AlertTriangle,
+  Clock,
+  ShieldAlert,
+  WifiOff,
+  ArrowLeft,
+  RotateCcw,
+} from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { useEmployeeIntake } from './hooks/useEmployeeIntake';
 import { KioskTopBar } from './components/KioskTopBar';
@@ -11,11 +22,15 @@ import { KioskTrackLookupTab } from './components/KioskTrackLookupTab';
 import { KioskVerifyCodeCard } from './components/KioskVerifyCodeCard';
 
 export const EmployeeTicketScreen: React.FC = () => {
-  const tickets = useAppStore((state) => state.tickets);
   const verifyTicketCode = useAppStore((state) => state.verifyTicketCode);
-  const unlockedTicketCodes = useAppStore((state) => state.unlockedTicketCodes);
+  const verifyToken = useAppStore((state) => state.verifyToken);
+  const verificationStatus = useAppStore((state) => state.verificationStatus);
+  const verificationErrorMessage = useAppStore((state) => state.verificationErrorMessage);
+  const verifiedTicket = useAppStore((state) => state.verifiedTicket);
+  const employeeTickets = useAppStore((state) => state.employeeTickets);
+  const initiateVerificationFlow = useAppStore((state) => state.initiateVerificationFlow);
+  const clearVerificationContext = useAppStore((state) => state.clearVerificationContext);
   const copyTicketShareLink = useAppStore((state) => state.copyTicketShareLink);
-  const trackTicketApi = useAppStore((state) => state.trackTicketApi);
 
   const [tab, setTab] = useState<'create' | 'my_tickets' | 'lookup'>('create');
   const [detailTicketId, setDetailTicketId] = useState<string | null>(null);
@@ -23,37 +38,24 @@ export const EmployeeTicketScreen: React.FC = () => {
 
   const intake = useEmployeeIntake();
 
-  // URL ?verifyTicket= handler
-  const targetVerifyTicket = verifyTicketCode
-    ? tickets.find(
-        (t) => t.ticketCode.toUpperCase() === verifyTicketCode.trim().toUpperCase()
-      ) ?? null
-    : null;
-
-  const isCurrentVerifyUnlocked =
-    targetVerifyTicket &&
-    Boolean(unlockedTicketCodes[targetVerifyTicket.ticketCode.toUpperCase()]);
-
   useEffect(() => {
-    if (verifyTicketCode && !targetVerifyTicket) {
-      trackTicketApi(verifyTicketCode);
+    if (verifyTicketCode && verificationStatus === 'idle') {
+      initiateVerificationFlow(verifyTicketCode, verifyToken);
     }
-  }, [verifyTicketCode, targetVerifyTicket, trackTicketApi]);
-
-  useEffect(() => {
-    if (targetVerifyTicket && isCurrentVerifyUnlocked) {
-      setDetailTicketId(targetVerifyTicket.id);
-      setTab('my_tickets');
-    }
-  }, [targetVerifyTicket, isCurrentVerifyUnlocked]);
+  }, [verifyTicketCode, verifyToken, verificationStatus, initiateVerificationFlow]);
 
   const handleCopyLink = async (ticketCode: string, id: string) => {
-    await copyTicketShareLink(ticketCode);
-    setCopiedTicketId(id);
-    setTimeout(() => setCopiedTicketId(null), 2200);
+    const res = await copyTicketShareLink(ticketCode, id);
+    if (res.success) {
+      setCopiedTicketId(id);
+      setTimeout(() => setCopiedTicketId(null), 2200);
+    }
   };
 
-  const detailTicket = tickets.find((t) => t.id === detailTicketId) ?? null;
+  const selectedEmployeeTicket =
+    (verifiedTicket && verifiedTicket.id === detailTicketId ? verifiedTicket : null) ||
+    employeeTickets.find((t) => t.id === detailTicketId) ||
+    null;
 
   return (
     <div className="min-h-screen bg-canvas text-ink flex flex-col justify-between">
@@ -62,15 +64,147 @@ export const EmployeeTicketScreen: React.FC = () => {
 
       {/* 2. Main Content Area */}
       <main className="max-w-4xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex-1 space-y-6">
-        {/* Verification Card if arriving from Direct Validation URL and not unlocked */}
-        {targetVerifyTicket && !isCurrentVerifyUnlocked ? (
-          <KioskVerifyCodeCard
-            ticket={targetVerifyTicket}
-            onUnlocked={() => {
-              setDetailTicketId(targetVerifyTicket.id);
-              setTab('my_tickets');
-            }}
-          />
+        {/* Verification Flow Branches when arriving with ?verifyTicket= */}
+        {verifyTicketCode ? (
+          <div className="space-y-4">
+            {verificationStatus === 'loading' && (
+              <div className="bg-surface border border-line rounded-3xl p-10 text-center space-y-3 shadow-card max-w-md mx-auto animate-fade-in">
+                <Loader2 className="w-8 h-8 animate-spin text-zinc-900 mx-auto" />
+                <h3 className="font-bold text-sm text-ink">Verifying Ticket Access</h3>
+                <p className="text-xs text-ink-subtle">
+                  Validating security token for ticket <strong>{verifyTicketCode}</strong> with central IT server...
+                </p>
+              </div>
+            )}
+
+            {verificationStatus === 'not_found' && (
+              <div className="bg-surface border border-line rounded-3xl p-8 text-center space-y-4 shadow-card max-w-md mx-auto animate-fade-in">
+                <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto">
+                  <AlertTriangle className="w-6 h-6" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="font-bold text-sm text-ink">Ticket Not Found</h3>
+                  <p className="text-xs text-ink-subtle leading-relaxed">
+                    {verificationErrorMessage || `No ticket found with code "${verifyTicketCode}".`}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={clearVerificationContext}
+                  className="w-full py-2.5 px-4 bg-zinc-900 hover:bg-zinc-800 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 press-fx"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>Return to Kiosk Intake</span>
+                </button>
+              </div>
+            )}
+
+            {verificationStatus === 'expired' && (
+              <div className="bg-surface border border-line rounded-3xl p-8 text-center space-y-4 shadow-card max-w-md mx-auto animate-fade-in">
+                <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto">
+                  <Clock className="w-6 h-6" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="font-bold text-sm text-ink">Verification Link Expired</h3>
+                  <p className="text-xs text-ink-subtle leading-relaxed">
+                    {verificationErrorMessage ||
+                      'This verification link has expired (72-hour window). Please contact IT Support to reissue a fresh link.'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={clearVerificationContext}
+                  className="w-full py-2.5 px-4 bg-zinc-900 hover:bg-zinc-800 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 press-fx"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>Return to Kiosk Intake</span>
+                </button>
+              </div>
+            )}
+
+            {verificationStatus === 'forbidden' && (
+              <div className="bg-surface border border-line rounded-3xl p-8 text-center space-y-4 shadow-card max-w-md mx-auto animate-fade-in">
+                <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto">
+                  <ShieldAlert className="w-6 h-6" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="font-bold text-sm text-ink">Access Denied</h3>
+                  <p className="text-xs text-ink-subtle leading-relaxed">
+                    {verificationErrorMessage ||
+                      'You are not authorized to view this ticket, or this ticket is unlinked to an employee.'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={clearVerificationContext}
+                  className="w-full py-2.5 px-4 bg-zinc-900 hover:bg-zinc-800 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 press-fx"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>Return to Kiosk Intake</span>
+                </button>
+              </div>
+            )}
+
+            {verificationStatus === 'network_error' && (
+              <div className="bg-surface border border-line rounded-3xl p-8 text-center space-y-4 shadow-card max-w-md mx-auto animate-fade-in">
+                <div className="w-12 h-12 rounded-2xl bg-zinc-100 border border-zinc-200 text-zinc-600 flex items-center justify-center mx-auto">
+                  <WifiOff className="w-6 h-6" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="font-bold text-sm text-ink">Network Connection Error</h3>
+                  <p className="text-xs text-ink-subtle leading-relaxed">
+                    {verificationErrorMessage ||
+                      'Unable to communicate with the central server. Please check your network and try again.'}
+                  </p>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => initiateVerificationFlow(verifyTicketCode, verifyToken)}
+                    className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 press-fx"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    <span>Retry Connection</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={clearVerificationContext}
+                    className="flex-1 py-2.5 px-4 bg-surface border border-line text-ink font-bold text-xs rounded-xl flex items-center justify-center gap-2 press-fx hover:bg-zinc-100"
+                  >
+                    <span>Back to Intake</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {verificationStatus === 'needs_identity' && (
+              <div className="space-y-4">
+                <KioskVerifyCodeCard
+                  ticketCode={verifyTicketCode}
+                  onUnlocked={() => {
+                    // Handled internally in verification slice
+                  }}
+                />
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={clearVerificationContext}
+                    className="text-xs text-ink-subtle hover:text-ink font-semibold inline-flex items-center gap-1.5"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <span>Cancel and return to Kiosk</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {verificationStatus === 'verified' && verifiedTicket && (
+              <EmployeeTicketDetails
+                ticket={verifiedTicket}
+                onBack={clearVerificationContext}
+              />
+            )}
+          </div>
         ) : intake.submittedTicket ? (
           /* Post-Submit Confirmation Receipt */
           <TicketSubmissionReceipt
@@ -122,7 +256,7 @@ export const EmployeeTicketScreen: React.FC = () => {
                   <ListFilter className="w-3.5 h-3.5" />
                   <span>My Tickets</span>
                   <span className="text-[10px] px-1.5 py-0.2 rounded-full font-mono bg-canvas text-ink-subtle ml-1">
-                    {tickets.length}
+                    {employeeTickets.length}
                   </span>
                 </button>
 
@@ -171,14 +305,14 @@ export const EmployeeTicketScreen: React.FC = () => {
 
             {/* TAB 2: MY TICKETS (LIST vs EXPANDED DETAIL) */}
             {tab === 'my_tickets' && (
-              detailTicket ? (
+              selectedEmployeeTicket ? (
                 <EmployeeTicketDetails
-                  ticket={detailTicket}
+                  ticket={selectedEmployeeTicket}
                   onBack={() => setDetailTicketId(null)}
                 />
               ) : (
                 <EmployeeTicketsPanel
-                  tickets={tickets}
+                  tickets={employeeTickets}
                   onSelectTicket={(id) => setDetailTicketId(id)}
                   onCopyLink={handleCopyLink}
                   copiedId={copiedTicketId}

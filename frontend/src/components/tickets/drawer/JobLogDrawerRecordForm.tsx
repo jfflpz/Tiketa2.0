@@ -3,6 +3,7 @@ import { Save } from 'lucide-react';
 import type { Ticket, SupportMode } from '../../../types/ticket';
 import type { TeamMember } from '../../../types/team';
 import { DiagnosedTaskSelector } from '../DiagnosedTaskSelector';
+import { TicketChecklistSection } from '../checklist/TicketChecklistSection';
 
 export interface JobLogDrawerRecordFormProps {
   ticket: Ticket;
@@ -120,6 +121,13 @@ export const JobLogDrawerRecordForm: React.FC<JobLogDrawerRecordFormProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Persistent SOP Checklist & Saved Repair Guides */}
+      <TicketChecklistSection
+        ticketId={ticket.id}
+        ticketStatus={ticket.status}
+        ticketTaskCode={ticket.taskCode}
+      />
 
       {/* Grouped 15-Column Job Log Record */}
       <div className="space-y-3">

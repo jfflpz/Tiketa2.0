@@ -1,110 +1,125 @@
-// @spec FR-REPT-06: Comprehensive Terminal Hub Station Details Modal (Departments, Active Tickets, Resolution History & Infrastructure)
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   X,
-  Layers,
-  Wrench,
+  Building2,
+  Inbox,
   Clock,
-  Monitor,
   ExternalLink,
+  Flame,
 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
-import { HubDepartmentsTab, HUB_DEPARTMENTS_CONFIG } from './components/modal/HubDepartmentsTab';
+import type { HubSummaryOut } from '../../api/client';
+import { HubDepartmentsTab } from './components/modal/HubDepartmentsTab';
 import { HubActiveTicketsTab } from './components/modal/HubActiveTicketsTab';
-import { HubResolutionHistoryTab, type FallbackHistoryLog } from './components/modal/HubResolutionHistoryTab';
-import { HubInfrastructureTab } from './components/modal/HubInfrastructureTab';
-
-export interface TerminalMeta {
-  code: string;
-  name: string;
-  region: string;
-  devicesCount: number;
-  hotspot: string;
-  networkStatus: string;
-}
+import { HubResolutionHistoryTab } from './components/modal/HubResolutionHistoryTab';
 
 interface TerminalHubDetailModalProps {
-  hub: TerminalMeta | null;
+  hub: HubSummaryOut | null;
   onClose: () => void;
+  onRefreshHubs?: () => void;
 }
 
-type ModalTab = 'DEPARTMENTS' | 'ACTIVE_TICKETS' | 'HISTORY' | 'INFRASTRUCTURE';
+type ModalTab = 'DEPARTMENTS' | 'ACTIVE_TICKETS' | 'HISTORY';
 
 export const TerminalHubDetailModal: React.FC<TerminalHubDetailModalProps> = ({
   hub,
   onClose,
+  onRefreshHubs,
 }) => {
   const tickets = useAppStore((state) => state.tickets);
+  const selectedTicketId = useAppStore((state) => state.selectedTicketId);
   const setSelectedTicketId = useAppStore((state) => state.setSelectedTicketId);
   const setActiveWorkbenchTicketId = useAppStore((state) => state.setActiveWorkbenchTicketId);
   const setActiveView = useAppStore((state) => state.setActiveView);
   const setLocationFilter = useAppStore((state) => state.setLocationFilter);
+  const setQueueFilter = useAppStore((state) => state.setQueueFilter);
+  const setSearchQuery = useAppStore((state) => state.setSearchQuery);
   const setQuickIntakeOpen = useAppStore((state) => state.setQuickIntakeOpen);
 
   const [activeTab, setActiveTab] = useState<ModalTab>('DEPARTMENTS');
 
-  // Handle ESC key to close modal
+  const modalRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const previousActiveElement = useRef<HTMLElement | null>(null);
+
+  // Focus trap and restoration on opening and closing
+  useEffect(() => {
+    if (!hub) return;
+    previousActiveElement.current = document.activeElement as HTMLElement | null;
+    closeButtonRef.current?.focus();
+
+    return () => {
+      if (previousActiveElement.current && document.body.contains(previousActiveElement.current)) {
+        previousActiveElement.current.focus();
+      } else {
+        document.querySelector<HTMLElement>('[role="button"][tabindex="0"]')?.focus();
+      }
+    };
+  }, [hub]);
+
+  const handleFocusContainment = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      // If drawer is open on top of the modal, let the drawer contain focus
+      if (selectedTicketId) return;
+
+      if (e.key === 'Tab' && modalRef.current) {
+        const focusable = modalRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+          }
+        } else {
+          if (document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
+      }
+    },
+    [selectedTicketId]
+  );
+
+  // Handle ESC key to close modal (only if ticket drawer is not currently open)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        if (selectedTicketId) {
+          return;
+        }
         onClose();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
+  }, [onClose, selectedTicketId]);
 
   if (!hub) return null;
 
-  // Filter tickets for this specific terminal hub
+  // Filter local preview tickets matching this station for department tab
   const hubTickets = tickets.filter((t) => t.locationCode === hub.code);
   const activeTickets = hubTickets.filter((t) => t.status !== 'CLSD');
-  const resolvedTickets = hubTickets.filter((t) => t.status === 'CLSD' || t.status === 'RESL');
-
-  const fallbackHistoryLogs: FallbackHistoryLog[] = [
-    {
-      ticketCode: `T-${hub.code}048`,
-      task: 'Printer Troubleshoot',
-      department: 'Cash Management',
-      requestor: 'Booth #2 Cashier',
-      workedBy: 'Nathaniel D. Esguerra',
-      dateFinished: '2026-10-15 16:40',
-      duration: '25 mins',
-      notes: 'Cleared paper jam in thermal receipt cutter. Realigned sensor and ran self-test print.',
-    },
-    {
-      ticketCode: `T-${hub.code}039`,
-      task: 'Network Configuration',
-      department: 'Operations',
-      requestor: 'Dispatch Officer',
-      workedBy: 'Stephen I. Miralles',
-      dateFinished: '2026-10-12 11:15',
-      duration: '45 mins',
-      notes: 'Re-crimped RJ45 CAT6 connector on Dispatch Switch Port 4. Ping latency restored to <1ms.',
-    },
-    {
-      ticketCode: `T-${hub.code}024`,
-      task: 'Software Assistance',
-      department: 'Station Admin',
-      requestor: 'Station Clerk',
-      workedBy: 'Nathaniel D. Esguerra',
-      dateFinished: '2026-10-09 14:05',
-      duration: '20 mins',
-      notes: 'Restarted FiveStar Waybill SQLite service. Resolved database lock error.',
-    },
-  ];
 
   const handleOpenTicketDrawer = (ticketId: string) => {
     setSelectedTicketId(ticketId);
   };
 
   const handleOpenWorkbenchForTicket = (ticketId: string) => {
+    // Explicit claiming: opening a ticket in workbench does not claim it automatically
     setActiveWorkbenchTicketId(ticketId);
     setActiveView('workbench');
     onClose();
   };
 
   const handleFilterInTicketLists = () => {
+    setSearchQuery('');
+    setQueueFilter('ALL');
     setLocationFilter(hub.code);
     setActiveView('tickets');
     onClose();
@@ -112,169 +127,126 @@ export const TerminalHubDetailModal: React.FC<TerminalHubDetailModalProps> = ({
 
   const handleQuickIntake = () => {
     setQuickIntakeOpen(true);
+    onRefreshHubs?.();
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-      <div className="fixed inset-0" onClick={onClose} aria-hidden="true" />
-
-      <div className="relative z-10 w-full max-w-4xl bg-white border border-[#ECEEF2] rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-        {/* Header Bar */}
-        <div className="px-6 py-5 bg-[#FAFAFB] border-b border-[#ECEEF2] flex items-center justify-between">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-orange-50 text-orange-600 border border-orange-200/80 flex items-center justify-center font-mono text-base font-extrabold shadow-sm shrink-0">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/60 backdrop-blur-sm animate-fade-in"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="terminal-hub-title"
+    >
+      <div
+        ref={modalRef}
+        onKeyDown={handleFocusContainment}
+        className="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl border border-zinc-200 overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Modal Header */}
+        <div className="p-6 border-b border-[#ECEEF2] flex items-start justify-between gap-4 bg-gradient-to-r from-orange-50/40 via-white to-white shrink-0">
+          <div className="flex items-start gap-4 min-w-0">
+            <div className="w-12 h-12 rounded-2xl bg-orange-600 text-white font-mono font-extrabold text-base flex items-center justify-center shadow-md shadow-orange-600/20 shrink-0">
               {hub.code}
             </div>
-            <div>
-              <div className="flex items-center gap-2.5">
-                <h2 className="text-lg font-bold text-ink tracking-tight">
-                  {hub.name}
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 id="terminal-hub-title" className="text-lg font-bold text-ink">
+                  {hub.name} Terminal Station
                 </h2>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  Online
+                <span className="font-mono text-xs px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-600 font-semibold">
+                  Station Code: {hub.code}
                 </span>
               </div>
-              <p className="text-xs text-zinc-500 mt-0.5">
-                {hub.region} • <span className="font-mono text-zinc-600">{hub.networkStatus}</span>
-              </p>
+
+              {/* Station Workload Summary Bar */}
+              <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs">
+                <span className="px-2.5 py-1 rounded-xl bg-sky-50 text-sky-700 border border-sky-200 font-semibold flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-sky-500" />
+                  Open: <strong>{hub.open_count}</strong>
+                </span>
+                <span className="px-2.5 py-1 rounded-xl bg-orange-50 text-orange-700 border border-orange-200 font-semibold flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+                  In Progress: <strong>{hub.in_progress_count}</strong>
+                </span>
+                <span className="px-2.5 py-1 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 font-semibold flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                  Awaiting Conf: <strong>{hub.resolved_count}</strong>
+                </span>
+                <span className="px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  Closed This Month: <strong>{hub.closed_this_month_count}</strong>
+                </span>
+                {hub.top_issue_task_name && (
+                  <span className="px-2.5 py-1 rounded-xl bg-zinc-100 text-zinc-700 font-medium flex items-center gap-1.5">
+                    <Flame className="w-3.5 h-3.5 text-orange-500" />
+                    Top Issue (30d): <strong>{hub.top_issue_task_name}</strong> ({hub.top_issue_count})
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
           <button
+            ref={closeButtonRef}
             type="button"
             onClick={onClose}
-            className="p-2 rounded-xl text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors press-fx"
-            title="Close (Esc)"
+            aria-label="Close station modal"
+            className="p-2 rounded-xl text-zinc-400 hover:text-ink hover:bg-zinc-100 transition-colors press-fx shrink-0 focus:outline-none focus:ring-2 focus:ring-orange-400"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Quick KPI Metric Highlights */}
-        <div className="px-6 py-3.5 bg-white border-b border-[#ECEEF2] grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="bg-[#F8F9FA] rounded-xl p-3 border border-[#ECEEF2]">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
-              Active Tickets
-            </span>
-            <div className="flex items-baseline gap-1.5 mt-0.5">
-              <span className="text-lg font-extrabold text-ink font-mono">
-                {activeTickets.length}
-              </span>
-              <span className="text-[11px] text-zinc-500 font-medium">pending</span>
-            </div>
-          </div>
-
-          <div className="bg-[#F8F9FA] rounded-xl p-3 border border-[#ECEEF2]">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
-              Departments
-            </span>
-            <div className="flex items-baseline gap-1.5 mt-0.5">
-              <span className="text-lg font-extrabold text-ink font-mono">
-                {HUB_DEPARTMENTS_CONFIG.length}
-              </span>
-              <span className="text-[11px] text-zinc-500 font-medium">active zones</span>
-            </div>
-          </div>
-
-          <div className="bg-[#F8F9FA] rounded-xl p-3 border border-[#ECEEF2]">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
-              Workstations &amp; POS
-            </span>
-            <div className="flex items-baseline gap-1.5 mt-0.5">
-              <span className="text-lg font-extrabold text-ink font-mono">
-                {hub.devicesCount}
-              </span>
-              <span className="text-[11px] text-zinc-500 font-medium">units</span>
-            </div>
-          </div>
-
-          <div className="bg-[#F8F9FA] rounded-xl p-3 border border-[#ECEEF2]">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
-              Resolution History
-            </span>
-            <div className="flex items-baseline gap-1.5 mt-0.5">
-              <span className="text-lg font-extrabold text-emerald-700 font-mono">
-                {resolvedTickets.length > 0 ? resolvedTickets.length : fallbackHistoryLogs.length}
-              </span>
-              <span className="text-[11px] text-zinc-500 font-medium">closed logs</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Tab Switcher */}
-        <div className="px-6 pt-3 bg-white border-b border-[#ECEEF2] flex items-center gap-2 overflow-x-auto">
+        {/* Tab Navigation */}
+        <div className="flex border-b border-[#ECEEF2] px-6 bg-zinc-50/50 shrink-0">
           <button
             type="button"
             onClick={() => setActiveTab('DEPARTMENTS')}
-            className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 whitespace-nowrap ${
+            className={`py-3 px-4 text-xs font-bold border-b-2 flex items-center gap-2 transition-all ${
               activeTab === 'DEPARTMENTS'
-                ? 'border-orange-500 text-orange-600'
-                : 'border-transparent text-zinc-500 hover:text-zinc-800'
+                ? 'border-orange-500 text-orange-600 bg-white'
+                : 'border-transparent text-zinc-500 hover:text-ink'
             }`}
           >
-            <Layers className="w-3.5 h-3.5" />
-            <span>Departments ({HUB_DEPARTMENTS_CONFIG.length})</span>
+            <Building2 className="w-4 h-4" />
+            <span>Operating Departments ({hub.departments.length})</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('ACTIVE_TICKETS')}
-            className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 whitespace-nowrap ${
+            className={`py-3 px-4 text-xs font-bold border-b-2 flex items-center gap-2 transition-all ${
               activeTab === 'ACTIVE_TICKETS'
-                ? 'border-orange-500 text-orange-600'
-                : 'border-transparent text-zinc-500 hover:text-zinc-800'
+                ? 'border-orange-500 text-orange-600 bg-white'
+                : 'border-transparent text-zinc-500 hover:text-ink'
             }`}
           >
-            <Wrench className="w-3.5 h-3.5" />
-            <span>Active Tickets</span>
-            <span
-              className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                activeTickets.length > 0
-                  ? 'bg-orange-100 text-orange-700'
-                  : 'bg-zinc-100 text-zinc-600'
-              }`}
-            >
-              {activeTickets.length}
-            </span>
+            <Inbox className="w-4 h-4" />
+            <span>Active Tickets ({hub.total_active_count})</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('HISTORY')}
-            className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 whitespace-nowrap ${
+            className={`py-3 px-4 text-xs font-bold border-b-2 flex items-center gap-2 transition-all ${
               activeTab === 'HISTORY'
-                ? 'border-orange-500 text-orange-600'
-                : 'border-transparent text-zinc-500 hover:text-zinc-800'
+                ? 'border-orange-500 text-orange-600 bg-white'
+                : 'border-transparent text-zinc-500 hover:text-ink'
             }`}
           >
-            <Clock className="w-3.5 h-3.5" />
+            <Clock className="w-4 h-4" />
             <span>Resolution History</span>
-            <span className="px-1.5 py-0.2 rounded-full bg-zinc-100 text-zinc-600 text-[10px] font-bold">
-              {resolvedTickets.length > 0 ? resolvedTickets.length : fallbackHistoryLogs.length}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('INFRASTRUCTURE')}
-            className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 whitespace-nowrap ${
-              activeTab === 'INFRASTRUCTURE'
-                ? 'border-orange-500 text-orange-600'
-                : 'border-transparent text-zinc-500 hover:text-zinc-800'
-            }`}
-          >
-            <Monitor className="w-3.5 h-3.5" />
-            <span>Hardware &amp; Network</span>
           </button>
         </div>
 
-        {/* Tab Body (Scrollable) */}
-        <div className="flex-1 overflow-y-auto p-6 bg-[#FAFAFB]">
+        {/* Modal Scrollable Body */}
+        <div className="p-6 overflow-y-auto flex-1">
           {activeTab === 'DEPARTMENTS' && (
             <HubDepartmentsTab
-              hub={hub}
+              hubName={hub.name}
+              departments={hub.departments}
               activeTickets={activeTickets}
               onOpenTicketDrawer={handleOpenTicketDrawer}
             />
@@ -282,8 +254,9 @@ export const TerminalHubDetailModal: React.FC<TerminalHubDetailModalProps> = ({
 
           {activeTab === 'ACTIVE_TICKETS' && (
             <HubActiveTicketsTab
-              hub={hub}
-              activeTickets={activeTickets}
+              hubId={hub.id}
+              hubName={hub.name}
+              totalActiveCount={hub.total_active_count}
               onOpenTicketDrawer={handleOpenTicketDrawer}
               onOpenWorkbenchForTicket={handleOpenWorkbenchForTicket}
               onQuickIntake={handleQuickIntake}
@@ -292,24 +265,20 @@ export const TerminalHubDetailModal: React.FC<TerminalHubDetailModalProps> = ({
 
           {activeTab === 'HISTORY' && (
             <HubResolutionHistoryTab
-              hub={hub}
-              resolvedTickets={resolvedTickets}
-              fallbackHistoryLogs={fallbackHistoryLogs}
+              hubId={hub.id}
+              hubName={hub.name}
+              onOpenTicketDrawer={handleOpenTicketDrawer}
             />
-          )}
-
-          {activeTab === 'INFRASTRUCTURE' && (
-            <HubInfrastructureTab hub={hub} />
           )}
         </div>
 
-        {/* Modal Footer Controls */}
-        <div className="px-6 py-4 bg-white border-t border-[#ECEEF2] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="text-xs text-zinc-400">
-            Station Code: <strong className="font-mono text-zinc-700">{hub.code}</strong> • {hub.devicesCount} active devices
+        {/* Modal Footer */}
+        <div className="p-4 border-t border-[#ECEEF2] bg-zinc-50 flex items-center justify-between gap-3 shrink-0">
+          <div className="text-[11px] text-zinc-500">
+            Workload totals reflect all active tickets across terminal departments.
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={handleFilterInTicketLists}
@@ -318,11 +287,10 @@ export const TerminalHubDetailModal: React.FC<TerminalHubDetailModalProps> = ({
               <span>View In Full Ticket Lists</span>
               <ExternalLink className="w-3.5 h-3.5" />
             </button>
-
             <button
               type="button"
               onClick={onClose}
-              className="py-2 px-4 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-bold transition-colors press-fx"
+              className="py-2 px-4 rounded-xl bg-zinc-800 hover:bg-zinc-900 text-white text-xs font-bold transition-colors press-fx"
             >
               Close
             </button>
