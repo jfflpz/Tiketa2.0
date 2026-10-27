@@ -1,4 +1,5 @@
 import logging
+
 from fastapi import HTTPException
 from redis.asyncio import Redis
 from redis.exceptions import RedisError

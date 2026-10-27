@@ -1,7 +1,8 @@
-from datetime import datetime, date, time, timedelta
+from datetime import datetime, timedelta
 from decimal import Decimal
 from uuid import uuid4
 from zoneinfo import ZoneInfo
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
@@ -9,7 +10,15 @@ from sqlalchemy import select
 from app.core.config import settings
 from app.core.security import encrypt
 from app.db.session import AsyncSessionLocal
-from app.models import Company, Department, Employee, Location, LocationDepartment, TaskCategory, Ticket, User
+from app.models import (
+    Company,
+    Department,
+    Location,
+    LocationDepartment,
+    TaskCategory,
+    Ticket,
+    User,
+)
 from app.services.tickets import now
 
 
@@ -123,18 +132,8 @@ async def test_hub_summaries_closure_semantics_and_future_exclusion(
     b_now = now_utc.astimezone(manila_tz)
 
     start_of_month_date = b_now.date().replace(day=1)
-    if b_now.month == 12:
-        start_of_next_month_date = start_of_month_date.replace(year=b_now.year + 1, month=1)
-    else:
-        start_of_next_month_date = start_of_month_date.replace(month=b_now.month + 1)
-
     start_of_month_dt = datetime.combine(
         start_of_month_date,
-        datetime.min.time(),
-        tzinfo=manila_tz,
-    )
-    start_of_next_month_dt = datetime.combine(
-        start_of_next_month_date,
         datetime.min.time(),
         tzinfo=manila_tz,
     )

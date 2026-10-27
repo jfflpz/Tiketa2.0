@@ -2,7 +2,6 @@ from datetime import timedelta
 from decimal import Decimal
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
-from uuid import UUID
 
 import pytest
 from alembic import command
@@ -12,7 +11,15 @@ from sqlalchemy import inspect, select
 from app.core.config import settings
 from app.core.security import digest, issue_match_token
 from app.db.session import AsyncSessionLocal, engine
-from app.models import Company, Department, Employee, Location, TaskCategory, Ticket, TicketComment, User
+from app.models import (
+    Company,
+    Department,
+    Employee,
+    Location,
+    TaskCategory,
+    Ticket,
+    User,
+)
 from app.services.tickets import now
 
 

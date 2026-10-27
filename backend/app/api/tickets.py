@@ -7,6 +7,7 @@ from typing import Literal
 from urllib.parse import quote, urlencode
 from uuid import UUID
 
+import jwt
 from fastapi import APIRouter, HTTPException, Query, Request, Response, UploadFile
 from pydantic import TypeAdapter
 from sqlalchemy import func, select

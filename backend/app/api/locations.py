@@ -3,7 +3,7 @@ from uuid import UUID
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Request
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, select
 
 from app.api.deps import DB, CurrentUser
 from app.core.cache import rate_limit

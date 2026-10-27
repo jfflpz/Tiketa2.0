@@ -1,12 +1,9 @@
-import asyncio
 import uuid
-from datetime import UTC, datetime
 
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
 
-from app.core.cache import cache
 from app.db.session import AsyncSessionLocal
 from app.models import Employee, LocationObservation, Ticket
 

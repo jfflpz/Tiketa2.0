@@ -14,6 +14,7 @@ import {
   type LocationObservationOut,
 } from '../../api/client';
 import { getOrCreateKioskSessionId } from '../../utils/session';
+import { normalizeApiError } from '../../utils/errorUtils';
 
 export interface PublicIntakeSlice {
   lookupEmployeeApi: (query: string) => Promise<EmployeeLookupResult | null>;
@@ -23,6 +24,7 @@ export interface PublicIntakeSlice {
     employeeId: string;
     taskCode: TaskCategoryCode;
     description: string;
+    taskTitle?: string;
     matchToken: string;
     observationId?: string | null;
     companyName?: string;

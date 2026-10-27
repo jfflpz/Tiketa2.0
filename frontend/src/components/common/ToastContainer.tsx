@@ -1,5 +1,6 @@
 // @spec SR-08: Sub-100ms tactile toast feedback container
 // @spec BF-01: Normalized toast description string rendering to prevent React object child crashes
+import React from 'react';
 import { CheckCircle2, Info, AlertTriangle, X } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { readableError } from '../../utils/errorMessages';
@@ -36,27 +37,10 @@ export const ToastContainer: React.FC = () => {
             className="text-zinc-500 hover:text-zinc-300 p-0.5 transition-colors"
             aria-label="Dismiss toast"
           >
-            <div className="mt-0.5 shrink-0">
-              {t.type === 'success' && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
-              {t.type === 'info' && <Info className="w-4 h-4 text-sky-400" />}
-              {t.type === 'warning' && <AlertTriangle className="w-4 h-4 text-amber-400" />}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold leading-tight">{t.title}</p>
-              {descText && (
-                <p className="text-[11px] text-zinc-400 mt-0.5 leading-snug">{descText}</p>
-              )}
-            </div>
-            <button
-              onClick={() => removeToast(t.id)}
-              className="text-zinc-500 hover:text-zinc-300 p-0.5 transition-colors"
-              aria-label="Dismiss toast"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        );
-      })}
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      ))}
     </div>
   );
 };

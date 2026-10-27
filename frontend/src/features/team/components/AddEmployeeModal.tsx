@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Fingerprint, X, AlertCircle, Loader2 } from 'lucide-react';
+import { Fingerprint, X, AlertCircle, Loader2, Building2, Briefcase } from 'lucide-react';
 import { useAppStore } from '../../../store/useAppStore';
 import type { EmployeeCreateInput } from '../../../api/client';
 
@@ -238,7 +238,7 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
               onChange={(e) => setCompanyId(e.target.value)}
               className="w-full px-2.5 py-2 bg-[#F8F9FA] border border-[#ECEEF2] rounded-xl text-xs text-ink focus:outline-none focus:border-orange-500"
             >
-              {companies.map((c) => (
+              {serverDictionaries?.companies.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name} ({c.code})
                 </option>
