@@ -21,7 +21,6 @@ export const JobLogDrawerChat: React.FC<JobLogDrawerChatProps> = ({
   onSendMessage,
 }) => {
   const [chatDraft, setChatDraft] = useState('');
-  const [isInternalNote, setIsInternalNote] = useState(false);
   const [isSending, setIsSending] = useState(false);
 
   const messages = ticket.messages ?? [];
@@ -43,7 +42,7 @@ export const JobLogDrawerChat: React.FC<JobLogDrawerChatProps> = ({
   };
 
   const handleQuickReply = (replyText: string) => {
-    onSendMessage(replyText, isInternalNote);
+    onSendMessage(replyText, false);
   };
 
   return (
@@ -145,49 +144,20 @@ export const JobLogDrawerChat: React.FC<JobLogDrawerChatProps> = ({
         </div>
       </div>
 
-      {/* Message Composer with Internal Note Toggle */}
+      {/* Message Composer (Public Two-Way Chat with Employee) */}
       <form onSubmit={handleSend} className="space-y-2 pt-1">
-        <div className="flex items-center justify-between px-1">
-          <button
-            type="button"
-            onClick={() => setIsInternalNote(!isInternalNote)}
-            className={`text-[11px] font-semibold inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border transition-colors ${
-              isInternalNote
-                ? 'bg-amber-500/10 border-amber-500/30 text-amber-600'
-                : 'bg-zinc-100 border-zinc-200 text-zinc-500 hover:text-zinc-700'
-            }`}
-          >
-            <Lock className="w-3 h-3" />
-            <span>{isInternalNote ? 'Internal IT Note (Hidden from Employee)' : 'Message Employee'}</span>
-          </button>
-          <span className="text-[10px] text-zinc-400">
-            {isInternalNote ? 'Private to IT Specialists' : 'Employee sees in My Tickets'}
-          </span>
-        </div>
         <div className="flex items-center gap-2">
           <input
             type="text"
             value={chatDraft}
             onChange={(e) => setChatDraft(e.target.value)}
-            placeholder={
-              isInternalNote
-                ? 'Type private internal note for IT team...'
-                : `Message ${ticket.requestor} as ${techSenderName}...`
-            }
-            className={`flex-1 px-3.5 py-2.5 bg-canvas border rounded-xl text-xs text-ink focus:outline-none ${
-              isInternalNote
-                ? 'border-amber-400 focus:border-amber-500 bg-amber-50/20'
-                : 'border-line focus:border-zinc-900'
-            }`}
+            placeholder={`Message ${ticket.requestor} as ${techSenderName}...`}
+            className="flex-1 px-3.5 py-2.5 bg-canvas border border-line focus:border-zinc-900 rounded-xl text-xs text-ink focus:outline-none"
           />
           <button
             type="submit"
-            disabled={!chatDraft.trim() || isSending}
-            className={`px-4 py-2.5 disabled:opacity-40 text-white text-xs font-semibold rounded-xl inline-flex items-center gap-1.5 transition-colors press-fx shrink-0 shadow-xs ${
-              isInternalNote
-                ? 'bg-amber-600 hover:bg-amber-700'
-                : 'bg-[#F97316] hover:bg-orange-600'
-            }`}
+            disabled={!chatDraft.trim()}
+            className="px-4 py-2.5 bg-[#111315] hover:bg-orange-500 disabled:opacity-40 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors press-fx"
           >
             <Send className="w-3.5 h-3.5" />
             <span>Send</span>

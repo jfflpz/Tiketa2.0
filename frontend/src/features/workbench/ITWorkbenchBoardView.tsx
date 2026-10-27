@@ -50,6 +50,7 @@ export const ITWorkbenchBoardView: React.FC = () => {
   const updateTicketStatusApi = useAppStore((state) => state.updateTicketStatusApi);
   const claimTicketApi = useAppStore((state) => state.claimTicketApi);
   const addToast = useAppStore((state) => state.addToast);
+  const updateTicketDescription = useAppStore((state) => state.updateTicketDescription);
 
   const progTickets = tickets.filter((t) => t.status === 'PROG');
   const openTickets = tickets.filter((t) => t.status === 'OPEN');
@@ -78,6 +79,22 @@ export const ITWorkbenchBoardView: React.FC = () => {
   }, [activeWorkbenchTicketId, focusedTicket, isWorkbenchLoading, workbenchError, fetchWorkbenchTicketApi]);
 
   const [chatDraft, setChatDraft] = useState('');
+  const [diagnosisDraft, setDiagnosisDraft] = useState('');
+  const [isSavingDiagnosis, setIsSavingDiagnosis] = useState(false);
+
+  useEffect(() => {
+    if (focusedTicket) {
+      setDiagnosisDraft(focusedTicket.technicianDiagnosis || '');
+    }
+  }, [focusedTicket?.id]);
+
+  const handleSaveDiagnosis = async () => {
+    if (!focusedTicket) return;
+    setIsSavingDiagnosis(true);
+    updateTicketDescription(focusedTicket.id, diagnosisDraft);
+    await updateTicketStatusApi(focusedTicket.id, focusedTicket.status, focusedTicket.mode, focusedTicket.taskCode);
+    setIsSavingDiagnosis(false);
+  };
   const [copiedLink, setCopiedLink] = useState(false);
 
   const messages = focusedTicket?.messages ?? [];
@@ -758,24 +775,56 @@ export const ITWorkbenchBoardView: React.FC = () => {
           </form>
         </div>
 
-        {/* 3. Problem Description Card */}
+        {/* 3. Original Employee Report & Context */}
         <div className="bg-[#F4F6F9] border border-[#ECEEF2] rounded-2xl p-4 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
-              #06 Problem Description &amp; Equipment Context
+              #06 Original Employee Report &amp; Context
             </span>
             <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-white border border-zinc-200 text-zinc-600">
               {focusedTicket.intakeSource ?? 'PC Kiosk'}
             </span>
           </div>
-          <div className="p-3 bg-white border border-zinc-200/80 rounded-xl text-xs text-ink leading-relaxed">
-            <p className="font-medium italic text-zinc-700">
-              &ldquo;{focusedTicket.description || 'No description provided by requestor.'}&rdquo;
+          <div className="p-3 bg-white border border-zinc-200/80 rounded-xl text-xs text-ink leading-relaxed space-y-1">
+            <div className="font-bold text-ink">
+              {focusedTicket.reportedIssue || focusedTicket.task}
+            </div>
+            <p className="font-medium italic text-zinc-600">
+              &ldquo;{focusedTicket.reportedDetails || focusedTicket.description || 'No description provided by requestor.'}&rdquo;
             </p>
           </div>
           <div className="flex items-center justify-between text-[11px] text-zinc-500 pt-1">
             <span>Company: <strong className="text-ink">{focusedTicket.company}</strong></span>
-            <span>Logged by: <strong className="text-ink">{focusedTicket.requestor}</strong></span>
+            <span>Logged by: <strong className="text-ink">{focusedTicket.requestor} {focusedTicket.employeeId ? `[${focusedTicket.employeeId}]` : ''}</strong></span>
+          </div>
+        </div>
+
+        {/* 4. Technician Diagnosis & Exact Problem Record */}
+        <div className="bg-white border border-[#ECEEF2] rounded-2xl p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-700">
+              Technician Diagnosis &amp; Exact Problem Record
+            </span>
+            <span className="text-[11px] text-zinc-400">
+              Persisted in Canonical Ledger
+            </span>
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={diagnosisDraft}
+              onChange={(e) => setDiagnosisDraft(e.target.value)}
+              placeholder="e.g. Diagnosed thermal print head failure. Cleaned roller sensor and replaced thermal ribbons."
+              className="flex-1 px-3.5 py-2 bg-[#F8F9FA] border border-[#ECEEF2] rounded-xl text-xs text-ink focus:outline-none focus:border-orange-500"
+            />
+            <button
+              type="button"
+              disabled={isSavingDiagnosis}
+              onClick={handleSaveDiagnosis}
+              className="px-4 py-2 rounded-xl bg-[#111315] hover:bg-orange-500 text-white text-xs font-semibold inline-flex items-center gap-1.5 transition-colors press-fx"
+            >
+              <span>{isSavingDiagnosis ? 'Saving...' : 'Save Diagnosis'}</span>
+            </button>
           </div>
         </div>
       </div>

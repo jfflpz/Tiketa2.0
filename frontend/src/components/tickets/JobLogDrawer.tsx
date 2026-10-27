@@ -42,7 +42,7 @@ export const JobLogDrawer: React.FC = () => {
 
   const ticket = tickets.find((t) => t.id === selectedTicketId) ?? inspectedTicket;
   const [notesDraft, setNotesDraft] = useState('');
-  const [drawerTab, setDrawerTab] = useState<'CHAT' | 'JOB_LOG'>('CHAT');
+  const [drawerTab, setDrawerTab] = useState<'CHAT' | 'JOB_LOG'>('JOB_LOG');
   const [isSavingNotes, setIsSavingNotes] = useState(false);
 
   const drawerRef = useRef<HTMLDivElement>(null);
@@ -131,9 +131,10 @@ export const JobLogDrawer: React.FC = () => {
 
   useEffect(() => {
     if (ticket) {
-      setNotesDraft(ticket.description);
+      setNotesDraft(ticket.technicianDiagnosis || ticket.description);
+      setDrawerTab('JOB_LOG');
     }
-  }, [ticket]);
+  }, [ticket?.id]);
 
   if (!selectedTicketId) return null;
 
@@ -235,7 +236,6 @@ export const JobLogDrawer: React.FC = () => {
           drawerTab={drawerTab}
           messageCount={messages.length}
           onSelectTab={setDrawerTab}
-          onOpenWorkbench={handleOpenWorkbench}
           onCopyShareLink={() => copyTicketShareLink(ticket.ticketCode)}
           onRequestValidation={() => requestValidation(ticket.id)}
           onClose={() => setSelectedTicketId(null)}

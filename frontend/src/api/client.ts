@@ -218,10 +218,47 @@ export const authApi = {
     },
 };
 
+export interface ServerDictionaryItem {
+  id: string;
+  code: string;
+  name: string;
+}
+
+export interface ServerDictionaries {
+  companies: ServerDictionaryItem[];
+  locations: ServerDictionaryItem[];
+  departments: ServerDictionaryItem[];
+  tasks: ServerDictionaryItem[];
+  location_departments: Array<{ location_id: string; department_id: string }>;
+}
+
+export interface AdminUserItem {
+  id: string;
+  username: string;
+  email: string;
+  full_name: string;
+  role: 'it' | 'admin';
+  is_active: boolean;
+}
+
+export interface AdminEmployeeItem {
+  id: string;
+  employee_id: string;
+  full_name: string;
+  email: string;
+  company_id: string;
+  company_name: string;
+  location_id: string;
+  location_name: string;
+  department_id: string;
+  department_name: string;
+  is_active: boolean;
+}
+
 export const directoryApi = {
-    lookupEmployee: async (query: string): Promise<EmployeeLookupResult> => {
+  lookupEmployee: async (query: string): Promise<EmployeeLookupResult> => {
     const res = await apiClient.get<EmployeeLookupResult>('/employees/lookup', {
-        params: { q: query },
+      params: { q: query },
     });
     return res.data;
     },
@@ -315,7 +352,7 @@ export const ticketsApi = {
     },
     updateStatus: async (
     ticketId: string,
-    payload: { status: 'PROG' | 'RESL' | 'CLSD'; mode?: 'REM' | 'SITE' }
+    payload: { status: 'PROG' | 'RESL' | 'CLSD'; mode?: 'REM' | 'SITE'; task_code?: string }
     ) => {
     const res = await apiClient.patch(`/tickets/${ticketId}/status`, payload);
     return res.data;

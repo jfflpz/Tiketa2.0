@@ -26,8 +26,7 @@ export interface TicketOperationsSlice {
   updateTicketStatusApi: (
     ticketId: string,
     status: TicketStatus,
-    mode?: SupportMode
-  ) => Promise<boolean>;
+    mode?: SupportMode, task_code?: string) => Promise<boolean>;
   fetchTicketCommentsApi: (ticketId: string) => Promise<void>;
   sendTicketMessageApi: (
     ticketId: string,
@@ -484,6 +483,7 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
       `Reclassified to ${taskName} (${taskCode})`,
       'success'
     );
+    get().updateTicketStatusApi(ticketId, target.status, target.mode, taskCode);
   },
 
   updateTicketDescription: (ticketId, description) => {

@@ -1,3 +1,6 @@
+// @spec BF-01: Reliable Ticket Intake & Safe Error Handling
+// @spec BF-03: Remove Fabricated Initial Chat Message
+// @spec BF-04: Authoritative Fresh Ticket Tracking
 import type { AppSliceCreator } from '../types';
 import type { Ticket, TaskCategoryCode } from '../../types/ticket';
 import { TASK_CATEGORIES } from '../../constants/domain';
@@ -29,9 +32,6 @@ export interface PublicIntakeSlice {
   }) => Promise<Ticket | null>;
   trackTicketApi: (code: string) => Promise<Ticket | null>;
 }
-
-const formatTimeAmPm = (date: Date) =>
-  date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
 export const createPublicIntakeSlice: AppSliceCreator<PublicIntakeSlice> = (set, get) => ({
   lookupEmployeeApi: async (query: string) => {
@@ -80,7 +80,7 @@ export const createPublicIntakeSlice: AppSliceCreator<PublicIntakeSlice> = (set,
       );
 
       const newTicket: Ticket = {
-        id: 't-' + Date.now(),
+        id: (res as any).id || 't-' + Date.now(),
         ticketCode: res.ticket_code,
         company: input.companyName ?? 'Five Star Bus Co.',
         companyCode: 'FS',
@@ -89,32 +89,24 @@ export const createPublicIntakeSlice: AppSliceCreator<PublicIntakeSlice> = (set,
         departmentCode: 'OPS',
         requestor: input.requestorName ?? 'Terminal Staff',
         employeeId: input.employeeId,
-        task: taskMeta ? taskMeta.name : input.taskCode,
+        task: input.taskTitle || (taskMeta ? taskMeta.name : input.taskCode),
         taskCode: input.taskCode,
         description: input.description,
         month: now.toLocaleString('default', { month: 'long', year: 'numeric' }),
         dateStarted: now.toISOString().split('T')[0],
         timeStarted: now.toTimeString().split(' ')[0],
-        status: 'OPEN',
+        status: (res.status as any) || 'OPEN',
         location: input.locationName ?? 'Pasay Terminal',
         locationCode: 'PSY',
         priority: taskMeta ? taskMeta.defaultPriority : 'Medium',
         intakeSource: 'PC Kiosk',
         createdAt: res.created_at || now.toISOString(),
-        messages: [
-          {
-            id: 'msg-init-' + Date.now(),
-            senderRole: 'employee',
-            senderName: input.requestorName ?? 'Terminal Staff',
-            message: input.description,
-            timestamp: formatTimeAmPm(now),
-            isInternal: false,
-          },
-        ],
+        // BF-03: Real messages start empty. No fabricated initial employee chat message.
+        messages: [],
       };
 
       set((state) => ({
-        tickets: [newTicket, ...state.tickets],
+        tickets: [newTicket, ...state.tickets.filter((t) => t.ticketCode !== newTicket.ticketCode)],
       }));
 
       get().addToast(
@@ -124,8 +116,8 @@ export const createPublicIntakeSlice: AppSliceCreator<PublicIntakeSlice> = (set,
       );
 
       return newTicket;
-    } catch (err: any) {
-      const msg = err.response?.data?.detail || 'Failed to submit ticket to server';
+    } catch (err: unknown) {
+      const msg = normalizeApiError(err, 'Failed to submit ticket to server');
       get().addToast('Submission Error', msg, 'warning');
       return null;
     }
@@ -133,16 +125,29 @@ export const createPublicIntakeSlice: AppSliceCreator<PublicIntakeSlice> = (set,
 
   trackTicketApi: async (code: string) => {
     const cleanCode = code.trim().toUpperCase();
-    const existing = get().tickets.find(
-      (t) => t.ticketCode.toUpperCase() === cleanCode
-    );
-    if (existing) return existing;
 
+    // Query server first for authoritative ticket status
     try {
       const res = await ticketsApi.trackTicket(cleanCode);
       if (res && res.ticket_code) {
+        const existing = get().tickets.find(
+          (t) => t.ticketCode.toUpperCase() === cleanCode
+        );
+
+        if (existing) {
+          // Update status if changed on server
+          const updated: Ticket = {
+            ...existing,
+            status: (res.status as any) || existing.status,
+          };
+          set((state) => ({
+            tickets: state.tickets.map((t) => (t.id === existing.id ? updated : t)),
+          }));
+          return updated;
+        }
+
         const trackedTicket: Ticket = {
-          id: 'tracked-' + res.ticket_code,
+          id: (res as any).id || 'tracked-' + res.ticket_code,
           ticketCode: res.ticket_code,
           company: 'Five Star Bus Co.',
           companyCode: 'FS',
@@ -169,15 +174,22 @@ export const createPublicIntakeSlice: AppSliceCreator<PublicIntakeSlice> = (set,
           createdAt: res.created_at,
           mode: 'SITE',
           intakeSource: 'PC Kiosk',
+          messages: [],
         };
+
         set((state) => ({
           tickets: [trackedTicket, ...state.tickets],
         }));
         return trackedTicket;
       }
-      return null;
-    } catch {
-      return null;
+    } catch (err) {
+      // Fall back to existing cached ticket if network fails
+      const cached = get().tickets.find(
+        (t) => t.ticketCode.toUpperCase() === cleanCode
+      );
+      if (cached) return cached;
     }
+
+    return null;
   },
 });

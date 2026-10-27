@@ -137,7 +137,7 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
       <div className="relative z-10 w-full max-w-md bg-white border border-[#ECEEF2] rounded-3xl shadow-2xl overflow-hidden p-6 space-y-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between border-b border-[#ECEEF2] pb-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-zinc-900 text-white flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl bg-zinc-900 text-white flex items-center justify-center shadow-xs">
               <Fingerprint className="w-4 h-4 text-emerald-400" />
             </div>
             <div>
@@ -197,6 +197,7 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
             </div>
           </div>
 
+          {/* Full Name */}
           <div>
             <label className="font-semibold text-zinc-700 block mb-1">
               Employee Full Name <span className="text-rose-500">*</span>
@@ -211,6 +212,7 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
             />
           </div>
 
+          {/* Email Address */}
           <div>
             <label className="font-semibold text-zinc-700 block mb-1">
               Email Address <span className="text-rose-500">*</span>
@@ -225,6 +227,26 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
             />
           </div>
 
+          {/* Company */}
+          <div>
+            <label className="font-semibold text-zinc-700 block mb-1 flex items-center gap-1">
+              <Building2 className="w-3.5 h-3.5 text-zinc-400" />
+              Company
+            </label>
+            <select
+              value={companyId}
+              onChange={(e) => setCompanyId(e.target.value)}
+              className="w-full px-2.5 py-2 bg-[#F8F9FA] border border-[#ECEEF2] rounded-xl text-xs text-ink focus:outline-none focus:border-orange-500"
+            >
+              {companies.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} ({c.code})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Location & Department */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="font-semibold text-zinc-700 block mb-1">Terminal Hub</label>
@@ -242,7 +264,10 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
             </div>
 
             <div>
-              <label className="font-semibold text-zinc-700 block mb-1">Department</label>
+              <label className="font-semibold text-zinc-700 block mb-1 flex items-center gap-1">
+                <Briefcase className="w-3.5 h-3.5 text-zinc-400" />
+                Department
+              </label>
               <select
                 value={deptId}
                 onChange={(e) => setDeptId(e.target.value)}
@@ -257,6 +282,7 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
             </div>
           </div>
 
+          {/* Form Actions */}
           <div className="pt-3 border-t border-[#ECEEF2] flex items-center justify-end gap-2">
             <button
               type="button"

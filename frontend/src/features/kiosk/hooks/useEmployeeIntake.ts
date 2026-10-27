@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useAppStore } from '../../../store/useAppStore';
 import type { TaskCategoryCode, Ticket } from '../../../types/ticket';
 import { LOCATIONS } from '../../../constants/domain';
+import { ISSUE_OPTIONS } from '../components/KioskIntakeForm';
 
 export interface LocationObservationState {
   status: 'idle' | 'requesting' | 'captured' | 'denied' | 'unavailable';

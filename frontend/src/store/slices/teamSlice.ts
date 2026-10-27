@@ -1,3 +1,4 @@
+// @spec BF-08: IT accounts, employee directory profiles & server dictionaries
 import type { AppSliceCreator } from '../types';
 import type { TeamMember, TeamRole, TeamMemberStatus } from '../../types/team';
 import type { EmployeeProfile } from '../../types';

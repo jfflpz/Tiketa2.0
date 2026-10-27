@@ -118,6 +118,10 @@ export interface Ticket {
   // Additional metadata, Closure Verification, Two-Way Chat & Editable Checklist
   priority: 'Low' | 'Medium' | 'High' | 'Critical';
   intakeSource?: 'PC Kiosk' | 'Employee ID' | 'Walk-in / Viber';
+  reportedIssue?: string;
+  reportedDetails?: string;
+  technicianDiagnosis?: string;
+  resolutionNotes?: string;
   closureTokenHash?: string;
   closureUrl?: string; // Viber / direct verification link returned by backend
   userConfirmedAt?: string;

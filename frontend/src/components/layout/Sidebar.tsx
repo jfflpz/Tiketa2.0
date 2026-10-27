@@ -20,7 +20,7 @@ import { useAppStore } from '../../store/useAppStore';
 
 export const Sidebar: React.FC = () => {
   const currentUser = useAppStore((state) => state.currentUser);
-  const logoutToKiosk = useAppStore((state) => state.logoutToKiosk);
+  const openLogoutModal = useAppStore((state) => state.openLogoutModal);
   const activeView = useAppStore((state) => state.activeView);
   const setActiveView = useAppStore((state) => state.setActiveView);
   const sidebarCollapsed = useAppStore((state) => state.sidebarCollapsed);
@@ -541,7 +541,7 @@ export const Sidebar: React.FC = () => {
           {!sidebarCollapsed && (
             <button
               type="button"
-              onClick={logoutToKiosk}
+              onClick={openLogoutModal}
               className="p-1.5 rounded-lg text-zinc-400 hover:text-orange-400 hover:bg-white/5 transition-colors press-fx"
               title="Sign Out to Employee Ticket Screen"
             >
