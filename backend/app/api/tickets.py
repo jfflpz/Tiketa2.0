@@ -342,7 +342,7 @@ async def queue(
         )
     if user.role == "intern":
         technician_id = user.id
-        
+
     # Every reader is authenticated before accessing this shared, encrypted cache.
     # Versioned keys prevent a fill racing a committed mutation from being reused.
     version = await cache.get("queue:version") or "0"

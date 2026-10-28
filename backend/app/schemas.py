@@ -14,8 +14,10 @@ class Login(Input):
     username: str = Field(min_length=1, max_length=150)
     password: str = Field(min_length=1, max_length=1024)
 
+
 StaffRole = Literal["intern", "it", "admin", "supervisor"]
 RequestableRole = Literal["intern", "it"]
+
 
 class UserCreate(Input):
     username: str = Field(min_length=3, max_length=50, pattern=r"^[a-zA-Z0-9_.-]+$")
@@ -372,6 +374,7 @@ class TicketChecklistOut(BaseModel):
     created_at: datetime | None = None
     updated_at: datetime | None = None
     steps: list[TicketChecklistStepOut] = []
+
 
 class AccountRequestCreate(Input):
     username: str = Field(min_length=3, max_length=50, pattern=r"^[a-zA-Z0-9_.-]+$")

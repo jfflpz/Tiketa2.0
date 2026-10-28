@@ -5,6 +5,7 @@ Revises: 0009_closure_token_expires_at
 Create Date: 2026-10-28 12:00:00.000000
 
 """
+
 from typing import Sequence, Union
 
 import sqlalchemy as sa
@@ -36,18 +37,33 @@ def upgrade() -> None:
         sa.Column("role", sa.String(length=20), nullable=False),
         sa.Column("department", sa.String(length=100), nullable=True),
         sa.Column("location_id", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("status", sa.String(length=20), nullable=False, server_default="pending"),
+        sa.Column(
+            "status", sa.String(length=20), nullable=False, server_default="pending"
+        ),
         sa.Column("rejection_reason", sa.Text(), nullable=True),
         sa.Column("requested_by_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("reviewed_by_id", postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column("reviewed_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.ForeignKeyConstraint(["location_id"], ["locations.id"], ondelete="SET NULL"),
         sa.ForeignKeyConstraint(["requested_by_id"], ["users.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["reviewed_by_id"], ["users.id"], ondelete="SET NULL"),
         sa.CheckConstraint("role IN ('intern', 'it')", name="ck_account_requests_role"),
-        sa.CheckConstraint("status IN ('pending', 'approved', 'rejected')", name="ck_account_requests_status"),
+        sa.CheckConstraint(
+            "status IN ('pending', 'approved', 'rejected')",
+            name="ck_account_requests_status",
+        ),
     )
     op.create_index("ix_account_requests_username", "account_requests", ["username"])
     op.create_index("ix_account_requests_email", "account_requests", ["email"])

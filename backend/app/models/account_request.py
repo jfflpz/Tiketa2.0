@@ -11,9 +11,7 @@ from app.models.base import Base, TimestampMixin
 class AccountRequest(Base, TimestampMixin):
     __tablename__ = "account_requests"
     __table_args__ = (
-        CheckConstraint(
-            "role IN ('intern', 'it')", name="ck_account_requests_role"
-        ),
+        CheckConstraint("role IN ('intern', 'it')", name="ck_account_requests_role"),
         CheckConstraint(
             "status IN ('pending', 'approved', 'rejected')",
             name="ck_account_requests_status",

@@ -20,9 +20,7 @@ router = APIRouter(prefix="/account-requests", tags=["Account Requests"])
 
 
 @router.post("", status_code=201, response_model=AccountRequestOut)
-async def submit_account_request(
-    body: AccountRequestCreate, db: DB, user: CurrentUser
-):
+async def submit_account_request(body: AccountRequestCreate, db: DB, user: CurrentUser):
     if user.role not in ("it", "admin"):
         raise HTTPException(
             403, "Only IT Support and Administrators can submit account requests"
@@ -35,9 +33,7 @@ async def submit_account_request(
         )
     )
     if existing_user:
-        raise HTTPException(
-            409, "A user with this username or email already exists"
-        )
+        raise HTTPException(409, "A user with this username or email already exists")
 
     pending_req = await db.scalar(
         select(AccountRequest).where(

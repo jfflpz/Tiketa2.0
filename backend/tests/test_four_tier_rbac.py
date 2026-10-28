@@ -52,9 +52,7 @@ async def test_account_request_lifecycle(client: AsyncClient, accounts):
     assert req_data["role"] == "intern"
 
     # 2. IT Support sees their own request in list
-    res_list_tech = await client.get(
-        "/api/v1/account-requests", headers=tech_headers
-    )
+    res_list_tech = await client.get("/api/v1/account-requests", headers=tech_headers)
     assert res_list_tech.status_code == 200
     assert any(r["id"] == req_id for r in res_list_tech.json())
 
@@ -126,9 +124,9 @@ async def test_account_request_rejection(client: AsyncClient, accounts):
     assert res_reject.status_code == 200
     assert res_reject.json()["status"] == "rejected"
     assert (
-        res_reject.json()["rejection_reason"]
-        == "Missing depot training certification"
+        res_reject.json()["rejection_reason"] == "Missing depot training certification"
     )
+
 
 @pytest.mark.asyncio
 async def test_public_ticket_uuid_and_supervisor_reports(client: AsyncClient, accounts):
@@ -142,7 +140,9 @@ async def test_public_ticket_uuid_and_supervisor_reports(client: AsyncClient, ac
         "category": "HARDWARE",
         "priority": "MEDIUM",
     }
-    res_ticket = await client.post("/api/v1/tickets", json=ticket_payload, headers=admin_headers)
+    res_ticket = await client.post(
+        "/api/v1/tickets", json=ticket_payload, headers=admin_headers
+    )
     assert res_ticket.status_code == 201
     ticket_data = res_ticket.json()
     assert "id" in ticket_data  # Verifies authoritative UUID is present

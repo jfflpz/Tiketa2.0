@@ -9,6 +9,7 @@ from app.models.base import Base, TimestampMixin
 
 StaffRole = Literal["intern", "it", "admin", "supervisor"]
 
+
 class User(Base, TimestampMixin):
     __tablename__ = "users"
     __table_args__ = (
