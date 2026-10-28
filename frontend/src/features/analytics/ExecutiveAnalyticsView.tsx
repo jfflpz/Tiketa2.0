@@ -26,17 +26,20 @@ import { ChronicRequestorTable } from '../reports/components/tables/ChronicReque
 import { ExecutiveSummaryKpiCards } from './components/ExecutiveSummaryKpiCards';
 import { TurnaroundLagChart } from './components/TurnaroundLagChart';
 import { HourlyPeakDemandChart } from './components/HourlyPeakDemandChart';
+import { ExportPptxModal } from '../reports/components/ExportPptxModal';
 
 export const ExecutiveAnalyticsView: React.FC = () => {
-  const addToast = useAppStore((state) => state.addToast);
   const setActiveView = useAppStore((state) => state.setActiveView);
   const setActiveReportId = useAppStore((state) => state.setActiveReportId);
   const kpis = useAppStore((state) => state.kpis);
   const fetchKPIsApi = useAppStore((state) => state.fetchKPIsApi);
   const downloadReportCSVApi = useAppStore((state) => state.downloadReportCSVApi);
   const activeReportData = useAppStore((state) => state.activeReportData);
+  const reportDateRange = useAppStore((state) => state.reportDateRange);
+  const reportFilters = useAppStore((state) => state.reportFilters);
 
   const [activeReport, setActiveReport] = useState<number>(1);
+  const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
     fetchKPIsApi();
@@ -82,13 +85,7 @@ export const ExecutiveAnalyticsView: React.FC = () => {
             <span>Export CSV</span>
           </button>
           <button
-            onClick={() =>
-              addToast(
-                'Executive Slide Deck (.pptx)',
-                'Generated 8-Report Management Presentation Summary',
-                'success'
-              )
-            }
+            onClick={() => setIsExportModalOpen(true)}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-semibold shadow-sm transition-colors press-fx"
           >
             <Download className="w-3.5 h-3.5" />
@@ -170,6 +167,15 @@ export const ExecutiveAnalyticsView: React.FC = () => {
         {activeReport === 7 && <PmsComplianceTable data={report7Data} />}
         {activeReport === 8 && <ChronicRequestorTable data={report8Data} />}
       </div>
+
+      {/* Shared PPTX Export Configuration Modal (Defaults to local activeReport) */}
+      <ExportPptxModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        initialReportId={activeReport}
+        initialDateRange={reportDateRange ? { dateFrom: reportDateRange.date_from, dateTo: reportDateRange.date_to } : undefined}
+        filterParams={reportFilters}
+      />
     </div>
   );
 };

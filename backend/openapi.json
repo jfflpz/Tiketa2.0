@@ -1,6 +1,21 @@
 {
   "components": {
     "schemas": {
+      "AssignInput": {
+        "additionalProperties": false,
+        "properties": {
+          "technician_id": {
+            "format": "uuid",
+            "title": "Technician Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "technician_id"
+        ],
+        "title": "AssignInput",
+        "type": "object"
+      },
       "Body_upload_api_v1_tickets__ticket_id__attachments_post": {
         "properties": {
           "file": {
@@ -18,16 +33,31 @@
       "ClosureInput": {
         "additionalProperties": false,
         "properties": {
+          "remarks": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remarks"
+          },
           "token": {
-            "maxLength": 100,
-            "minLength": 40,
-            "title": "Token",
-            "type": "string"
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Token"
           }
         },
-        "required": [
-          "token"
-        ],
         "title": "ClosureInput",
         "type": "object"
       },
@@ -52,6 +82,70 @@
         "title": "CommentInput",
         "type": "object"
       },
+      "CommentOut": {
+        "properties": {
+          "author_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Name"
+          },
+          "author_role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Role"
+          },
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_internal": {
+            "title": "Is Internal",
+            "type": "boolean"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          }
+        },
+        "required": [
+          "id",
+          "body",
+          "is_internal",
+          "created_at"
+        ],
+        "title": "CommentOut",
+        "type": "object"
+      },
       "EmployeeInput": {
         "additionalProperties": false,
         "properties": {
@@ -74,6 +168,7 @@
           "employee_id": {
             "maxLength": 50,
             "minLength": 1,
+            "pattern": "^[0-9]{1,50}$",
             "title": "Employee Id",
             "type": "string"
           },
@@ -105,6 +200,80 @@
         "title": "EmployeeInput",
         "type": "object"
       },
+      "EmployeeMatchInput": {
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "format": "email",
+            "maxLength": 150,
+            "title": "Email",
+            "type": "string"
+          },
+          "employee_id": {
+            "maxLength": 50,
+            "minLength": 1,
+            "pattern": "^[0-9]{1,50}$",
+            "title": "Employee Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "employee_id",
+          "email"
+        ],
+        "title": "EmployeeMatchInput",
+        "type": "object"
+      },
+      "EmployeeMatchOut": {
+        "properties": {
+          "employee": {
+            "$ref": "#/components/schemas/EmployeeScopeOut"
+          },
+          "match_token": {
+            "title": "Match Token",
+            "type": "string"
+          },
+          "matched": {
+            "default": true,
+            "title": "Matched",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "match_token",
+          "employee"
+        ],
+        "title": "EmployeeMatchOut",
+        "type": "object"
+      },
+      "EmployeeScopeOut": {
+        "properties": {
+          "company_name": {
+            "title": "Company Name",
+            "type": "string"
+          },
+          "department_name": {
+            "title": "Department Name",
+            "type": "string"
+          },
+          "full_name": {
+            "title": "Full Name",
+            "type": "string"
+          },
+          "location_name": {
+            "title": "Location Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "full_name",
+          "company_name",
+          "location_name",
+          "department_name"
+        ],
+        "title": "EmployeeScopeOut",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -116,6 +285,191 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HubSummaryOut": {
+        "properties": {
+          "closed_this_month_count": {
+            "default": 0,
+            "title": "Closed This Month Count",
+            "type": "integer"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "departments": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/LocationDepartmentSummary"
+            },
+            "title": "Departments",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "in_progress_count": {
+            "default": 0,
+            "title": "In Progress Count",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "open_count": {
+            "default": 0,
+            "title": "Open Count",
+            "type": "integer"
+          },
+          "resolved_count": {
+            "default": 0,
+            "title": "Resolved Count",
+            "type": "integer"
+          },
+          "top_issue_count": {
+            "default": 0,
+            "title": "Top Issue Count",
+            "type": "integer"
+          },
+          "top_issue_task_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Top Issue Task Code"
+          },
+          "top_issue_task_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Top Issue Task Name"
+          },
+          "top_issue_window": {
+            "default": "Last 30 Days",
+            "title": "Top Issue Window",
+            "type": "string"
+          },
+          "total_active_count": {
+            "default": 0,
+            "title": "Total Active Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name"
+        ],
+        "title": "HubSummaryOut",
+        "type": "object"
+      },
+      "LocationDepartmentSummary": {
+        "properties": {
+          "active_tickets_count": {
+            "default": 0,
+            "title": "Active Tickets Count",
+            "type": "integer"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name"
+        ],
+        "title": "LocationDepartmentSummary",
+        "type": "object"
+      },
+      "LocationObservationInput": {
+        "additionalProperties": false,
+        "properties": {
+          "accuracy": {
+            "minimum": 0.0,
+            "title": "Accuracy",
+            "type": "number"
+          },
+          "captured_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Captured At"
+          },
+          "latitude": {
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Latitude",
+            "type": "number"
+          },
+          "longitude": {
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Longitude",
+            "type": "number"
+          },
+          "session_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "latitude",
+          "longitude",
+          "accuracy"
+        ],
+        "title": "LocationObservationInput",
+        "type": "object"
+      },
+      "LocationObservationOut": {
+        "properties": {
+          "observation_id": {
+            "format": "uuid",
+            "title": "Observation Id",
+            "type": "string"
+          },
+          "status": {
+            "default": "recorded",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "observation_id"
+        ],
+        "title": "LocationObservationOut",
         "type": "object"
       },
       "Login": {
@@ -214,6 +568,404 @@
         "title": "PublicTicket",
         "type": "object"
       },
+      "QuickIntakeInput": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "maxLength": 20000,
+            "minLength": 10,
+            "title": "Description",
+            "type": "string"
+          },
+          "employee_id": {
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "pattern": "^[0-9]{1,50}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Employee Id"
+          },
+          "match_token": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Match Token"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "REM",
+                  "SITE"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode"
+          },
+          "observation_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observation Id"
+          },
+          "reported_issue_code": {
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reported Issue Code"
+          },
+          "task_code": {
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Task Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_code",
+          "description"
+        ],
+        "title": "QuickIntakeInput",
+        "type": "object"
+      },
+      "ReopenInput": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "maxLength": 2000,
+            "minLength": 5,
+            "title": "Reason",
+            "type": "string"
+          },
+          "token": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Token"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "ReopenInput",
+        "type": "object"
+      },
+      "RepairNoteCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "source_ticket_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Ticket Id"
+          },
+          "steps": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100,
+            "title": "Steps",
+            "type": "array"
+          },
+          "symptom_and_fix": {
+            "maxLength": 10000,
+            "minLength": 1,
+            "title": "Symptom And Fix",
+            "type": "string"
+          },
+          "task_code": {
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Task Code",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "task_code",
+          "symptom_and_fix"
+        ],
+        "title": "RepairNoteCreate",
+        "type": "object"
+      },
+      "RepairNoteListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RepairNoteOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "offset",
+          "limit"
+        ],
+        "title": "RepairNoteListResponse",
+        "type": "object"
+      },
+      "RepairNoteOut": {
+        "properties": {
+          "author_id": {
+            "format": "uuid",
+            "title": "Author Id",
+            "type": "string"
+          },
+          "author_name": {
+            "title": "Author Name",
+            "type": "string"
+          },
+          "can_edit": {
+            "default": false,
+            "title": "Can Edit",
+            "type": "boolean"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "source_ticket_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Ticket Code"
+          },
+          "source_ticket_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Ticket Id"
+          },
+          "steps": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/RepairNoteStepOut"
+            },
+            "title": "Steps",
+            "type": "array"
+          },
+          "symptom_and_fix": {
+            "title": "Symptom And Fix",
+            "type": "string"
+          },
+          "task_code": {
+            "title": "Task Code",
+            "type": "string"
+          },
+          "task_name": {
+            "title": "Task Name",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "updated_by_id": {
+            "format": "uuid",
+            "title": "Updated By Id",
+            "type": "string"
+          },
+          "updated_by_name": {
+            "title": "Updated By Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "task_code",
+          "task_name",
+          "symptom_and_fix",
+          "author_id",
+          "author_name",
+          "updated_by_id",
+          "updated_by_name",
+          "revision",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "RepairNoteOut",
+        "type": "object"
+      },
+      "RepairNoteStepOut": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "position",
+          "text"
+        ],
+        "title": "RepairNoteStepOut",
+        "type": "object"
+      },
+      "RepairNoteUpdate": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_revision": {
+            "exclusiveMinimum": 0.0,
+            "title": "Expected Revision",
+            "type": "integer"
+          },
+          "steps": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 100,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Steps"
+          },
+          "symptom_and_fix": {
+            "anyOf": [
+              {
+                "maxLength": 10000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Symptom And Fix"
+          },
+          "task_code": {
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Code"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "expected_revision"
+        ],
+        "title": "RepairNoteUpdate",
+        "type": "object"
+      },
       "ScopeInput": {
         "additionalProperties": false,
         "properties": {
@@ -233,6 +985,49 @@
           "department_id"
         ],
         "title": "ScopeInput",
+        "type": "object"
+      },
+      "ServiceRecordUpdate": {
+        "additionalProperties": false,
+        "properties": {
+          "diagnosis": {
+            "anyOf": [
+              {
+                "maxLength": 20000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diagnosis"
+          },
+          "resolution_notes": {
+            "anyOf": [
+              {
+                "maxLength": 20000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolution Notes"
+          },
+          "task_code": {
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Code"
+          }
+        },
+        "title": "ServiceRecordUpdate",
         "type": "object"
       },
       "StatusInput": {
@@ -280,6 +1075,376 @@
         "title": "StatusInput",
         "type": "object"
       },
+      "TicketChecklistApplyRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_checklist_revision": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Checklist Revision"
+          },
+          "expected_note_revision": {
+            "exclusiveMinimum": 0.0,
+            "title": "Expected Note Revision",
+            "type": "integer"
+          },
+          "repair_note_id": {
+            "format": "uuid",
+            "title": "Repair Note Id",
+            "type": "string"
+          },
+          "replace_existing": {
+            "default": false,
+            "title": "Replace Existing",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "repair_note_id",
+          "expected_note_revision"
+        ],
+        "title": "TicketChecklistApplyRequest",
+        "type": "object"
+      },
+      "TicketChecklistOut": {
+        "properties": {
+          "applied_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Applied At"
+          },
+          "applied_by_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Applied By Id"
+          },
+          "applied_by_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Applied By Name"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "created_by_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By Id"
+          },
+          "guide_body": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guide Body"
+          },
+          "guide_task_code_snapshot": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guide Task Code Snapshot"
+          },
+          "guide_task_name_snapshot": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guide Task Name Snapshot"
+          },
+          "guide_title_snapshot": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guide Title Snapshot"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "revision": {
+            "default": 0,
+            "title": "Revision",
+            "type": "integer"
+          },
+          "source_repair_note_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Repair Note Id"
+          },
+          "source_revision": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Revision"
+          },
+          "steps": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/TicketChecklistStepOut"
+            },
+            "title": "Steps",
+            "type": "array"
+          },
+          "ticket_id": {
+            "format": "uuid",
+            "title": "Ticket Id",
+            "type": "string"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "updated_by_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated By Id"
+          }
+        },
+        "required": [
+          "ticket_id"
+        ],
+        "title": "TicketChecklistOut",
+        "type": "object"
+      },
+      "TicketChecklistStepCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_checklist_revision": {
+            "exclusiveMinimum": 0.0,
+            "title": "Expected Checklist Revision",
+            "type": "integer"
+          },
+          "text": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "expected_checklist_revision",
+          "text"
+        ],
+        "title": "TicketChecklistStepCreate",
+        "type": "object"
+      },
+      "TicketChecklistStepOut": {
+        "properties": {
+          "checklist_id": {
+            "format": "uuid",
+            "title": "Checklist Id",
+            "type": "string"
+          },
+          "completed": {
+            "title": "Completed",
+            "type": "boolean"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "completed_by_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed By Id"
+          },
+          "completed_by_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed By Name"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "checklist_id",
+          "position",
+          "text",
+          "completed",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "TicketChecklistStepOut",
+        "type": "object"
+      },
+      "TicketChecklistStepUpdate": {
+        "additionalProperties": false,
+        "properties": {
+          "completed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed"
+          },
+          "expected_checklist_revision": {
+            "exclusiveMinimum": 0.0,
+            "title": "Expected Checklist Revision",
+            "type": "integer"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          }
+        },
+        "required": [
+          "expected_checklist_revision"
+        ],
+        "title": "TicketChecklistStepUpdate",
+        "type": "object"
+      },
       "TicketInput": {
         "additionalProperties": false,
         "properties": {
@@ -290,10 +1455,53 @@
             "type": "string"
           },
           "employee_id": {
-            "maxLength": 150,
-            "minLength": 1,
-            "title": "Employee Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "pattern": "^[0-9]{1,50}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Employee Id"
+          },
+          "match_token": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Match Token"
+          },
+          "observation_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observation Id"
+          },
+          "reported_issue_code": {
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reported Issue Code"
           },
           "task_code": {
             "maxLength": 50,
@@ -303,7 +1511,6 @@
           }
         },
         "required": [
-          "employee_id",
           "task_code",
           "description"
         ],
@@ -383,6 +1590,17 @@
             "title": "Description",
             "type": "string"
           },
+          "diagnosis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diagnosis"
+          },
           "duration": {
             "anyOf": [
               {
@@ -405,6 +1623,17 @@
               }
             ],
             "title": "Employee Id"
+          },
+          "employee_id_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Employee Id Number"
           },
           "id": {
             "format": "uuid",
@@ -435,9 +1664,31 @@
             "title": "Month",
             "type": "string"
           },
+          "reported_issue_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reported Issue Code"
+          },
           "requester_name": {
             "title": "Requester Name",
             "type": "string"
+          },
+          "resolution_notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolution Notes"
           },
           "resolved_at": {
             "anyOf": [
@@ -470,6 +1721,17 @@
           "task_code": {
             "title": "Task Code",
             "type": "string"
+          },
+          "technician_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Technician Name"
           },
           "ticket_code": {
             "title": "Ticket Code",
@@ -558,6 +1820,93 @@
         "title": "TicketOut",
         "type": "object"
       },
+      "TicketVerifyAccessInput": {
+        "additionalProperties": false,
+        "properties": {
+          "employee_id": {
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Employee Id"
+          },
+          "match_token": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Match Token"
+          },
+          "ticket_code": {
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ticket Code"
+          },
+          "token": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Token"
+          }
+        },
+        "title": "TicketVerifyAccessInput",
+        "type": "object"
+      },
+      "TicketVerifyAccessOut": {
+        "properties": {
+          "access_token": {
+            "title": "Access Token",
+            "type": "string"
+          },
+          "authorized": {
+            "title": "Authorized",
+            "type": "boolean"
+          },
+          "can_close": {
+            "default": false,
+            "title": "Can Close",
+            "type": "boolean"
+          },
+          "can_reopen": {
+            "default": false,
+            "title": "Can Reopen",
+            "type": "boolean"
+          },
+          "ticket": {
+            "$ref": "#/components/schemas/TicketOut"
+          }
+        },
+        "required": [
+          "authorized",
+          "access_token",
+          "ticket"
+        ],
+        "title": "TicketVerifyAccessOut",
+        "type": "object"
+      },
       "TokenOut": {
         "properties": {
           "access_token": {
@@ -629,6 +1978,16 @@
       },
       "UserOut": {
         "properties": {
+          "active_bench": {
+            "default": 0,
+            "title": "Active Bench",
+            "type": "integer"
+          },
+          "closed_repairs": {
+            "default": 0,
+            "title": "Closed Repairs",
+            "type": "integer"
+          },
           "email": {
             "title": "Email",
             "type": "string"
@@ -1446,9 +2805,127 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Lookup",
         "tags": [
           "Directory"
+        ]
+      }
+    },
+    "/api/v1/employees/match": {
+      "post": {
+        "operationId": "match_employee_api_v1_employees_match_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmployeeMatchInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmployeeMatchOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Match Employee",
+        "tags": [
+          "Directory"
+        ]
+      }
+    },
+    "/api/v1/locations/hub-summaries": {
+      "get": {
+        "description": "Accurate, server-aggregated operational summaries for all terminal hubs.",
+        "operationId": "hub_summaries_api_v1_locations_hub_summaries_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/HubSummaryOut"
+                  },
+                  "title": "Response Hub Summaries Api V1 Locations Hub Summaries Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Hub Summaries",
+        "tags": [
+          "Locations"
+        ]
+      }
+    },
+    "/api/v1/locations/observations": {
+      "post": {
+        "operationId": "record_observation_api_v1_locations_observations_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocationObservationInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocationObservationOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Record Observation",
+        "tags": [
+          "Locations"
         ]
       }
     },
@@ -1468,6 +2945,296 @@
         "summary": "Ping",
         "tags": [
           "Diagnostics"
+        ]
+      }
+    },
+    "/api/v1/repair-notes": {
+      "get": {
+        "operationId": "list_repair_notes_api_v1_repair_notes_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "task_code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Task Code"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepairNoteListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Repair Notes",
+        "tags": [
+          "repair-notes"
+        ]
+      },
+      "post": {
+        "operationId": "create_repair_note_api_v1_repair_notes_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RepairNoteCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepairNoteOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Repair Note",
+        "tags": [
+          "repair-notes"
+        ]
+      }
+    },
+    "/api/v1/repair-notes/{id}": {
+      "delete": {
+        "operationId": "delete_repair_note_api_v1_repair_notes__id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "expected_revision",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "title": "Expected Revision",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Repair Note",
+        "tags": [
+          "repair-notes"
+        ]
+      },
+      "get": {
+        "operationId": "get_repair_note_api_v1_repair_notes__id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepairNoteOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Repair Note",
+        "tags": [
+          "repair-notes"
+        ]
+      },
+      "patch": {
+        "operationId": "update_repair_note_api_v1_repair_notes__id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RepairNoteUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepairNoteOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Repair Note",
+        "tags": [
+          "repair-notes"
         ]
       }
     },
@@ -1761,7 +3528,8 @@
                     "OPEN",
                     "PROG",
                     "RESL",
-                    "CLSD"
+                    "CLSD",
+                    "ALL"
                   ],
                   "type": "string"
                 },
@@ -1770,6 +3538,54 @@
                 }
               ],
               "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "technician_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Technician Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "location_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Location Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "default": "asc",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "title": "Order",
+              "type": "string"
             }
           },
           {
@@ -1833,6 +3649,31 @@
         ]
       }
     },
+    "/api/v1/tickets/my-tickets": {
+      "get": {
+        "operationId": "my_tickets_api_v1_tickets_my_tickets_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TicketOut"
+                  },
+                  "title": "Response My Tickets Api V1 Tickets My Tickets Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "My Tickets",
+        "tags": [
+          "Tickets"
+        ]
+      }
+    },
     "/api/v1/tickets/quick-intake": {
       "post": {
         "operationId": "quick_intake_api_v1_tickets_quick_intake_post",
@@ -1840,7 +3681,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/TicketInput"
+                "$ref": "#/components/schemas/QuickIntakeInput"
               }
             }
           },
@@ -1962,6 +3803,124 @@
         ]
       }
     },
+    "/api/v1/tickets/verify-access": {
+      "post": {
+        "operationId": "verify_access_api_v1_tickets_verify_access_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "code_or_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Code Or Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TicketVerifyAccessInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketVerifyAccessOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Verify Access",
+        "tags": [
+          "Tickets"
+        ]
+      }
+    },
+    "/api/v1/tickets/{code_or_id}/verify-access": {
+      "post": {
+        "operationId": "verify_access_api_v1_tickets__code_or_id__verify_access_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code_or_id",
+            "required": true,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Code Or Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TicketVerifyAccessInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketVerifyAccessOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Verify Access",
+        "tags": [
+          "Tickets"
+        ]
+      }
+    },
     "/api/v1/tickets/{ticket_id}": {
       "get": {
         "operationId": "detail_api_v1_tickets__ticket_id__get",
@@ -2005,6 +3964,64 @@
           }
         ],
         "summary": "Detail",
+        "tags": [
+          "Tickets"
+        ]
+      }
+    },
+    "/api/v1/tickets/{ticket_id}/assign": {
+      "patch": {
+        "operationId": "assign_ticket_api_v1_tickets__ticket_id__assign_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ticket_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ticket Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Assign Ticket",
         "tags": [
           "Tickets"
         ]
@@ -2166,6 +4183,304 @@
         ]
       }
     },
+    "/api/v1/tickets/{ticket_id}/checklist": {
+      "get": {
+        "operationId": "get_ticket_checklist_api_v1_tickets__ticket_id__checklist_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ticket_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ticket Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketChecklistOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Ticket Checklist",
+        "tags": [
+          "checklists"
+        ]
+      }
+    },
+    "/api/v1/tickets/{ticket_id}/checklist/apply": {
+      "post": {
+        "operationId": "apply_repair_note_to_ticket_api_v1_tickets__ticket_id__checklist_apply_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ticket_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ticket Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TicketChecklistApplyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketChecklistOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Apply Repair Note To Ticket",
+        "tags": [
+          "checklists"
+        ]
+      }
+    },
+    "/api/v1/tickets/{ticket_id}/checklist/steps": {
+      "post": {
+        "operationId": "add_ticket_checklist_step_api_v1_tickets__ticket_id__checklist_steps_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ticket_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ticket Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TicketChecklistStepCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketChecklistOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Add Ticket Checklist Step",
+        "tags": [
+          "checklists"
+        ]
+      }
+    },
+    "/api/v1/tickets/{ticket_id}/checklist/steps/{step_id}": {
+      "delete": {
+        "operationId": "delete_ticket_checklist_step_api_v1_tickets__ticket_id__checklist_steps__step_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ticket_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ticket Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "step_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Step Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "expected_checklist_revision",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "title": "Expected Checklist Revision",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketChecklistOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Ticket Checklist Step",
+        "tags": [
+          "checklists"
+        ]
+      },
+      "patch": {
+        "operationId": "update_ticket_checklist_step_api_v1_tickets__ticket_id__checklist_steps__step_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ticket_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ticket Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "step_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Step Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TicketChecklistStepUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketChecklistOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Ticket Checklist Step",
+        "tags": [
+          "checklists"
+        ]
+      }
+    },
     "/api/v1/tickets/{ticket_id}/claim": {
       "patch": {
         "operationId": "claim_ticket_api_v1_tickets__ticket_id__claim_patch",
@@ -2256,7 +4571,13 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CommentOut"
+                  },
+                  "title": "Response Comments Api V1 Tickets  Ticket Id  Comments Get",
+                  "type": "array"
+                }
               }
             },
             "description": "Successful Response"
@@ -2272,11 +4593,6 @@
             "description": "Validation Error"
           }
         },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "summary": "Comments",
         "tags": [
           "Tickets"
@@ -2310,7 +4626,9 @@
           "201": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/CommentOut"
+                }
               }
             },
             "description": "Successful Response"
@@ -2326,11 +4644,6 @@
             "description": "Validation Error"
           }
         },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "summary": "Comment",
         "tags": [
           "Tickets"
@@ -2366,7 +4679,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/TicketOut"
+                }
               }
             },
             "description": "Successful Response"
@@ -2383,6 +4698,163 @@
           }
         },
         "summary": "Confirm",
+        "tags": [
+          "Tickets"
+        ]
+      }
+    },
+    "/api/v1/tickets/{ticket_id}/reissue-verification": {
+      "post": {
+        "operationId": "reissue_verification_api_v1_tickets__ticket_id__reissue_verification_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ticket_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ticket Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Reissue Verification",
+        "tags": [
+          "Tickets"
+        ]
+      }
+    },
+    "/api/v1/tickets/{ticket_id}/reopen": {
+      "post": {
+        "operationId": "reopen_api_v1_tickets__ticket_id__reopen_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ticket_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ticket Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReopenInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reopen",
+        "tags": [
+          "Tickets"
+        ]
+      }
+    },
+    "/api/v1/tickets/{ticket_id}/service-record": {
+      "patch": {
+        "operationId": "update_service_record_api_v1_tickets__ticket_id__service_record_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ticket_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ticket Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServiceRecordUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Service Record",
         "tags": [
           "Tickets"
         ]

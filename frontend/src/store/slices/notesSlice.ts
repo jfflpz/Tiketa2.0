@@ -1,274 +1,382 @@
 import type { AppSliceCreator } from '../types';
-import type { SavedRepairNote, ChecklistStep } from '../../types/ticket';
-
-export const DEFAULT_SOP_STEPS: ChecklistStep[] = [
-  {
-    id: 'step-1',
-    text: 'Verify booth asset ID, power supply, and physical cabling',
-    completed: true,
-  },
-  {
-    id: 'step-2',
-    text: 'Establish remote AnyDesk session or on-site bench inspection',
-    completed: true,
-  },
-  {
-    id: 'step-3',
-    text: 'Apply hardware/software fix and run terminal test transaction',
-    completed: false,
-  },
-  {
-    id: 'step-4',
-    text: 'Log resolution summary in 15-Column Job Log (#06 Description)',
-    completed: false,
-  },
-];
-
-export const INITIAL_SAVED_REPAIR_NOTES: SavedRepairNote[] = [
-  {
-    id: 'note-1',
-    title: 'Thermal Receipt Printer Cutter Jam & Red Error LED Fix',
-    taskCode: 'PRN-TS',
-    taskName: 'Printer Troubleshoot',
-    symptomAndFixNote:
-      'Epson TM-T82 / booth thermal printer red error LED blinking and auto-cutter blade stuck mid-cut. Clear paper path, rotate cutter gear knob manually, clean thermal head with isopropyl alcohol, and print Windows self-test page.',
-    checklistSteps: [
-      'Power off thermal printer and open top receipt cover release latch',
-      'Manually rotate auto-cutter emergency gear wheel to retract stuck blade',
-      'Clear shredded thermal paper from platen roller and optical sensor',
-      'Clean thermal printhead with 99% isopropyl swab and reload 80mm roll',
-      'Hold FEED button while powering on to verify hardware self-test print',
-    ],
-    author: 'Nathaniel D. Esguerra',
-    updatedAt: '2026-10-17 09:30',
-    sourceTicketCode: 'T-261042',
-  },
-  {
-    id: 'note-2',
-    title: 'POS Ticketing App SQLite Database Lock & Session Reset',
-    taskCode: 'SW-ASST',
-    taskName: 'Software Assistance',
-    symptomAndFixNote:
-      'Waybill & booth POS application frozen on "Database Locked (Error 5)" during peak dispatch. Connect via AnyDesk, terminate orphaned POS background process, clear stale .wal/.shm lock files, and verify SQL sync with central server.',
-    checklistSteps: [
-      'Connect to booth workstation via AnyDesk and inspect Task Manager',
-      'End hung FiveStarPOS.exe background process tree',
-      'Backup local C:\\FiveStarPOS\\data\\waybill.db before clearing .db-wal lock',
-      'Relaunch POS as Administrator and test waybill sync to Pasay HQ',
-    ],
-    author: 'Christian (IT Specialist)',
-    updatedAt: '2026-10-16 16:15',
-    sourceTicketCode: 'T-261040',
-  },
-  {
-    id: 'note-3',
-    title: 'Fuel Telemetry VLAN Gateway & Terminal MikroTik Packet Drop',
-    taskCode: 'NET-CFG',
-    taskName: 'Network Configuration',
-    symptomAndFixNote:
-      'Fuel pump controller losing ping to central database server due to ARP table overflow or oxidized RJ45 port on terminal switch. Re-seat patch cord on VLAN 20 port, flush ARP cache on MikroTik router, and run 100-packet ping test.',
-    checklistSteps: [
-      'Ping terminal gateway (192.168.20.1) and fuel controller static IP',
-      'Inspect physical CAT6 patch cable and switch port LEDs in server rack',
-      'Log into MikroTik WinBox and flush stale ARP entry for pump controller',
-      'Verify <2ms latency and 0% packet loss over 100 continuous pings',
-    ],
-    author: 'Ronnell (IT Specialist)',
-    updatedAt: '2026-10-15 14:20',
-    sourceTicketCode: 'T-261041',
-  },
-  {
-    id: 'note-4',
-    title: 'Cashier PC POST 3 Short Beeps — DDR3/DDR4 RAM & CMOS Swap',
-    taskCode: 'PC-HW-REP',
-    taskName: 'PC/Laptop Hardware Replacement',
-    symptomAndFixNote:
-      'Workstation fails to boot with 3 short AMI BIOS beeps (memory seated error) or CMOS date reset. Clean DIMM gold contacts with eraser, reseat in Channel A1, replace CR2032 battery, and configure BIOS AHCI boot order.',
-    checklistSteps: [
-      'Disconnect AC power from AVR/UPS and discharge motherboard flea power',
-      'Remove RAM module, clean gold contacts, and reseat firmly into DIMM slot',
-      'Replace motherboard CR2032 CMOS coin battery if voltage is below 2.8V',
-      'Enter BIOS setup, set correct date/time, and verify SSD boot priority',
-    ],
-    author: 'Carlo Agan',
-    updatedAt: '2026-10-14 11:45',
-    sourceTicketCode: 'T-261039',
-  },
-  {
-    id: 'note-5',
-    title: 'Terminal NVR CCTV Offline & APC UPS Battery Replace SOP',
-    taskCode: 'SRV-ASSESS',
-    taskName: 'Server Assessment & Maintenance',
-    symptomAndFixNote:
-      'Hikvision 16-ch NVR beeping continuously or APC 1500VA UPS showing red Replace Battery LED. Check PoE switch uplink, inspect SATA surveillance HDD health in SMART menu, and hot-swap 12V 9Ah sealed lead-acid battery pack.',
-    checklistSteps: [
-      'Check Hikvision NVR local monitor for HDD S.M.A.R.T. error or IP conflict',
-      'Verify PoE switch uplink port to terminal departure bay cameras',
-      'Measure UPS battery terminal voltage under load and swap 12V 9Ah SLA pack',
-      'Confirm all 16 camera feeds are recording with green status icons',
-    ],
-    author: 'Stephen I. Miralles',
-    updatedAt: '2026-10-12 17:05',
-  },
-];
+import type {
+  SavedRepairNote,
+  TicketChecklist,
+  TaskCategoryCode,
+} from '../../types/ticket';
+import {
+  getRepairNotesApi,
+  createRepairNoteApi,
+  updateRepairNoteApi,
+  deleteRepairNoteApi,
+  getTicketChecklistApi,
+  applyRepairNoteToTicketApi,
+  addTicketChecklistStepApi,
+  updateTicketChecklistStepApi,
+  deleteTicketChecklistStepApi,
+} from '../../api/repairNotes';
 
 export interface NotesSlice {
   savedRepairNotes: SavedRepairNote[];
-  saveRepairNoteAndChecklist: (
-    note: Omit<SavedRepairNote, 'id' | 'updatedAt'>
-  ) => void;
-  updateSavedRepairNote: (id: string, updates: Partial<SavedRepairNote>) => void;
-  deleteSavedRepairNote: (id: string) => void;
-  applySavedNoteToTicket: (ticketId: string, noteId: string) => void;
-  getTicketChecklist: (ticketId: string) => ChecklistStep[];
-  toggleTicketChecklistStep: (ticketId: string, stepId: string) => void;
-  addTicketChecklistStep: (ticketId: string, text: string) => void;
-  removeTicketChecklistStep: (ticketId: string, stepId: string) => void;
-  editTicketChecklistStep: (ticketId: string, stepId: string, newText: string) => void;
+  savedRepairNotesTotal: number;
+  isLoadingNotes: boolean;
+  notesError: string | null;
+  checklistsByTicketId: Record<string, TicketChecklist>;
+  isLoadingChecklists: Record<string, boolean>;
+  notesQuerySequence: number;
+
+  // Library Actions
+  fetchSavedRepairNotes: (params?: {
+    offset?: number;
+    limit?: number;
+    task_code?: string;
+    q?: string;
+  }) => Promise<void>;
+  createSavedRepairNote: (note: {
+    title: string;
+    taskCode: TaskCategoryCode;
+    symptomAndFixNote: string;
+    checklistSteps: string[];
+    sourceTicketId?: string;
+  }) => Promise<SavedRepairNote>;
+  saveRepairNoteAndChecklist: (note: {
+    title: string;
+    taskCode: TaskCategoryCode;
+    symptomAndFixNote: string;
+    checklistSteps: string[];
+    sourceTicketId?: string;
+  }) => Promise<SavedRepairNote>;
+  updateSavedRepairNote: (
+    id: string,
+    updates: {
+      expectedRevision: number;
+      title?: string;
+      taskCode?: TaskCategoryCode;
+      symptomAndFixNote?: string;
+      checklistSteps?: string[];
+    }
+  ) => Promise<SavedRepairNote>;
+  deleteSavedRepairNote: (id: string, expectedRevision: number) => Promise<void>;
+
+  // Ticket Checklist Actions
+  fetchTicketChecklist: (ticketId: string) => Promise<TicketChecklist | null>;
+  applySavedNoteToTicket: (
+    ticketId: string,
+    noteId: string,
+    expectedNoteRevision: number,
+    replaceExisting?: boolean,
+    expectedChecklistRevision?: number
+  ) => Promise<TicketChecklist>;
+  getTicketChecklist: (ticketId: string) => TicketChecklist | undefined;
+  setTicketChecklistStepCompleted: (
+    ticketId: string,
+    stepId: string,
+    completed: boolean,
+    expectedChecklistRevision: number
+  ) => Promise<void>;
+  addTicketChecklistStep: (
+    ticketId: string,
+    text: string,
+    expectedChecklistRevision?: number
+  ) => Promise<void>;
+  editTicketChecklistStep: (
+    ticketId: string,
+    stepId: string,
+    newText: string,
+    expectedChecklistRevision: number
+  ) => Promise<void>;
+  removeTicketChecklistStep: (
+    ticketId: string,
+    stepId: string,
+    expectedChecklistRevision: number
+  ) => Promise<void>;
+
+  // Session & Boundary Controls
+  resetNotesState: () => void;
 }
 
 export const createNotesSlice: AppSliceCreator<NotesSlice> = (set, get) => ({
-  savedRepairNotes: INITIAL_SAVED_REPAIR_NOTES,
+  savedRepairNotes: [],
+  savedRepairNotesTotal: 0,
+  isLoadingNotes: false,
+  notesError: null,
+  checklistsByTicketId: {},
+  isLoadingChecklists: {},
+  notesQuerySequence: 0,
 
-  saveRepairNoteAndChecklist: (note) => {
-    const now = new Date();
-    const updatedAt = `${now.toISOString().split('T')[0]} ${now
-      .toTimeString()
-      .slice(0, 5)}`;
-    const newNote: SavedRepairNote = {
-      ...note,
-      id: 'note-' + Date.now(),
-      updatedAt,
-    };
+  resetNotesState: () => {
     set((state) => ({
-      savedRepairNotes: [newNote, ...state.savedRepairNotes],
+      savedRepairNotes: [],
+      savedRepairNotesTotal: 0,
+      isLoadingNotes: false,
+      notesError: null,
+      checklistsByTicketId: {},
+      isLoadingChecklists: {},
+      notesQuerySequence: state.notesQuerySequence + 1,
     }));
-    get().addToast(
-      'Saved to Repair Notes Library',
-      `"${newNote.title}" stored with ${newNote.checklistSteps.length} checklist steps.`,
-      'success'
-    );
   },
 
-  updateSavedRepairNote: (id, updates) => {
-    const now = new Date();
-    const updatedAt = `${now.toISOString().split('T')[0]} ${now
-      .toTimeString()
-      .slice(0, 5)}`;
-    set((state) => ({
-      savedRepairNotes: state.savedRepairNotes.map((n) =>
-        n.id === id ? { ...n, ...updates, updatedAt } : n
-      ),
-    }));
-    get().addToast(
-      'Repair Note Updated',
-      'Saved troubleshooting checklist & repair note changes.',
-      'success'
-    );
+  fetchSavedRepairNotes: async (params) => {
+    const seq = get().notesQuerySequence + 1;
+    set({ isLoadingNotes: true, notesError: null, notesQuerySequence: seq });
+    try {
+      const data = await getRepairNotesApi(params);
+      if (get().notesQuerySequence !== seq) {
+        // Stale response from a previous query or after session reset
+        return;
+      }
+      set({
+        savedRepairNotes: data.items,
+        savedRepairNotesTotal: data.total,
+        isLoadingNotes: false,
+      });
+    } catch (err: unknown) {
+      if (get().notesQuerySequence !== seq) return;
+      const msg = err instanceof Error ? err.message : 'Failed to fetch repair notes library';
+      set({ isLoadingNotes: false, notesError: msg });
+      get().addToast('Library Load Error', msg, 'warning');
+    }
   },
 
-  deleteSavedRepairNote: (id) => {
-    set((state) => ({
-      savedRepairNotes: state.savedRepairNotes.filter((n) => n.id !== id),
-    }));
-    get().addToast('Repair Note Removed', 'Deleted from library', 'info');
+  createSavedRepairNote: async (note) => {
+    try {
+      const created = await createRepairNoteApi({
+        title: note.title,
+        task_code: note.taskCode,
+        symptom_and_fix: note.symptomAndFixNote,
+        steps: note.checklistSteps,
+        source_ticket_id: note.sourceTicketId,
+      });
+      set((state) => ({
+        savedRepairNotes: [created, ...state.savedRepairNotes],
+        savedRepairNotesTotal: state.savedRepairNotesTotal + 1,
+      }));
+      get().addToast(
+        'Saved to Repair Notes Library',
+        `"${created.title}" stored with ${created.checklistSteps.length} checklist steps.`,
+        'success'
+      );
+      return created;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to save repair note';
+      get().addToast('Save Failed', msg, 'warning');
+      throw err;
+    }
   },
 
-  applySavedNoteToTicket: (ticketId, noteId) => {
-    const note = get().savedRepairNotes.find((n) => n.id === noteId);
-    if (!note) return;
-    const newChecklist: ChecklistStep[] = note.checklistSteps.map((text, idx) => ({
-      id: `step-${Date.now()}-${idx}`,
-      text,
-      completed: false,
-    }));
+  saveRepairNoteAndChecklist: async (note) => {
+    return get().createSavedRepairNote(note);
+  },
+
+  updateSavedRepairNote: async (id, updates) => {
+    try {
+      const updated = await updateRepairNoteApi(id, {
+        expected_revision: updates.expectedRevision,
+        title: updates.title,
+        task_code: updates.taskCode,
+        symptom_and_fix: updates.symptomAndFixNote,
+        steps: updates.checklistSteps,
+      });
+      set((state) => ({
+        savedRepairNotes: state.savedRepairNotes.map((n) =>
+          n.id === id ? updated : n
+        ),
+      }));
+      get().addToast(
+        'Repair Note Updated',
+        `"${updated.title}" updated successfully (Rev ${updated.revision}).`,
+        'success'
+      );
+      return updated;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to update repair note';
+      get().addToast('Update Failed', msg, 'warning');
+      throw err;
+    }
+  },
+
+  deleteSavedRepairNote: async (id, expectedRevision) => {
+    try {
+      await deleteRepairNoteApi(id, expectedRevision);
+      set((state) => ({
+        savedRepairNotes: state.savedRepairNotes.filter((n) => n.id !== id),
+        savedRepairNotesTotal: Math.max(0, state.savedRepairNotesTotal - 1),
+      }));
+      get().addToast('Repair Note Removed', 'Guide deleted from library.', 'info');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to delete repair note';
+      get().addToast('Delete Failed', msg, 'warning');
+      throw err;
+    }
+  },
+
+  fetchTicketChecklist: async (ticketId) => {
     set((state) => ({
-      tickets: state.tickets.map((t) =>
-        t.id === ticketId
-          ? {
-              ...t,
-              checklist: newChecklist,
-              description: note.symptomAndFixNote,
-            }
-          : t
-      ),
+      isLoadingChecklists: { ...state.isLoadingChecklists, [ticketId]: true },
     }));
-    get().addToast(
-      'Loaded Saved Repair Guide',
-      `Applied "${note.title}" checklist & repair note to active ticket.`,
-      'success'
-    );
+    try {
+      const checklist = await getTicketChecklistApi(ticketId);
+      set((state) => ({
+        checklistsByTicketId: {
+          ...state.checklistsByTicketId,
+          [ticketId]: checklist,
+        },
+        isLoadingChecklists: {
+          ...state.isLoadingChecklists,
+          [ticketId]: false,
+        },
+      }));
+      return checklist;
+    } catch (err: unknown) {
+      set((state) => ({
+        isLoadingChecklists: {
+          ...state.isLoadingChecklists,
+          [ticketId]: false,
+        },
+      }));
+      return null;
+    }
   },
 
   getTicketChecklist: (ticketId) => {
-    const found = get().tickets.find((t) => t.id === ticketId);
-    return found?.checklist ?? DEFAULT_SOP_STEPS;
+    return get().checklistsByTicketId[ticketId];
   },
 
-  toggleTicketChecklistStep: (ticketId, stepId) => {
-    set((state) => ({
-      tickets: state.tickets.map((t) => {
-        if (t.id !== ticketId) return t;
-        const currentList = t.checklist ?? DEFAULT_SOP_STEPS;
-        return {
-          ...t,
-          checklist: currentList.map((s) =>
-            s.id === stepId ? { ...s, completed: !s.completed } : s
-          ),
-        };
-      }),
-    }));
+  applySavedNoteToTicket: async (
+    ticketId,
+    noteId,
+    expectedNoteRevision,
+    replaceExisting = false,
+    expectedChecklistRevision
+  ) => {
+    try {
+      const checklist = await applyRepairNoteToTicketApi(ticketId, {
+        repair_note_id: noteId,
+        expected_note_revision: expectedNoteRevision,
+        replace_existing: replaceExisting,
+        expected_checklist_revision: expectedChecklistRevision,
+      });
+      set((state) => ({
+        checklistsByTicketId: {
+          ...state.checklistsByTicketId,
+          [ticketId]: checklist,
+        },
+      }));
+      get().addToast(
+        'Applied Repair Guide',
+        `Applied "${checklist.guideTitleSnapshot ?? 'Guide'}" with ${checklist.steps.length} steps to active ticket.`,
+        'success'
+      );
+      return checklist;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to apply repair guide to ticket';
+      get().addToast('Apply Guide Failed', msg, 'warning');
+      // Refresh checklist in case of conflict
+      get().fetchTicketChecklist(ticketId);
+      throw err;
+    }
   },
 
-  addTicketChecklistStep: (ticketId, text) => {
+  setTicketChecklistStepCompleted: async (
+    ticketId,
+    stepId,
+    completed,
+    expectedChecklistRevision
+  ) => {
+    try {
+      const updated = await updateTicketChecklistStepApi(ticketId, stepId, {
+        expected_checklist_revision: expectedChecklistRevision,
+        completed,
+      });
+      set((state) => ({
+        checklistsByTicketId: {
+          ...state.checklistsByTicketId,
+          [ticketId]: updated,
+        },
+      }));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to update step completion';
+      get().addToast('Step Update Failed', msg, 'warning');
+      get().fetchTicketChecklist(ticketId);
+      throw err;
+    }
+  },
+
+  addTicketChecklistStep: async (
+    ticketId,
+    text,
+    expectedChecklistRevision
+  ) => {
     const trimmed = text.trim();
     if (!trimmed) return;
-    set((state) => ({
-      tickets: state.tickets.map((t) => {
-        if (t.id !== ticketId) return t;
-        const currentList = t.checklist ?? DEFAULT_SOP_STEPS;
-        return {
-          ...t,
-          checklist: [
-            ...currentList,
-            {
-              id: 'step-' + Date.now() + '-' + Math.random().toString(36).slice(2, 5),
-              text: trimmed,
-              completed: false,
-            },
-          ],
-        };
-      }),
-    }));
+    try {
+      const updated = await addTicketChecklistStepApi(ticketId, {
+        expected_checklist_revision: expectedChecklistRevision,
+        text: trimmed,
+      });
+      set((state) => ({
+        checklistsByTicketId: {
+          ...state.checklistsByTicketId,
+          [ticketId]: updated,
+        },
+      }));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to add checklist step';
+      get().addToast('Add Step Failed', msg, 'warning');
+      get().fetchTicketChecklist(ticketId);
+      throw err;
+    }
   },
 
-  removeTicketChecklistStep: (ticketId, stepId) => {
-    set((state) => ({
-      tickets: state.tickets.map((t) => {
-        if (t.id !== ticketId) return t;
-        const currentList = t.checklist ?? DEFAULT_SOP_STEPS;
-        return {
-          ...t,
-          checklist: currentList.filter((s) => s.id !== stepId),
-        };
-      }),
-    }));
-  },
-
-  editTicketChecklistStep: (ticketId, stepId, newText) => {
+  editTicketChecklistStep: async (
+    ticketId,
+    stepId,
+    newText,
+    expectedChecklistRevision
+  ) => {
     const trimmed = newText.trim();
     if (!trimmed) return;
-    set((state) => ({
-      tickets: state.tickets.map((t) => {
-        if (t.id !== ticketId) return t;
-        const currentList = t.checklist ?? DEFAULT_SOP_STEPS;
-        return {
-          ...t,
-          checklist: currentList.map((s) =>
-            s.id === stepId ? { ...s, text: trimmed } : s
-          ),
-        };
-      }),
-    }));
+    try {
+      const updated = await updateTicketChecklistStepApi(ticketId, stepId, {
+        expected_checklist_revision: expectedChecklistRevision,
+        text: trimmed,
+      });
+      set((state) => ({
+        checklistsByTicketId: {
+          ...state.checklistsByTicketId,
+          [ticketId]: updated,
+        },
+      }));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to edit checklist step';
+      get().addToast('Edit Step Failed', msg, 'warning');
+      get().fetchTicketChecklist(ticketId);
+      throw err;
+    }
+  },
+
+  removeTicketChecklistStep: async (
+    ticketId,
+    stepId,
+    expectedChecklistRevision
+  ) => {
+    try {
+      const updated = await deleteTicketChecklistStepApi(
+        ticketId,
+        stepId,
+        expectedChecklistRevision
+      );
+      set((state) => ({
+        checklistsByTicketId: {
+          ...state.checklistsByTicketId,
+          [ticketId]: updated,
+        },
+      }));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to delete checklist step';
+      get().addToast('Delete Step Failed', msg, 'warning');
+      get().fetchTicketChecklist(ticketId);
+      throw err;
+    }
   },
 });

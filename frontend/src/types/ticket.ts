@@ -35,6 +35,39 @@ export interface ChecklistStep {
   completed: boolean;
 }
 
+export interface TicketChecklistStep {
+  id: string;
+  checklistId?: string;
+  position: number;
+  text: string;
+  completed: boolean;
+  completedAt?: string | null;
+  completedById?: string | null;
+  completedByName?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface TicketChecklist {
+  id?: string;
+  ticketId: string;
+  sourceRepairNoteId?: string | null;
+  sourceRevision?: number | null;
+  guideTitleSnapshot?: string | null;
+  guideTaskCodeSnapshot?: string | null;
+  guideTaskNameSnapshot?: string | null;
+  guideBody?: string | null;
+  appliedById?: string | null;
+  appliedByName?: string | null;
+  appliedAt?: string | null;
+  createdById?: string | null;
+  updatedById?: string | null;
+  revision: number;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  steps: TicketChecklistStep[];
+}
+
 export interface SavedRepairNote {
   id: string;
   title: string;
@@ -43,8 +76,15 @@ export interface SavedRepairNote {
   symptomAndFixNote: string;
   checklistSteps: string[];
   author: string;
-  updatedAt: string;
+  authorId?: string;
+  updatedBy?: string;
+  updatedById?: string;
+  sourceTicketId?: string;
   sourceTicketCode?: string;
+  revision: number;
+  createdAt?: string;
+  updatedAt: string;
+  canEdit?: boolean;
 }
 
 export interface Ticket {
@@ -90,6 +130,7 @@ export interface Ticket {
   createdAt: string;
   messages?: TicketChatMessage[];
   checklist?: ChecklistStep[];
+  ticketChecklist?: TicketChecklist;
 }
 
 export interface NewTicketInput {

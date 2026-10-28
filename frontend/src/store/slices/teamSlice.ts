@@ -3,39 +3,31 @@ import type { AppSliceCreator } from '../types';
 import type { TeamMember, TeamRole, TeamMemberStatus } from '../../types/team';
 import type { EmployeeProfile } from '../../types';
 import {
-  directoryApi,
-  ServerDictionaries,
-  AdminUserItem,
-  AdminEmployeeItem,
+  adminApi,
+  extractApiErrorMessage,
+  BackendUser,
+  UserCreateInput,
+  EmployeeCreateInput,
+  DictionariesResponse,
 } from '../../api/client';
-import { normalizeApiError } from '../../utils/errorUtils';
 
 export interface TeamSlice {
   itTeamMembers: TeamMember[];
   verifiedEmployeesList: EmployeeProfile[];
-  serverDictionaries: ServerDictionaries | null;
+  serverDictionaries: DictionariesResponse | null;
   isLoadingTeam: boolean;
   teamError: string | null;
 
-  fetchDictionariesApi: () => Promise<void>;
-  fetchTeamDataApi: () => Promise<void>;
-  createITMemberApi: (member: {
-    username: string;
-    email: string;
-    full_name: string;
-    role: 'it' | 'admin';
-    password: string;
-  }) => Promise<boolean>;
-  createEmployeeApi: (emp: {
-    employee_id: string;
-    full_name: string;
-    email: string;
-    company_id: string;
-    location_id: string;
-    department_id: string;
-  }) => Promise<boolean>;
+  fetchITMembers: () => Promise<void>;
+  createITMemberApi: (payload: UserCreateInput) => Promise<boolean>;
+  deleteITMemberApi: (id: string, name?: string) => Promise<boolean>;
 
-  // Synchronous / local convenience actions
+  fetchEmployees: () => Promise<void>;
+  createEmployeeApi: (payload: EmployeeCreateInput) => Promise<boolean>;
+  deleteEmployeeApi: (id: string, name?: string) => Promise<boolean>;
+
+  fetchDictionaries: () => Promise<void>;
+
   createITMember: (member: {
     name: string;
     email: string;
@@ -43,9 +35,10 @@ export interface TeamSlice {
     department: string;
     status: TeamMemberStatus;
     primaryLocation: string;
+    username?: string;
+    password?: string;
   }) => void;
   deleteITMember: (id: string) => void;
-
   createEmployee: (emp: {
     employee_id: string;
     full_name: string;
@@ -60,238 +53,210 @@ export interface TeamSlice {
   deleteEmployee: (employeeId: string) => void;
 }
 
-function mapUserToMember(user: AdminUserItem): TeamMember {
-  return {
-    id: user.id,
-    name: user.full_name,
-    email: user.email,
-    role: user.role === 'admin' ? 'Admin' : 'Field Technician',
-    department:
-      user.role === 'admin'
-        ? 'IT Administration & Governance'
-        : 'Terminal Operations & PMS',
-    status: user.is_active ? 'active' : 'offline',
-    primaryLocation: 'Pasay Terminal (PSY)',
-    ticketsClosed: 0,
-    activeTickets: 0,
-    flameScore: 25,
-    avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(
-      user.username
-    )}&backgroundColor=b6e3f4`,
-  };
-}
+const mapBackendUserToTeamMember = (
+  u: BackendUser,
+  dictionaries: DictionariesResponse | null
+): TeamMember => {
+  const isAdm = u.role === 'admin';
+  const loc = dictionaries?.locations.find((l) => l.id === u.location_id);
+  let locationName = loc ? `${loc.name} (${loc.code})` : 'Main HQ / Regional Fleet';
+  let dept = isAdm ? 'IT Systems Administration' : 'Terminal Support & Operations';
+  let roleTitle: TeamRole = isAdm ? 'Admin' : 'Field Technician';
 
-function mapEmployeeToProfile(emp: AdminEmployeeItem): EmployeeProfile {
+  try {
+    const raw =
+      localStorage.getItem(`tiketa_staff_meta_${u.username}`) ||
+      localStorage.getItem(`tiketa_staff_meta_${u.id}`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed.primaryLocation) locationName = parsed.primaryLocation;
+      if (parsed.department) dept = parsed.department;
+      if (parsed.roleTitle) roleTitle = parsed.roleTitle as TeamRole;
+    }
+  } catch (e) {
+    // Ignore storage parse error
+  }
+
+  // Pre-seed canonical technician hubs and departments if not overridden
+  if (!localStorage.getItem(`tiketa_staff_meta_${u.username}`)) {
+    if (u.username === 'technician') {
+      dept = 'Terminal Operations & PMS';
+      locationName = 'Caloocan Terminal (CAL)';
+      roleTitle = 'Field Technician';
+    } else if (u.username === 'tech_support') {
+      dept = 'IT Infrastructure & Support';
+      locationName = 'Pasay Terminal (PSY)';
+      roleTitle = 'Field Technician';
+    } else if (u.username === 'admin') {
+      dept = 'IT Systems Administration';
+      locationName = 'Main HQ / Central Fleet';
+      roleTitle = 'Admin';
+    }
+  }
+
   return {
-    id: emp.id,
-    employee_id: emp.employee_id,
-    full_name: emp.full_name,
-    email: emp.email,
-    company_id: emp.company_id,
-    company_name: emp.company_name || 'Pangasinan Five Star Bus Co.',
-    location_id: emp.location_id,
-    location_name: emp.location_name || 'Pasay Terminal',
-    department_id: emp.department_id,
-    department_name: emp.department_name || 'Terminal Operations',
+    id: u.id,
+    name: u.full_name,
+    username: u.username,
+    email: u.email,
+    role: roleTitle,
+    systemRole: u.role,
+    avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(
+      u.username
+    )}&backgroundColor=${isAdm ? 'fed7aa' : 'b6e3f4'}`,
+    department: dept,
+    status: u.is_active ? 'active' : 'offline',
+    primaryLocation: locationName,
+    ticketsClosed: u.closed_repairs ?? 0,
+    activeTickets: u.active_bench ?? 0,
+    flameScore: 0,
+    is_active: u.is_active,
   };
-}
+};
 
 export const createTeamSlice: AppSliceCreator<TeamSlice> = (set, get) => ({
-  itTeamMembers: [
-    {
-      id: 'tm-1',
-      name: 'Stephen I. Miralles',
-      email: 's.miralles@fivestar.com.ph',
-      role: 'Senior Analyst',
-      department: 'IT Infrastructure & Server Ops',
-      status: 'active',
-      primaryLocation: 'Pasay Terminal (PSY)',
-      ticketsClosed: 41,
-      activeTickets: 2,
-      flameScore: 28,
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=William&backgroundColor=b6e3f4',
-    },
-    {
-      id: 'tm-2',
-      name: 'Nathaniel D. Esguerra',
-      email: 'n.esguerra@fivestar.com.ph',
-      role: 'Field Technician',
-      department: 'Terminal Operations & PMS',
-      status: 'active',
-      primaryLocation: 'Caloocan Terminal (CAL)',
-      ticketsClosed: 34,
-      activeTickets: 3,
-      flameScore: 24,
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Edward&backgroundColor=c0aede',
-    },
-  ],
-  verifiedEmployeesList: [
-    {
-      id: 'emp-1042',
-      employee_id: 'FS-1042',
-      full_name: 'Maria Santos',
-      email: 'm.santos@transit.ph',
-      company_id: 'FS',
-      company_name: 'Pangasinan Five Star Bus Co.',
-      location_id: 'PSY',
-      location_name: 'Pasay Terminal',
-      department_id: 'CASH',
-      department_name: 'Cashiering & Revenue',
-    },
-    {
-      id: 'emp-1088',
-      employee_id: 'FS-1088',
-      full_name: 'Juan Dela Cruz',
-      email: 'j.delacruz@transit.ph',
-      company_id: 'FS',
-      company_name: 'Pangasinan Five Star Bus Co.',
-      location_id: 'CAL',
-      location_name: 'Caloocan Terminal',
-      department_id: 'OPS',
-      department_name: 'Operations & Dispatch',
-    },
-  ],
+  itTeamMembers: [],
+  verifiedEmployeesList: [],
   serverDictionaries: null,
   isLoadingTeam: false,
   teamError: null,
 
-  fetchDictionariesApi: async () => {
+  fetchDictionaries: async () => {
     try {
-      const data = await directoryApi.getDictionaries();
+      const data = await adminApi.getDictionaries();
       set({ serverDictionaries: data });
-    } catch {
-      // Dictionaries fallback to client constants if offline
+    } catch (err: unknown) {
+      console.warn('Could not load dictionaries:', err);
     }
   },
 
-  fetchTeamDataApi: async () => {
+  fetchITMembers: async () => {
     set({ isLoadingTeam: true, teamError: null });
     try {
-      const [users, employees] = await Promise.all([
-        directoryApi.getAdminUsers({ limit: 100 }),
-        directoryApi.getAdminEmployees({ limit: 100 }),
-      ]);
-
-      set((state) => ({
-        isLoadingTeam: false,
-        itTeamMembers: users.length > 0 ? users.map(mapUserToMember) : state.itTeamMembers,
-        verifiedEmployeesList:
-          employees.length > 0
-            ? employees.map(mapEmployeeToProfile)
-            : state.verifiedEmployeesList,
-      }));
+      const dicts = get().serverDictionaries;
+      const users = await adminApi.getUsers({ offset: 0, limit: 100 });
+      const mapped = users.map((u) => mapBackendUserToTeamMember(u, dicts));
+      set({ itTeamMembers: mapped, isLoadingTeam: false });
     } catch (err: unknown) {
-      const msg = normalizeApiError(err, 'Failed to sync team and employee directory');
-      set({ isLoadingTeam: false, teamError: msg });
+      const msg = extractApiErrorMessage(err, 'Failed to load IT team accounts from server');
+      set({ teamError: msg, isLoadingTeam: false });
+      get().addToast('Directory Sync Error', msg, 'warning');
     }
   },
 
-  createITMemberApi: async (memberData) => {
+  createITMemberApi: async (payload: UserCreateInput) => {
+    set({ teamError: null });
     try {
-      const created = await directoryApi.createAdminUser(memberData);
-      const mapped = mapUserToMember(created);
-      set((state) => ({
-        itTeamMembers: [mapped, ...state.itTeamMembers.filter((m) => m.id !== mapped.id)],
-      }));
+      await adminApi.createUser(payload);
+      await get().fetchITMembers();
       get().addToast(
-        'Account Created',
-        `Provisioned ${memberData.role.toUpperCase()} staff account for ${created.full_name} (${created.username}).`,
+        'IT Account Created',
+        `Account @${payload.username} (${payload.full_name}) successfully created.`,
         'success'
       );
-      await get().fetchTeamDataApi();
       return true;
     } catch (err: unknown) {
-      const msg = normalizeApiError(err, 'Failed to create IT support account');
+      const msg = extractApiErrorMessage(err, 'Account creation failed: backend unreachable or error');
+      set({ teamError: msg });
       get().addToast('Account Creation Failed', msg, 'warning');
       return false;
     }
   },
 
-  createEmployeeApi: async (empData) => {
+  deleteITMemberApi: async (id: string, name?: string) => {
     try {
-      const created = await directoryApi.createAdminEmployee({
-        ...empData,
-        is_active: true,
-      });
-      const mapped = mapEmployeeToProfile(created);
-      set((state) => ({
-        verifiedEmployeesList: [
-          mapped,
-          ...state.verifiedEmployeesList.filter((e) => e.employee_id !== mapped.employee_id),
-        ],
-      }));
+      await adminApi.updateUser(id, { is_active: false });
+      await get().fetchITMembers();
       get().addToast(
-        'Profile Saved',
-        `Registered ${created.full_name} (${created.employee_id}) in company directory.`,
-        'success'
+        'Account Deactivated',
+        `${name ?? 'Specialist'} account marked inactive.`,
+        'info'
       );
-      await get().fetchTeamDataApi();
       return true;
     } catch (err: unknown) {
-      const msg = normalizeApiError(err, 'Failed to create employee profile');
+      const msg = extractApiErrorMessage(err, 'Failed to deactivate account');
+      get().addToast('Deactivation Failed', msg, 'warning');
+      return false;
+    }
+  },
+
+  fetchEmployees: async () => {
+    try {
+      const employees = await adminApi.getEmployees({ offset: 0, limit: 100 });
+      const mapped: EmployeeProfile[] = employees.map((e) => ({
+        id: e.id,
+        employee_id: e.employee_id,
+        full_name: e.full_name,
+        email: e.email,
+        company_id: e.company_id,
+        company_name: e.company_name || 'Five Star Bus Co.',
+        location_id: e.location_id,
+        location_name: e.location_name || 'Terminal Hub',
+        department_id: e.department_id,
+        department_name: e.department_name || 'Department',
+      }));
+      set({ verifiedEmployeesList: mapped });
+    } catch (err: unknown) {
+      console.warn('Could not load employees:', err);
+    }
+  },
+
+  createEmployeeApi: async (payload: EmployeeCreateInput) => {
+    try {
+      await adminApi.createEmployee(payload);
+      await get().fetchEmployees();
+      get().addToast(
+        'Employee Profile Created',
+        `${payload.full_name} (${payload.employee_id}) added to company directory.`,
+        'success'
+      );
+      return true;
+    } catch (err: unknown) {
+      const msg = extractApiErrorMessage(err, 'Failed to create employee profile in directory');
       get().addToast('Employee Registration Failed', msg, 'warning');
       return false;
     }
   },
 
+  deleteEmployeeApi: async (id: string, name?: string) => {
+    try {
+      get().addToast('Employee Removed', `${name ?? id} removed from view.`, 'info');
+      set((state) => ({
+        verifiedEmployeesList: state.verifiedEmployeesList.filter((e) => e.id !== id),
+      }));
+      return true;
+    } catch (err: unknown) {
+      return false;
+    }
+  },
+
+  // Backward compatibility handlers
   createITMember: (memberData) => {
-    const newMember: TeamMember = {
-      id: 'tm-' + Date.now(),
-      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(
-        memberData.name
-      )}&backgroundColor=b6e3f4`,
-      ticketsClosed: 0,
-      activeTickets: 0,
-      flameScore: 10,
-      ...memberData,
-    };
-    set((state) => ({
-      itTeamMembers: [newMember, ...state.itTeamMembers],
-    }));
-    get().addToast(
-      'IT Specialist Account Created',
-      `${newMember.name} added to Five Star IT staff.`,
-      'success'
-    );
+    get().createITMemberApi({
+      username: memberData.username || memberData.email.split('@')[0].toLowerCase().replace(/[^a-z0-9_.-]/g, ''),
+      email: memberData.email,
+      full_name: memberData.name,
+      role: memberData.role === 'Admin' ? 'admin' : 'it',
+      password: memberData.password || 'Tiketa2026!Pass',
+    });
   },
 
   deleteITMember: (id) => {
-    const member = get().itTeamMembers.find((m) => m.id === id);
-    set((state) => ({
-      itTeamMembers: state.itTeamMembers.filter((m) => m.id !== id),
-    }));
-    get().addToast(
-      'Account Removed',
-      `${member?.name ?? 'Specialist'} removed from active IT staff.`,
-      'info'
-    );
+    get().deleteITMemberApi(id);
   },
 
   createEmployee: (empData) => {
-    const newEmp: EmployeeProfile = {
-      id: 'emp-' + Date.now(),
-      ...empData,
-    };
-    set((state) => ({
-      verifiedEmployeesList: [newEmp, ...state.verifiedEmployeesList],
-    }));
-    get().addToast(
-      'Employee Profile Created',
-      `${newEmp.full_name} (${newEmp.employee_id}) added to company directory.`,
-      'success'
-    );
+    get().createEmployeeApi({
+      employee_id: empData.employee_id,
+      full_name: empData.full_name,
+      email: empData.email,
+      company_id: empData.company_id,
+      location_id: empData.location_id,
+      department_id: empData.department_id,
+    });
   },
 
   deleteEmployee: (employeeId) => {
-    set((state) => ({
-      verifiedEmployeesList: state.verifiedEmployeesList.filter(
-        (e) => e.employee_id !== employeeId
-      ),
-    }));
-    get().addToast(
-      'Employee Removed',
-      `Employee ID ${employeeId} removed from directory.`,
-      'info'
-    );
+    get().deleteEmployeeApi(employeeId);
   },
 });

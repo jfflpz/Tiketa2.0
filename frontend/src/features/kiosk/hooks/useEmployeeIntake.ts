@@ -1,151 +1,301 @@
-// @spec BF-01: Reliable Form Submission, Submitting State Restoration, Error Retention
-// @spec BF-03: Six-Button Issue Title & Description Synchronization
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import axios from 'axios';
 import { useAppStore } from '../../../store/useAppStore';
 import type { TaskCategoryCode, Ticket } from '../../../types/ticket';
 import { LOCATIONS } from '../../../constants/domain';
-import { ISSUE_OPTIONS } from '../components/KioskIntakeForm';
+
+export interface LocationObservationState {
+  status: 'idle' | 'requesting' | 'captured' | 'denied' | 'unavailable';
+  observationId: string | null;
+  accuracy: number | null;
+  capturedAt: string | null;
+  message: string | null;
+}
+
+export function formatRemainingTime(totalSeconds: number): string {
+  const safeSec = Math.max(0, Math.ceil(totalSeconds));
+  const m = Math.floor(safeSec / 60);
+  const s = safeSec % 60;
+  return `${m}:${s < 10 ? '0' : ''}${s}`;
+}
 
 export function useEmployeeIntake() {
   const activeOfficeLocationCode = useAppStore((state) => state.activeOfficeLocationCode);
+  const matchEmployeeApi = useAppStore((state) => state.matchEmployeeApi);
+  const recordLocationObservationApi = useAppStore((state) => state.recordLocationObservationApi);
   const submitTicketApi = useAppStore((state) => state.submitTicketApi);
-  const lookupEmployeeApi = useAppStore((state) => state.lookupEmployeeApi);
 
-  const [employeeId, setEmployeeId] = useState('FS-1042');
-  const [declaredName, setDeclaredName] = useState('Maria Santos');
+  // Form Fields
+  const [employeeId, setEmployeeId] = useState('');
+  const [registeredEmail, setRegisteredEmail] = useState('');
   const [selectedTask, setSelectedTask] = useState<TaskCategoryCode>('PRN-TS');
   const [description, setDescription] = useState('');
   const [submittedTicket, setSubmittedTicket] = useState<Ticket | null>(null);
 
-  const [isSearchingEmployee, setIsSearchingEmployee] = useState(false);
-  const [employeeVerified, setEmployeeVerified] = useState(true);
-  const [lookupError, setLookupError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [employeeDetails, setEmployeeDetails] = useState<{
-    company?: string;
-    location?: string;
-    department?: string;
-  }>({
-    company: 'Five Star Bus Co.',
-    location: 'Pasay Terminal',
-    department: 'Operations',
+  // Verification & Cooldown State
+  const [isMatching, setIsMatching] = useState(false);
+  const [isMatched, setIsMatched] = useState(false);
+  const [matchToken, setMatchToken] = useState<string | null>(null);
+  const [matchError, setMatchError] = useState<string | null>(null);
+  const [cooldownSeconds, setCooldownSeconds] = useState<number>(0);
+
+  // Matched Profile (authoritative from server)
+  const [employeeProfile, setEmployeeProfile] = useState<{
+    fullName: string;
+    company: string;
+    location: string;
+    department: string;
+  } | null>(null);
+
+  // Optional Geolocation State
+  const [locationState, setLocationState] = useState<LocationObservationState>({
+    status: 'idle',
+    observationId: null,
+    accuracy: null,
+    capturedAt: null,
+    message: null,
   });
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const activeHub =
     LOCATIONS.find((l) => l.code === activeOfficeLocationCode) ?? LOCATIONS[5];
 
-  // Request sequence counter and cancellation to discard stale lookups on typing or unmount
-  const latestLookupIdRef = useRef(0);
+  // Cooldown countdown timer
+  const cooldownIntervalRef = useRef<number | null>(null);
 
   useEffect(() => {
-    let isCancelled = false;
-    const cleanId = employeeId.trim().toUpperCase();
-
-    // Immediately invalidate verification state on input change
-    setEmployeeVerified(false);
-    setLookupError(null);
-
-    if (!cleanId || cleanId.length < 2) {
-      setIsSearchingEmployee(false);
-      return () => {
-        isCancelled = true;
-      };
+    if (cooldownSeconds > 0) {
+      cooldownIntervalRef.current = window.setInterval(() => {
+        setCooldownSeconds((prev) => {
+          if (prev <= 1) {
+            if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current);
+            setMatchError(null);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      if (cooldownIntervalRef.current) {
+        clearInterval(cooldownIntervalRef.current);
+      }
     }
 
-    const currentReq = ++latestLookupIdRef.current;
-    setIsSearchingEmployee(true);
-
-    const timer = setTimeout(async () => {
-      try {
-        const liveEmp = await lookupEmployeeApi(cleanId);
-        if (isCancelled || currentReq !== latestLookupIdRef.current) return;
-
-        if (liveEmp && liveEmp.full_name) {
-          setDeclaredName(liveEmp.full_name);
-          setEmployeeVerified(true);
-          setEmployeeDetails({
-            company: liveEmp.company_name,
-            location: liveEmp.location_name,
-            department: liveEmp.department_name,
-          });
-          setLookupError(null);
-        } else {
-          setEmployeeVerified(false);
-          setLookupError(`Employee ID "${cleanId}" not recognized in active directory.`);
-        }
-      } catch {
-        if (isCancelled || currentReq !== latestLookupIdRef.current) return;
-        setEmployeeVerified(false);
-        setLookupError(`Unable to verify Employee ID "${cleanId}".`);
-      } finally {
-        if (!isCancelled && currentReq === latestLookupIdRef.current) {
-          setIsSearchingEmployee(false);
-        }
-      }
-    }, 300);
-
     return () => {
-      isCancelled = true;
-      clearTimeout(timer);
+      if (cooldownIntervalRef.current) {
+        clearInterval(cooldownIntervalRef.current);
+      }
     };
-  }, [employeeId, lookupEmployeeApi]);
+  }, [cooldownSeconds]);
 
+  // Invalidate match if user modifies employeeId or email after a match
+  const handleEmployeeIdChange = (val: string) => {
+    // Only accept numeric ASCII digits (1-50 digits), preserving leading zeros
+    const digitsOnly = val.replace(/\D/g, '').slice(0, 50);
+    setEmployeeId(digitsOnly);
+    if (isMatched) {
+      setIsMatched(false);
+      setMatchToken(null);
+      setEmployeeProfile(null);
+    }
+    setMatchError(null);
+  };
+
+  const handleEmailChange = (val: string) => {
+    setRegisteredEmail(val);
+    if (isMatched) {
+      setIsMatched(false);
+      setMatchToken(null);
+      setEmployeeProfile(null);
+    }
+    setMatchError(null);
+  };
+
+  // Trigger matching on deliberate "Continue" click
+  const handleContinueMatching = async () => {
+    if (cooldownSeconds > 0 || isMatching) return;
+
+    const cleanId = employeeId.trim();
+    const cleanEmail = registeredEmail.trim();
+
+    if (!cleanId || !cleanEmail) {
+      setMatchError('Please enter both your Employee ID and registered email.');
+      return;
+    }
+
+    setIsMatching(true);
+    setMatchError(null);
+
+    try {
+      const result = await matchEmployeeApi(cleanId, cleanEmail);
+      if (result && result.match_token) {
+        setIsMatched(true);
+        setMatchToken(result.match_token);
+        setEmployeeProfile({
+          fullName: result.employee.full_name,
+          company: result.employee.company_name,
+          location: result.employee.location_name,
+          department: result.employee.department_name,
+        });
+        setMatchError(null);
+      }
+    } catch (err: unknown) {
+      setIsMatched(false);
+      setMatchToken(null);
+      setEmployeeProfile(null);
+
+      if (axios.isAxiosError(err)) {
+        if (err.response?.status === 429) {
+          const retryHeader = err.response.headers?.['retry-after'];
+          const retryBody = err.response.data?.retry_after;
+          const retrySec = Number(retryHeader || retryBody || 120);
+          setCooldownSeconds(retrySec > 0 ? retrySec : 120);
+          setMatchError(`Too many failed matching attempts.`);
+        } else if (err.response?.status === 404) {
+          setMatchError('Employee ID and email do not match an active employee record.');
+        } else {
+          setMatchError(
+            err.response?.data?.detail ||
+              'Unable to match employee record at this time. Please retry.'
+          );
+        }
+      } else {
+        setMatchError('A network or server error occurred. Please check your connection.');
+      }
+    } finally {
+      setIsMatching(false);
+    }
+  };
+
+  // Optional Geolocation capture
+  const handleCaptureLocation = useCallback(() => {
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+      setLocationState({
+        status: 'unavailable',
+        observationId: null,
+        accuracy: null,
+        capturedAt: null,
+        message: 'Geolocation is not supported by this browser.',
+      });
+      return;
+    }
+
+    setLocationState((prev) => ({
+      ...prev,
+      status: 'requesting',
+      message: 'Requesting device coordinates...',
+    }));
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude, accuracy } = pos.coords;
+        const capturedTime = new Date().toLocaleTimeString();
+        try {
+          const obs = await recordLocationObservationApi({
+            latitude,
+            longitude,
+            accuracy: Math.round(accuracy),
+          });
+          setLocationState({
+            status: 'captured',
+            observationId: obs ? obs.observation_id : null,
+            accuracy: Math.round(accuracy),
+            capturedAt: capturedTime,
+            message: `Location captured (±${Math.round(accuracy)}m)`,
+          });
+        } catch {
+          // Failure to persist observation does not block user
+          setLocationState({
+            status: 'captured',
+            observationId: null,
+            accuracy: Math.round(accuracy),
+            capturedAt: capturedTime,
+            message: `Location captured (±${Math.round(accuracy)}m, unlinked)`,
+          });
+        }
+      },
+      (err) => {
+        if (err.code === err.PERMISSION_DENIED) {
+          setLocationState({
+            status: 'denied',
+            observationId: null,
+            accuracy: null,
+            capturedAt: null,
+            message: 'Location permission denied. Reporting remains fully available.',
+          });
+        } else {
+          setLocationState({
+            status: 'unavailable',
+            observationId: null,
+            accuracy: null,
+            capturedAt: null,
+            message: 'Location signal unavailable. Reporting remains fully available.',
+          });
+        }
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 60000,
+      }
+    );
+  }, [recordLocationObservationApi]);
+
+  // Submit ticket
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!employeeVerified || isSubmitting) return;
-
-    // BF-03: Retrieve selected six-button issue title
-    const issueMeta = ISSUE_OPTIONS.find((opt) => opt.code === selectedTask);
-    const taskTitle = issueMeta ? issueMeta.title : 'Technical Support Request';
-
-    // BF-01/BF-03: Construct description adhering to backend min 10-char requirement
-    const trimmedDesc = description.trim();
-    const finalDescription = trimmedDesc
-      ? `${taskTitle}: ${trimmedDesc}`
-      : `${taskTitle} reported from ${employeeDetails.location || activeHub.name} employee helpdesk screen.`;
+    if (!isMatched || !matchToken || isSubmitting) return;
+    if (!description.trim() && !selectedTask) return;
 
     setIsSubmitting(true);
-    try {
-      const created = await submitTicketApi({
-        employeeId: employeeId.trim().toUpperCase(),
-        taskCode: selectedTask,
-        taskTitle,
-        description: finalDescription,
-        companyName: employeeDetails.company ?? 'Pangasinan Five Star Bus Co.',
-        locationName: employeeDetails.location ?? activeHub.name,
-        departmentName: employeeDetails.department ?? 'Operations',
-        requestorName: declaredName.trim() || 'Terminal Staff',
-      });
+    const created = await submitTicketApi({
+      employeeId: employeeId.trim(),
+      taskCode: selectedTask,
+      description:
+        description.trim() ||
+        `Reported from ${employeeProfile?.location || activeHub.name} employee helpdesk screen.`,
+      matchToken,
+      observationId: locationState.observationId,
+      companyName: employeeProfile?.company ?? 'Pangasinan Five Star Bus Co.',
+      locationName: employeeProfile?.location ?? activeHub.name,
+      departmentName: employeeProfile?.department ?? 'Operation',
+      requestorName: employeeProfile?.fullName ?? 'Terminal Staff',
+    });
 
-      if (created) {
-        setSubmittedTicket(created);
-        setDescription('');
-      }
-      // On failure, input is preserved in state so employee does not lose typed data
-    } finally {
-      setIsSubmitting(false);
+    setIsSubmitting(false);
+    if (created) {
+      setSubmittedTicket(created);
+      setDescription('');
     }
   };
 
   const resetIntake = () => {
     setSubmittedTicket(null);
     setDescription('');
+    // Retain matched profile if desired, or reset
   };
 
   return {
     employeeId,
-    setEmployeeId,
-    declaredName,
+    setEmployeeId: handleEmployeeIdChange,
+    registeredEmail,
+    setRegisteredEmail: handleEmailChange,
     selectedTask,
     setSelectedTask,
     description,
     setDescription,
     submittedTicket,
-    isSearchingEmployee,
-    employeeVerified,
-    lookupError,
+    isMatching,
+    isMatched,
+    matchToken,
+    matchError,
+    cooldownSeconds,
+    employeeProfile,
+    locationState,
+    handleCaptureLocation,
+    handleContinueMatching,
     isSubmitting,
-    employeeDetails,
     activeHub,
     handleSubmit,
     resetIntake,

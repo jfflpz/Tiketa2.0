@@ -17,9 +17,11 @@ export const EmployeeTicketDetails: React.FC<EmployeeTicketDetailsProps> = ({ ti
   const [copied, setCopied] = React.useState(false);
 
   const handleCopy = async () => {
-    await copyTicketShareLink(ticket.ticketCode);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    const res = await copyTicketShareLink(ticket.ticketCode, ticket.id);
+    if (res.success) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   const getStepIndex = (status: Ticket['status']) => {
@@ -62,29 +64,36 @@ export const EmployeeTicketDetails: React.FC<EmployeeTicketDetailsProps> = ({ ti
         </div>
       </div>
 
-      {/* Validation Request Banner when RESL */}
+      {/* Verification Action Banner if status === RESL */}
       {ticket.status === 'RESL' && (
-        <div className="p-5 bg-emerald-50 border border-emerald-200 rounded-3xl space-y-3 shadow-sm">
-          <div className="flex items-center gap-2 text-emerald-950 font-bold text-sm">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-            <span>IT Support Marked This Issue Resolved</span>
+        <div className="bg-emerald-50 border border-emerald-200/80 rounded-2xl p-5 shadow-card space-y-3 animate-fade-in">
+          <div className="flex items-start gap-3">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <h3 className="font-bold text-xs text-emerald-950 uppercase tracking-wide">
+                IT Support Marked This Issue Resolved
+              </h3>
+              <p className="text-xs text-emerald-800 leading-relaxed">
+                Please verify your equipment (test printing, connection, etc.). If working normally, click below to review and confirm closure.
+              </p>
+            </div>
           </div>
-          <p className="text-xs text-emerald-800 leading-relaxed">
-            Please verify your equipment (test printing, connection, etc.). If working normally, click below to review and confirm closure.
-          </p>
-          <button
-            onClick={() => openVerificationModal(ticket.id)}
-            className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs press-fx shadow-sm inline-flex items-center gap-2"
-          >
-            <ShieldCheck className="w-4 h-4" />
-            <span>Review &amp; Verify Closure</span>
-          </button>
+
+          <div className="pt-1 flex flex-wrap items-center gap-2.5">
+            <button
+              onClick={() => openVerificationModal(ticket.id)}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center gap-2 press-fx shadow-sm"
+            >
+              <ShieldCheck className="w-4 h-4" />
+              <span>Review &amp; Verify Closure</span>
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Progress Stepper */}
-      <div className="bg-surface border border-line rounded-2xl p-5 shadow-card">
-        <div className="grid grid-cols-4 gap-2 text-center text-[11px]">
+      {/* 4-Step Progress Indicator */}
+      <div className="bg-surface border border-line rounded-2xl p-4 shadow-card">
+        <div className="grid grid-cols-4 gap-2 text-center text-xs font-semibold">
           <div className={`p-2 rounded-xl ${currentStep >= 1 ? 'bg-zinc-900 text-white font-bold' : 'bg-canvas text-ink-faint'}`}>
             1. Registered
           </div>
@@ -114,7 +123,9 @@ export const EmployeeTicketDetails: React.FC<EmployeeTicketDetailsProps> = ({ ti
           </div>
           <div>
             <span className="text-ink-subtle block text-[11px]">Requestor:</span>
-            <span className="font-medium text-ink">{ticket.requestor} ({ticket.employeeId || 'FS-1042'})</span>
+            <span className="font-medium text-ink">
+              {ticket.requestor} {ticket.employeeId ? `(${ticket.employeeId})` : ''}
+            </span>
           </div>
           <div>
             <span className="text-ink-subtle block text-[11px]">Assigned Technician:</span>

@@ -1,6 +1,8 @@
 # Tiketa — Bug Fixes 1.0 Sprint Plan
 
-Updated: 2026-10-23. Status: planned; implementation has not started under this plan.
+> **2026-10-27 execution update:** use the [shared integration sprint](INTEGRATION-SPRINT-PLAN.md) and [API map](../03-Contracts/API-INTEGRATION-MAP.md) for delivery order and merge gates. All BF-01–BF-12 requirements remain. The current no-runtime-mock policy supersedes the development-fixture allowance below; fixtures are limited to isolated automated tests.
+
+Updated: 2026-10-24. Status: planned; implementation has not started under this plan.
 
 ## 1. Sprint structure
 
@@ -15,6 +17,7 @@ Execution documents:
 | Document | Purpose |
 | --- | --- |
 | [Backend track](BUG-FIXES-1.0-BACKEND-PLAN.md) | Person 1's tasks, dependencies, deliverables and checks |
+| [Corrected backend M1/M2 plan](BUG-FIXES-1.0-BACKEND-M1-M2-IMPLEMENTATION-PLAN.md) | Reviewed migration/API strategy for B-01–B-04, including numeric-only IDs |
 | [Frontend track](BUG-FIXES-1.0-FRONTEND-PLAN.md) | Person 2's tasks, dependencies, deliverables and checks |
 | [Requirement backlog](BUG-FIXES-1.0.md) | Original findings, intended behavior and BF-01–BF-12 acceptance criteria |
 
@@ -28,18 +31,18 @@ All items start as Planned. B/F identifiers below refer to tasks in the two exec
 
 | Requirement | Backend responsibility | Frontend responsibility |
 | --- | --- | --- |
-| BF-01 — Submission white screen | B-01: reproduce API failures and verify validation responses | F-02: fix actual crash, normalize errors, retain input and show receipt |
+| BF-01 — Intake matching & crash fix | B-01: ID + email matching, generic mismatch, match token, session Redis limits | F-02: ID + email form, Continue button, cooldown UI, retain input, submit with match token |
 | BF-02 — Login and routing | B-01: confirm login/refresh/logout contract | F-01: dashboard landing, public route behavior, verification-link login and one Login button |
 | BF-03 — Report and diagnosis | B-02: persist original issue/details and separate diagnosis/resolution | F-02/F-03: six-button title, description-only additional details and diagnosis workflow |
 | BF-04 — Ticket history/status | B-03: complete ticket reads, status filters, dates/duration and pagination | F-04: fresh employee/staff status, closed history and canonical mapping |
 | BF-05 — Bell/messages/dispatch | B-03/B-05: durable claim/assignment and conversation summaries | F-04/F-05: all action entry points, current bell/dispatch and persistent message summaries |
 | BF-06 — Employee/technician chat | B-05: message storage and participant authorization | F-05: real conversation reads/writes and refresh/retry handling |
 | BF-07 — Repair notes/checklists | B-06: persisted library and independent ticket checklist instances | F-06: create/edit/delete/apply and saved checklist progress |
-| BF-08 — Accounts/employees | B-04: existing directory APIs, validation, roles and password handling | F-07: staff/employee forms and lists, password input and fixed ID prefix |
+| BF-08 — Accounts/employees | B-04: directory APIs, numeric-ID migration/validation, roles and password handling | F-07: staff/employee forms and lists, password input and numeric-only employee IDs |
 | BF-09 — Overview charts | B-07: scoped monthly aggregates and documented metrics | F-08: live chart data, dynamic year and correct labels |
 | BF-10 — Drawer/workbench UX | B-02/B-05: diagnosis save and conversation behavior | F-03/F-05: Service Record & Diagnosis default, shortcuts and internal-note control removal |
 | BF-11 — Modal backdrop | No API dependency | F-09: full-viewport overlays, stacking, scrolling and focus |
-| BF-12 — Browser location | B-08: separate location observations and association | F-09: permission request, capture, save and denial/error handling |
+| BF-12 — Optional browser location | B-08: optional observation storage (`location_observations`) and ticket link | F-09: non-blocking intake request, 'Location captured' badge, denial/timeout resilience |
 
 ## 3. Shared milestones inside this sprint
 
@@ -72,11 +75,12 @@ Person 2 connects the real endpoint and demonstrates a save/read after reload be
 - Reproduce the white screen. Validation objects reaching React toast content are a hypothesis until the failure is observed.
 - Define stable six-button issue labels, original description, diagnosis and resolution fields together. Preserve historical records and canonical 15-field job-log exports.
 - Use consistent statuses: OPEN = awaiting technician, PROG = in progress, RESL = repaired/awaiting verification, CLSD = verified/closed. RESL and CLSD appear in completed history.
-- Audit existing employee IDs before enforcing `FS-` plus digits; preserve leading zeros and do not rewrite existing IDs automatically.
+- Apply the updated numeric-only employee-ID requirement through a collision-checked migration that preserves UUIDs and leading zeros. Recommended bounds are 1–50 ASCII digits. Coordinate frontend prefix removal and backend enforcement; see the corrected M1/M2 plan.
 - Document accountless employee conversation access and recovery. Ticket code or Employee ID alone must not expose a conversation. Staff login must never act as employee closure confirmation.
 - Agree repair-library edit/delete permissions and retain applied ticket records when templates change.
 - Define overview completion-month/personal/fleet scope separately from creation-month SLA reports.
-- Browser location alongside official terminal is confirmed. Document observation association, access and retention; preserve the directory-derived terminal and support denied permission.
+- Employee-record matching (ID + registered email -> Continue -> 'Employee details matched.') is confirmed. Enforce Redis failed-attempt limits per session (4 attempts, 5th = 2-min cooldown, escalating to 10-min cooldown; 60 req/min IP throttle). Issue short-lived match token for submission.
+- Browser location is strictly optional supporting telemetry requested during reporting. It never blocks reporting or staff login; consented observations persist in `location_observations` with accuracy/time and display 'Location captured'.
 
 Resolve these within the relevant tasks and record the result in the contracts/backlog. They are not separate sprints or extra approval stages for routine implementation.
 

@@ -1,6 +1,6 @@
 // @spec UI-TEAM-01: IT Support Specialist Roster, Employee Directory & Account Governance
-import React, { useState, useEffect } from 'react';
-import { UserPlus, Plus, Briefcase, Fingerprint, Clock, Search, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { UserPlus, Plus, Briefcase, Fingerprint, Clock, Search, RefreshCw, Loader2 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { TeamKpiSummaryCards } from './components/TeamKpiSummaryCards';
 import { ITStaffTable } from './components/ITStaffTable';
@@ -11,15 +11,20 @@ import { AddEmployeeModal } from './components/AddEmployeeModal';
 
 export const TeamAdministrationView: React.FC = () => {
   const itTeamMembers = useAppStore((state) => state.itTeamMembers);
-    const deleteITMember = useAppStore((state) => state.deleteITMember);
-  const verifiedEmployeesList = useAppStore((state) => state.verifiedEmployeesList);
-    const deleteEmployee = useAppStore((state) => state.deleteEmployee);
+  const fetchITMembers = useAppStore((state) => state.fetchITMembers);
   const createITMemberApi = useAppStore((state) => state.createITMemberApi);
+  const deleteITMemberApi = useAppStore((state) => state.deleteITMemberApi);
+
+  const verifiedEmployeesList = useAppStore((state) => state.verifiedEmployeesList);
+  const fetchEmployees = useAppStore((state) => state.fetchEmployees);
   const createEmployeeApi = useAppStore((state) => state.createEmployeeApi);
-  const fetchDictionariesApi = useAppStore((state) => state.fetchDictionariesApi);
-  const fetchTeamDataApi = useAppStore((state) => state.fetchTeamDataApi);
+  const deleteEmployeeApi = useAppStore((state) => state.deleteEmployeeApi);
+
+  const fetchDictionaries = useAppStore((state) => state.fetchDictionaries);
   const isLoadingTeam = useAppStore((state) => state.isLoadingTeam);
+
   const tickets = useAppStore((state) => state.tickets);
+  const fetchQueueApi = useAppStore((state) => state.fetchQueueApi);
   const setSelectedTicketId = useAppStore((state) => state.setSelectedTicketId);
   const setActiveView = useAppStore((state) => state.setActiveView);
   const currentUser = useAppStore((state) => state.currentUser);
@@ -28,15 +33,19 @@ export const TeamAdministrationView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'IT_STAFF' | 'EMPLOYEES' | 'ACTIVITY'>('IT_STAFF');
   const [employeeSearch, setEmployeeSearch] = useState('');
   const [itSearch, setItSearch] = useState('');
-  useEffect(() => {
-    fetchDictionariesApi();
-    fetchTeamDataApi();
-  }, [fetchDictionariesApi, fetchTeamDataApi]);
-
+  const [isManualRefreshing, setIsManualRefreshing] = useState(false);
 
   // Modals state
   const [isAddITModalOpen, setAddITModalOpen] = useState(false);
   const [isAddEmployeeModalOpen, setAddEmployeeModalOpen] = useState(false);
+
+  // Load real database records on mount
+  useEffect(() => {
+    fetchDictionaries();
+    fetchITMembers();
+    fetchEmployees();
+    fetchQueueApi();
+  }, [fetchDictionaries, fetchITMembers, fetchEmployees, fetchQueueApi]);
 
   // Operational metrics
   const activeTechCount = itTeamMembers.filter((m) => m.status === 'active').length;
@@ -60,11 +69,56 @@ export const TeamAdministrationView: React.FC = () => {
     if (!q) return true;
     return (
       m.name.toLowerCase().includes(q) ||
+      (m.username && m.username.toLowerCase().includes(q)) ||
+      m.email.toLowerCase().includes(q) ||
       m.role.toLowerCase().includes(q) ||
       m.primaryLocation.toLowerCase().includes(q) ||
       m.department.toLowerCase().includes(q)
     );
   });
+
+  // Combine authoritative server metrics with reactive client ticket mutations
+  const itStaffWithLiveMetrics = useMemo(() => {
+    return filteredITStaff.map((m) => {
+      const userTickets = tickets.filter(
+        (t) =>
+          t.assigned_tech_id === m.id ||
+          t.workedById === m.id ||
+          (t.workedBy && t.workedBy.toLowerCase() === m.name.toLowerCase())
+      );
+      const clientClosed = userTickets.filter(
+        (t) => t.status === 'CLSD' || t.status === 'RESL'
+      ).length;
+      const clientActive = userTickets.filter((t) => t.status === 'PROG').length;
+
+      return {
+        ...m,
+        ticketsClosed: Math.max(m.ticketsClosed, clientClosed),
+        activeTickets: Math.max(m.activeTickets, clientActive),
+      };
+    });
+  }, [filteredITStaff, tickets]);
+
+  const handleManualRefresh = async () => {
+    setIsManualRefreshing(true);
+    try {
+      await Promise.all([
+        fetchITMembers(),
+        fetchEmployees(),
+        fetchDictionaries(),
+        fetchQueueApi(),
+      ]);
+      addToast(
+        'Roster & Directory Synchronized',
+        'Latest IT specialist accounts, employee profiles, and repair workloads loaded from server.',
+        'info'
+      );
+    } catch {
+      addToast('Sync Warning', 'Could not complete full directory refresh.', 'warning');
+    } finally {
+      setTimeout(() => setIsManualRefreshing(false), 500);
+    }
+  };
 
   return (
     <div className="space-y-5 pb-8">
@@ -75,7 +129,7 @@ export const TeamAdministrationView: React.FC = () => {
             <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase tracking-wider">
               Governance &amp; Accounts
             </span>
-            <span className="text-xs font-mono text-zinc-400">2-Tier RBAC Staff Suite</span>
+            <span className="text-xs font-mono text-zinc-400">PostgreSQL Live RBAC Suite</span>
           </div>
           <h1 className="text-xl font-bold tracking-tight text-ink mt-1">
             IT Team Roster &amp; Account Governance
@@ -88,13 +142,19 @@ export const TeamAdministrationView: React.FC = () => {
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            disabled={isLoadingTeam}
-            onClick={() => fetchTeamDataApi()}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-zinc-50 border border-[#ECEEF2] text-xs font-semibold text-ink shadow-sm transition-colors press-fx"
-            title="Refresh directory rosters"
+            disabled={isManualRefreshing || isLoadingTeam}
+            onClick={handleManualRefresh}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-zinc-50 text-ink border border-[#ECEEF2] text-xs font-bold shadow-xs transition-colors press-fx disabled:opacity-60"
+            title="Refresh directory and accounts from server"
           >
-            <RefreshCw className={`w-3.5 h-3.5 text-zinc-500 ${isLoadingTeam ? 'animate-spin text-orange-500' : ''}`} />
-            <span>{isLoadingTeam ? 'Syncing...' : 'Sync Directory'}</span>
+            <RefreshCw
+              className={`w-3.5 h-3.5 text-zinc-500 ${
+                isManualRefreshing || isLoadingTeam ? 'animate-spin text-orange-600' : ''
+              }`}
+            />
+            <span className="hidden sm:inline">
+              {isManualRefreshing || isLoadingTeam ? 'Syncing...' : 'Refresh'}
+            </span>
           </button>
 
           <button
@@ -117,7 +177,7 @@ export const TeamAdministrationView: React.FC = () => {
         </div>
       </div>
 
-      {/* Top 5 Operational Transit IT KPI Cards */}
+      {/* Top Operational IT KPI Cards */}
       <TeamKpiSummaryCards
         itStaffCount={itTeamMembers.length}
         activeTechCount={activeTechCount}
@@ -126,7 +186,7 @@ export const TeamAdministrationView: React.FC = () => {
         verifiedEmployeesCount={verifiedEmployeesList.length}
       />
 
-      {/* Directory & Management Segmented Controls */}
+      {/* Segmented Controls and Search Bar */}
       <div className="bg-white border border-[#ECEEF2] rounded-2xl p-2 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-1.5 overflow-x-auto">
           <button
@@ -169,7 +229,7 @@ export const TeamAdministrationView: React.FC = () => {
           </button>
         </div>
 
-        {/* Search input based on active tab */}
+        {/* Search Input */}
         {activeTab === 'IT_STAFF' && (
           <div className="relative">
             <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -197,41 +257,44 @@ export const TeamAdministrationView: React.FC = () => {
         )}
       </div>
 
-      {/* TAB 1: IT SUPPORT SPECIALISTS ROSTER */}
-      {activeTab === 'IT_STAFF' && (
-        <ITStaffTable
-          staff={filteredITStaff}
-          currentUserEmail={currentUser?.email}
-          onDeleteMember={(id, name) => {
-            if (window.confirm(`Are you sure you want to delete ${name}'s IT account?`)) {
-              deleteITMember(id);
-              addToast('Account Deleted', `Removed ${name} from IT staff roster.`, 'info');
-            }
-          }}
-        />
-      )}
+      {isLoadingTeam && itTeamMembers.length === 0 ? (
+        <div className="bg-white border border-[#ECEEF2] rounded-3xl p-12 text-center space-y-3 shadow-card">
+          <Loader2 className="w-8 h-8 text-orange-600 animate-spin mx-auto" />
+          <p className="text-xs font-semibold text-zinc-600">Loading accounts from backend database...</p>
+        </div>
+      ) : (
+        <>
+          {/* TAB 1: IT SUPPORT SPECIALISTS ROSTER */}
+          {activeTab === 'IT_STAFF' && (
+            <ITStaffTable
+              staff={itStaffWithLiveMetrics}
+              currentUserEmail={currentUser?.email}
+              onDeleteMember={(id, name) => {
+                deleteITMemberApi(id, name);
+              }}
+            />
+          )}
 
-      {/* TAB 2: VERIFIED EMPLOYEE DIRECTORY */}
-      {activeTab === 'EMPLOYEES' && (
-        <VerifiedEmployeeTable
-          employees={filteredEmployees}
-          onOpenAddModal={() => setAddEmployeeModalOpen(true)}
-          onDeleteEmployee={(empId, name) => {
-            if (window.confirm(`Delete employee profile for ${name} (${empId})?`)) {
-              deleteEmployee(empId);
-              addToast('Profile Removed', `Deleted employee directory profile for ${name}.`, 'info');
-            }
-          }}
-        />
-      )}
+          {/* TAB 2: VERIFIED EMPLOYEE DIRECTORY */}
+          {activeTab === 'EMPLOYEES' && (
+            <VerifiedEmployeeTable
+              employees={filteredEmployees}
+              onOpenAddModal={() => setAddEmployeeModalOpen(true)}
+              onDeleteEmployee={(empId, name) => {
+                deleteEmployeeApi(empId, name);
+              }}
+            />
+          )}
 
-      {/* TAB 3: RECENT TECHNICIAN ACTIVITY */}
-      {activeTab === 'ACTIVITY' && (
-        <TechnicianActivityFeed
-          tickets={tickets}
-          onSelectTicket={setSelectedTicketId}
-          onOpenQueue={() => setActiveView('tickets')}
-        />
+          {/* TAB 3: RECENT TECHNICIAN ACTIVITY */}
+          {activeTab === 'ACTIVITY' && (
+            <TechnicianActivityFeed
+              tickets={tickets}
+              onSelectTicket={setSelectedTicketId}
+              onOpenQueue={() => setActiveView('tickets')}
+            />
+          )}
+        </>
       )}
 
       {/* MODAL 1: CREATE IT SPECIALIST ACCOUNT */}
@@ -239,7 +302,29 @@ export const TeamAdministrationView: React.FC = () => {
         isOpen={isAddITModalOpen}
         onClose={() => setAddITModalOpen(false)}
         onSubmit={async (data) => {
-          return await createITMemberApi(data);
+          const success = await createITMemberApi({
+            username: data.username,
+            password: data.password,
+            full_name: data.name,
+            email: data.email,
+            role: data.systemRole,
+          });
+          if (success) {
+            try {
+              localStorage.setItem(
+                `tiketa_staff_meta_${data.username}`,
+                JSON.stringify({
+                  roleTitle: data.role,
+                  department: data.department,
+                  primaryLocation: data.primaryLocation,
+                })
+              );
+              fetchITMembers();
+            } catch (e) {
+              // Ignore storage errors
+            }
+          }
+          return success;
         }}
       />
 
@@ -248,14 +333,7 @@ export const TeamAdministrationView: React.FC = () => {
         isOpen={isAddEmployeeModalOpen}
         onClose={() => setAddEmployeeModalOpen(false)}
         onSubmit={async (data) => {
-          return await createEmployeeApi({
-            employee_id: data.employee_id,
-            full_name: data.full_name,
-            email: data.email,
-            company_id: data.company_id,
-            location_id: data.location_id,
-            department_id: data.department_id,
-          });
+          return await createEmployeeApi(data);
         }}
       />
     </div>

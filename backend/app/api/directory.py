@@ -2,12 +2,16 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, Request
-from sqlalchemy import select
+from sqlalchemy import func, select
 from starlette.concurrency import run_in_threadpool
 
 from app.api.deps import DB, Admin, CurrentUser
-from app.core.cache import rate_limit
-from app.core.security import digest, hash_password
+from app.core.cache import (
+    check_session_cooldown,
+    rate_limit,
+    record_matching_attempt,
+)
+from app.core.security import digest, hash_password, issue_match_token
 from app.models import (
     Company,
     Department,
@@ -16,10 +20,14 @@ from app.models import (
     LocationDepartment,
     MaintenancePlan,
     TaskCategory,
+    Ticket,
     User,
 )
 from app.schemas import (
     EmployeeInput,
+    EmployeeMatchInput,
+    EmployeeMatchOut,
+    EmployeeScopeOut,
     PlanInput,
     ScopeInput,
     UserCreate,
@@ -31,12 +39,72 @@ from app.services.directory import employee_view, find_employee, validate_scope
 router = APIRouter(tags=["Directory"])
 
 
+@router.post("/employees/match", response_model=EmployeeMatchOut)
+async def match_employee(
+    body: EmployeeMatchInput,
+    request: Request,
+    db: DB,
+):
+    session_id = request.headers.get("X-Kiosk-Session-ID") or request.headers.get(
+        "x-kiosk-session-id"
+    )
+    if not session_id or len(session_id.strip()) < 8:
+        raise HTTPException(400, "X-Kiosk-Session-ID header is required")
+    session_id = session_id.strip()
+
+    client_ip = request.client.host if request.client else "unknown"
+    await rate_limit("match_ip:" + digest(client_ip), 60, 60)
+    await check_session_cooldown(session_id)
+
+    clean_id = body.employee_id.strip()
+    clean_email = str(body.email).strip().lower()
+
+    employee = await db.scalar(
+        select(Employee).where(
+            Employee.employee_id == clean_id,
+            func.lower(Employee.email) == clean_email,
+            Employee.is_active.is_(True),
+        )
+    )
+
+    if not employee:
+        await record_matching_attempt(session_id, is_mismatch=True)
+        raise HTTPException(
+            404, "Employee ID and email do not match an active employee record."
+        )
+
+    await record_matching_attempt(session_id, is_mismatch=False)
+
+    company = await db.get(Company, employee.company_id)
+    location = await db.get(Location, employee.location_id)
+    department = await db.get(Department, employee.department_id)
+
+    token = issue_match_token(employee.employee_id, session_id)
+
+    return EmployeeMatchOut(
+        matched=True,
+        match_token=token,
+        employee=EmployeeScopeOut(
+            full_name=employee.full_name,
+            company_name=company.name if company else "",
+            location_name=location.name if location else "",
+            department_name=department.name if department else "",
+        ),
+    )
+
+
 @router.get("/employees/lookup")
 async def lookup(
-    request: Request, db: DB, q: Annotated[str, Query(min_length=1, max_length=150)]
+    request: Request,
+    db: DB,
+    user: CurrentUser,
+    q: Annotated[str, Query(min_length=1, max_length=150)],
 ):
     await rate_limit("lookup:" + digest(request.client.host), 60, 60)
-    return await employee_view(db, await find_employee(db, q))
+    query_str = q.strip()
+    if "@" not in query_str and not query_str.isdigit():
+        raise HTTPException(422, "Employee ID query must consist only of ASCII digits")
+    return await employee_view(db, await find_employee(db, query_str))
 
 
 @router.get("/dictionaries")
@@ -66,11 +134,45 @@ async def users(
     offset: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=200),
 ):
-    return (
+    users_list = (
         await db.scalars(
             select(User).order_by(User.username).offset(offset).limit(limit)
         )
     ).all()
+    if not users_list:
+        return []
+
+    user_ids = [u.id for u in users_list]
+    stats_query = (
+        select(
+            Ticket.assigned_tech_id,
+            func.count().filter(Ticket.status == "PROG").label("active_bench"),
+            func.count()
+            .filter(Ticket.status.in_(["CLSD", "RESL"]))
+            .label("closed_repairs"),
+        )
+        .where(Ticket.assigned_tech_id.in_(user_ids))
+        .group_by(Ticket.assigned_tech_id)
+    )
+    stats_rows = (await db.execute(stats_query)).all()
+    stats_map = {
+        row.assigned_tech_id: (row.active_bench, row.closed_repairs)
+        for row in stats_rows
+    }
+
+    return [
+        UserOut(
+            id=u.id,
+            username=u.username,
+            email=u.email,
+            full_name=u.full_name,
+            role=u.role,
+            is_active=u.is_active,
+            active_bench=stats_map.get(u.id, (0, 0))[0],
+            closed_repairs=stats_map.get(u.id, (0, 0))[1],
+        )
+        for u in users_list
+    ]
 
 
 @router.post("/admin/users", status_code=201, response_model=UserOut)

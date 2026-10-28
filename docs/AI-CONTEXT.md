@@ -17,18 +17,22 @@ Direct your search to these targeted documentation modules:
 - **System Architecture & Frontend Slices**: `docs/01-Architecture/SYSTEM-ARCHITECTURE.md` (Contains 9-slice Zustand map, component directory topology, and strict async/store invariants)
 - **Database Schema & 15 Canonical Fields**: `docs/02-Database/DATA-DICTIONARY.md`
 - **REST API Contracts**: `docs/03-Contracts/OPENAPI-CONTRACTS.md`
+- **Current Frontend/Backend Endpoint Map**: `docs/03-Contracts/API-INTEGRATION-MAP.md` (Screen-to-endpoint mapping, current gaps, schema authority; start here for integration work)
+- **Current Shared Integration Sprint**: `docs/04-Sprints/INTEGRATION-SPRINT-PLAN.md` (Concise backend/frontend assignments, no runtime mock data, per-merge persistence checks)
 - **Reporting Business Rules**: `docs/03-Contracts/REPORTING-RULES.md`
 - **Active Sprints & Engineering Logs**: `docs/04-Sprints/SPRINT-BOARD.md`
   - Master Engineering Plan: `docs/04-Sprints/MASTER-SPRINT-PLAN.md`
   - Backend Track: `docs/04-Sprints/BACKEND-SPRINT-PLAN.md`
   - Frontend Track: `docs/04-Sprints/FRONTEND-SPRINT-PLAN.md`
 - **Git Rebase & Standards**: `docs/05-Standards/GIT-REBASE-WORKFLOW.md`
+- **Backend Setup & Developer Onboarding**: `docs/05-Standards/BACKEND-SETUP-GUIDE.md` (Prerequisites, local venv setup, Docker Postgres/Redis, demo seeds & troubleshooting)
+- **Backend Operations & Deployment Runbook**: `docs/05-Standards/BACKEND-OPERATIONS.md`
 
 ---
 
 ## 3. Account & Ticket Intake Architecture
 1. **Public/Intranet Intake (`/report`)**:
-   - Employees input their **Employee ID No.** (e.g. `FS-1042`).
+   - Employees input their **Employee ID No.** (1–50 ASCII digits, e.g. `1042`, preserving leading zeros).
    - Backend auto-fetches verified profile from `employees` table and **hard-locks Location and Department**.
    - Employee taps 1 of 6 visual category buttons and submits.
    - Guarded against rapid-typing race conditions; submission blocked until active ID is verified.

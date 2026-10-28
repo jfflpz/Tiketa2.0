@@ -1,5 +1,6 @@
 import type { AppSliceCreator } from '../types';
 import { reportsApi, type ReportKPIs } from '../../api/client';
+import type { ReportFilterParams } from '../../features/reports/export/types';
 
 export interface ReportsSlice {
   kpis: ReportKPIs | null;
@@ -11,6 +12,14 @@ export interface ReportsSlice {
   isFetchingReport: boolean;
   fetchReportApi: (reportName: string) => Promise<void>;
   downloadReportCSVApi: (reportName: string) => Promise<void>;
+  reportFilters: ReportFilterParams;
+  setReportFilters: (filters: ReportFilterParams) => void;
+  reportDateRange: { date_from: string; date_to: string } | null;
+  isExportPptxModalOpen: boolean;
+  setExportPptxModalOpen: (open: boolean) => void;
+  activeExportController: AbortController | null;
+  setActiveExportController: (controller: AbortController | null) => void;
+  cancelActiveExport: () => void;
   resetReportsState: () => void;
 }
 
@@ -18,15 +27,43 @@ export const createReportsSlice: AppSliceCreator<ReportsSlice> = (set, get) => {
   // Request sequence counters kept in store instance closure
   let activeReportRequestId = 0;
   let activeKpisRequestId = 0;
+  let activeExportControllerInstance: AbortController | null = null;
 
   return {
     kpis: null,
     isFetchingKPIs: false,
+    reportFilters: {},
+    reportDateRange: null,
+    isExportPptxModalOpen: false,
+    activeExportController: null,
+
+    setActiveExportController: (controller: AbortController | null) => {
+      activeExportControllerInstance = controller;
+      set({ activeExportController: controller });
+    },
+
+    cancelActiveExport: () => {
+      if (activeExportControllerInstance) {
+        activeExportControllerInstance.abort();
+        activeExportControllerInstance = null;
+      }
+      set({ activeExportController: null });
+    },
+
+    setReportFilters: (filters: ReportFilterParams) => {
+      set({ reportFilters: filters });
+    },
+
+    setExportPptxModalOpen: (open: boolean) => {
+      set({ isExportPptxModalOpen: open });
+    },
+
     fetchKPIsApi: async () => {
       const requestId = ++activeKpisRequestId;
       set({ isFetchingKPIs: true });
       try {
-        const data = await reportsApi.getKPIs();
+        const filters = get().reportFilters;
+        const data = await reportsApi.getKPIs(filters);
         if (requestId === activeKpisRequestId) {
           set({ kpis: data, isFetchingKPIs: false });
         }
@@ -40,18 +77,25 @@ export const createReportsSlice: AppSliceCreator<ReportsSlice> = (set, get) => {
     resetReportsState: () => {
       activeReportRequestId++;
       activeKpisRequestId++;
+      if (activeExportControllerInstance) {
+        activeExportControllerInstance.abort();
+        activeExportControllerInstance = null;
+      }
       set({
         kpis: null,
         isFetchingKPIs: false,
         activeReportId: 1,
         activeReportData: null,
         isFetchingReport: false,
+        reportFilters: {},
+        reportDateRange: null,
+        isExportPptxModalOpen: false,
+        activeExportController: null,
       });
     },
 
     activeReportId: 1,
     setActiveReportId: (id: number) => {
-      // Invalidate any inflight requests and clear stale rows while loading
       activeReportRequestId++;
       set({ activeReportId: id, activeReportData: null, isFetchingReport: true });
     },
@@ -62,9 +106,14 @@ export const createReportsSlice: AppSliceCreator<ReportsSlice> = (set, get) => {
       const requestId = ++activeReportRequestId;
       set({ isFetchingReport: true });
       try {
-        const data = await reportsApi.getReport(reportName);
+        const filters = get().reportFilters;
+        const data = await reportsApi.getReport(reportName, filters);
         if (requestId === activeReportRequestId) {
-          set({ activeReportData: data?.rows || [], isFetchingReport: false });
+          set({
+            activeReportData: data?.rows || [],
+            reportDateRange: data ? { date_from: data.date_from, date_to: data.date_to } : null,
+            isFetchingReport: false,
+          });
         }
       } catch {
         if (requestId === activeReportRequestId) {
@@ -75,7 +124,8 @@ export const createReportsSlice: AppSliceCreator<ReportsSlice> = (set, get) => {
 
     downloadReportCSVApi: async (reportName: string) => {
       try {
-        const blob = await reportsApi.downloadReportCSV(reportName);
+        const filters = get().reportFilters;
+        const blob = await reportsApi.downloadReportCSV(reportName, filters);
         const url = window.URL.createObjectURL(new Blob([blob]));
         const link = document.createElement('a');
         link.href = url;

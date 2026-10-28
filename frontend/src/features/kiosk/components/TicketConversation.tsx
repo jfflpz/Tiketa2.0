@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { Send, MessageSquare } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Send, MessageSquare, AlertCircle, Loader2 } from 'lucide-react';
 import type { Ticket, TicketChatMessage } from '../../../types/ticket';
+import { ticketsApi, extractApiErrorMessage } from '../../../api/client';
 import { useAppStore } from '../../../store/useAppStore';
 
 export interface TicketConversationProps {
@@ -15,34 +16,91 @@ const QUICK_REPLIES = [
 ];
 
 export const TicketConversation: React.FC<TicketConversationProps> = ({ ticket }) => {
-  const sendTicketMessage = useAppStore((state) => state.sendTicketMessage);
+  const addToast = useAppStore((state) => state.addToast);
   const [chatInput, setChatInput] = useState('');
+  const [comments, setComments] = useState<TicketChatMessage[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
 
-  // Strictly filter out internal notes for public kiosk safety
-  const visibleMessages = (ticket.messages || []).filter((m) => !m.isInternal);
+  const loadComments = useCallback(async () => {
+    if (!ticket.id || ticket.id.startsWith('t-') || ticket.id.startsWith('tracked-')) {
+      setComments((ticket.messages || []).filter((m) => !m.isInternal));
+      return;
+    }
+
+    try {
+      const items = await ticketsApi.getComments(ticket.id);
+      if (Array.isArray(items)) {
+        const mapped: TicketChatMessage[] = items
+          .filter((item) => !item.is_internal)
+          .map((item) => ({
+            id: item.id,
+            senderRole: (item.author_role === 'employee' || item.sender_role === 'employee') ? 'employee' : 'it',
+            senderName: item.author_name || item.sender_name || 'IT Support',
+            message: item.body,
+            timestamp: item.created_at
+              ? new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              : '',
+            isInternal: false,
+          }));
+        setComments(mapped);
+      }
+    } catch {
+      // Fallback to local messages if server comments unavailable
+      setComments((ticket.messages || []).filter((m) => !m.isInternal));
+    }
+  }, [ticket.id, ticket.messages]);
+
+  useEffect(() => {
+    setIsLoading(true);
+    loadComments().finally(() => setIsLoading(false));
+    const interval = setInterval(loadComments, 5000);
+    return () => clearInterval(interval);
+  }, [loadComments]);
+
+  const sendMessage = async (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed || isSending) return;
+
+    setIsSending(true);
+    setSendError(null);
+
+    try {
+      if (!ticket.id.startsWith('t-') && !ticket.id.startsWith('tracked-')) {
+        await ticketsApi.addComment(ticket.id, {
+          body: trimmed,
+          is_internal: false,
+        });
+      }
+
+      const optimisticMsg: TicketChatMessage = {
+        id: 'msg-' + Date.now(),
+        senderRole: 'employee',
+        senderName: ticket.requestor || 'Employee',
+        message: trimmed,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        isInternal: false,
+      };
+      setComments((prev) => [...prev, optimisticMsg]);
+      setChatInput('');
+      await loadComments();
+    } catch (err: unknown) {
+      const msg = extractApiErrorMessage(err, 'Message delivery failed.');
+      setSendError(msg);
+      addToast('Chat Delivery Failed', msg, 'warning');
+    } finally {
+      setIsSending(false);
+    }
+  };
 
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
-    const trimmed = chatInput.trim();
-    if (!trimmed) return;
-    sendTicketMessage(
-      ticket.id,
-      'employee',
-      ticket.requestor || 'Terminal Employee',
-      trimmed,
-      false // strictly public employee message
-    );
-    setChatInput('');
+    sendMessage(chatInput);
   };
 
   const handleQuickReply = (text: string) => {
-    sendTicketMessage(
-      ticket.id,
-      'employee',
-      ticket.requestor || 'Terminal Employee',
-      text,
-      false
-    );
+    sendMessage(text);
   };
 
   return (
@@ -59,12 +117,17 @@ export const TicketConversation: React.FC<TicketConversationProps> = ({ ticket }
 
       {/* Messages Scroll Feed */}
       <div className="p-4 space-y-3 max-h-72 overflow-y-auto">
-        {visibleMessages.length === 0 ? (
+        {isLoading && comments.length === 0 ? (
+          <div className="text-center py-6 text-ink-subtle text-xs flex items-center justify-center gap-2">
+            <Loader2 className="w-4 h-4 animate-spin text-zinc-400" />
+            <span>Loading conversation...</span>
+          </div>
+        ) : comments.length === 0 ? (
           <div className="text-center py-6 text-ink-subtle text-xs">
             No messages yet. Send a message to chat directly with IT Support.
           </div>
         ) : (
-          visibleMessages.map((msg: TicketChatMessage) => {
+          comments.map((msg: TicketChatMessage) => {
             const isEmployee = msg.senderRole === 'employee';
             return (
               <div
@@ -99,28 +162,45 @@ export const TicketConversation: React.FC<TicketConversationProps> = ({ ticket }
             key={idx}
             type="button"
             onClick={() => handleQuickReply(text)}
-            className="px-2.5 py-1 rounded-lg bg-surface border border-line text-[11px] text-ink-subtle hover:text-ink hover:border-zinc-400 whitespace-nowrap press-fx transition-colors shrink-0"
+            disabled={isSending}
+            className="px-2.5 py-1 rounded-lg bg-surface border border-line text-[11px] text-ink-subtle hover:text-ink hover:border-zinc-400 whitespace-nowrap press-fx transition-colors shrink-0 disabled:opacity-50"
           >
             {text}
           </button>
         ))}
       </div>
 
+      {/* Delivery Error Alert */}
+      {sendError && (
+        <div className="px-4 py-2 bg-rose-50 border-t border-rose-200 text-xs text-rose-700 flex items-center gap-1.5">
+          <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+          <span>Delivery failed: {sendError}</span>
+        </div>
+      )}
+
       {/* Chat Composer */}
       <form onSubmit={handleSend} className="p-3 bg-canvas border-t border-line flex items-center gap-2">
         <input
           type="text"
           value={chatInput}
-          onChange={(e) => setChatInput(e.target.value)}
+          onChange={(e) => {
+            setChatInput(e.target.value);
+            if (sendError) setSendError(null);
+          }}
+          disabled={isSending}
           placeholder="Reply to IT specialist..."
           className="flex-1 px-3.5 py-2 bg-surface border border-line rounded-xl text-xs text-ink placeholder:text-ink-faint focus:outline-none focus:border-zinc-500"
         />
         <button
           type="submit"
-          disabled={!chatInput.trim()}
+          disabled={!chatInput.trim() || isSending}
           className="px-3.5 py-2 bg-zinc-900 hover:bg-zinc-800 disabled:opacity-40 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 press-fx shadow-xs"
         >
-          <Send className="w-3.5 h-3.5" />
+          {isSending ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          ) : (
+            <Send className="w-3.5 h-3.5" />
+          )}
           <span className="hidden sm:inline">Send</span>
         </button>
       </form>

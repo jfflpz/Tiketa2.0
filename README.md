@@ -126,72 +126,88 @@ Tiketa/
 
 ---
 
-## 🚀 Getting Started
-
-### Prerequisites
-- [Docker Engine & Docker Compose](https://docs.docker.com/get-docker/)
-- [Node.js 20 LTS](https://nodejs.org/) & `npm`
-- [Python 3.12+](https://www.python.org/)
-
----
-
-### Option A: Run Full Stack via Docker Compose (Recommended)
-
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/jfflpz/Tiketa2.0.git
-   cd Tiketa2.0
-   ```
-
-2. **Launch all services**:
-   ```bash
-   docker compose up -d --build
-   ```
-
-3. **Access the application**:
-   - **Terminal Web Kiosk**: `http://localhost:5173/report`
-   - **IT Operations Queue**: `http://localhost:5173/queue`
-   - **FastAPI Interactive Docs**: `http://localhost:8000/docs`
-   - **API Health Check**: `http://localhost:8000/health`
-
----
-
-### Option B: Local Development Setup
-
-#### 1. Backend Service (`backend/`)
-```powershell
-cd backend
-
-# Create virtual environment
-python -m venv .venv
-source .venv/bin/activate  # Or on Windows: .venv\Scripts\Activate.ps1
-
-# Install development dependencies
-pip install -r requirements-dev.txt
-
-# Run migrations & seed dictionaries
-alembic upgrade head
-python -m scripts.seed_dictionaries
-python -m scripts.bootstrap_admin
-
-# Optional: Seed realistic demo operations for local testing
-python -m scripts.seed_demo_operations
-
-# Start development server
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-#### 2. Frontend SPA (`frontend/`)
-```powershell
-cd frontend
-
-# Install dependencies
-npm ci
-
-# Start Vite dev server on port 5173
-npm run dev
-```
-
+## 🚀 Getting Started
+
+> [!TIP]
+> **Complete Backend Onboarding & Troubleshooting Guide**: For detailed prerequisites, step-by-step Windows/macOS instructions, built-in test accounts, and troubleshooting common pitfalls (Pydantic validation, base64 encryption keys, Docker networking), see the [Backend Developer Setup Guide](docs/05-Standards/BACKEND-SETUP-GUIDE.md).
+
+### Prerequisites
+- [Docker Engine & Docker Compose](https://docs.docker.com/get-docker/)
+- [Node.js 20 LTS](https://nodejs.org/) & `npm`
+- [Python 3.12+](https://www.python.org/)
+
+---
+
+### Option A: Run Full Stack via Docker Compose
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/jfflpz/Tiketa2.0.git
+   cd Tiketa2.0
+   ```
+
+2. **Launch all services**:
+   ```bash
+   docker compose up -d --build
+   ```
+
+3. **Run database migrations and demo seed**:
+   ```bash
+   docker compose exec backend alembic upgrade head
+   docker compose exec backend python -m scripts.seed_dictionaries
+   docker compose exec backend python -m scripts.seed_demo_operations
+   ```
+
+4. **Access the application**:
+   - **Terminal Web Kiosk**: `http://localhost:5173/report`
+   - **IT Operations Queue**: `http://localhost:5173/queue`
+   - **FastAPI Interactive Docs**: `http://localhost:8000/docs`
+   - **API Health Check**: `http://localhost:8000/health/ready`
+
+---
+
+### Option B: Hybrid Local Development Setup (Recommended for Developers)
+
+1. **Start PostgreSQL 16 & Redis 7 in Docker**:
+   ```powershell
+   docker compose up -d db redis
+   ```
+
+2. **Configure & Run Backend Service (`backend/`)**:
+   ```powershell
+   cd backend
+
+   # Create and configure local environment
+   Copy-Item .env.example .env
+
+   # Create virtual environment and activate (Windows PowerShell)
+   python -m venv .venv
+   Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+   .\.venv\Scripts\Activate.ps1
+   # (On macOS/Linux: source .venv/bin/activate)
+
+   # Install development dependencies
+   pip install -r requirements-dev.txt
+
+   # Run migrations & seed demo operations
+   alembic upgrade head
+   python -m scripts.seed_dictionaries
+   python -m scripts.seed_demo_operations
+
+   # Start FastAPI development server
+   uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+   ```
+
+3. **Configure & Run Frontend SPA (`frontend/`)**:
+   ```powershell
+   cd ../frontend
+
+   # Install dependencies
+   npm ci
+
+   # Start Vite dev server on port 5173
+   npm run dev
+   ```
 ---
 
 ## 🧪 Testing & Verification

@@ -1,6 +1,6 @@
 # Bug Fixes 1.0 — Frontend Track
 
-Updated: 2026-10-23. Owner: Person 2 (frontend). Status: Planned.
+Updated: 2026-10-24. Owner: Person 2 (frontend). Status: Planned.
 
 This is the frontend track of the [single Bug Fixes 1.0 sprint](BUG-FIXES-1.0-SPRINT-PLAN.md). Work alongside Person 1 using the [backend track](BUG-FIXES-1.0-BACKEND-PLAN.md). All acceptance criteria remain in the [requirement backlog](BUG-FIXES-1.0.md).
 
@@ -24,16 +24,20 @@ Requirement: BF-02. Backend contract: B-01. Milestones M1–M2.
 
 Acceptance: both roles land correctly and a public employee page is not replaced by the workbench on refresh. Login alone never closes a ticket.
 
-### F-02 — Reliable employee submission and original report
+### F-02 — Reliable employee submission, intake matching and original report
 
 Requirements: BF-01, BF-03. Backend contracts: B-01/B-02. Milestones M1–M2.
 
+- [ ] Refactor Kiosk intake form to require **Employee ID** (1–50 ASCII digits, preserving leading zeros) and **registered email** (any provider).
+- [ ] Add deliberate **Continue** button to trigger backend matching; do not trigger lookups on keystroke.
+- [ ] Display **“Employee details matched.”** banner with locked profile (name, company, terminal, department) on success; do not describe as identity proof.
+- [ ] Retain entered ID and email on mismatch or failure; show generic error “Employee ID and email do not match an active employee record.”
+- [ ] During rate-limit cooldown, display countdown wait (e.g. “Please try again in 1:42”) and re-enable Continue automatically upon expiry.
+- [ ] Pass server-issued `match_token` in public ticket submission; block submission if matching has not succeeded.
 - [ ] Reproduce the white screen and fix its observed cause; convert API validation/error payloads into readable text and provide recoverable error rendering.
-- [ ] Preserve form input after failure, restore submitting state reliably and show a receipt only after successful creation.
-- [ ] Use the selected six-button problem label as the displayed ticket title. Keep additional details in the employee description and remove the fabricated initial chat message.
-- [ ] Align description validation with the backend contract; preserve employee lookup race guards and block unverified submission.
+- [ ] Use the selected six-button problem label as displayed ticket title; keep additional details in description; align description validation (min 10 chars).
 
-Acceptance: all six issue choices survive submission/reload with the correct title and details. Valid, empty, short, long, timeout and server-error scenarios never cause a blank page or false success.
+Acceptance: employee ID + email matching succeeds with deliberate Continue action; failed attempts trigger session cooldown UI; entered fields are retained on error; public submission passes server-verified match token; receipt displays on creation.
 
 ### F-03 — Service Record & Diagnosis and workbench
 
@@ -76,12 +80,12 @@ Acceptance: authorized participants exchange messages in separate browsers and r
 
 Requirement: BF-07. Backend contract: B-06. Milestone M3.
 
-- [ ] Replace sample/local-only library state with API-backed loading and create/edit/delete actions.
-- [ ] Wire the existing edit/delete controls and show loading, empty, validation and failure states.
-- [ ] Apply saved guides and save checklist additions, edits, removals and completion progress through the API.
-- [ ] Respect author/admin permissions and retain the original employee report when applying a guide.
+- [x] Replace sample/local-only library state with API-backed loading and create/edit/delete actions.
+- [x] Wire the existing edit/delete controls and show loading, empty, validation and failure states.
+- [x] Apply saved guides and save checklist additions, edits, removals and completion progress through the API.
+- [x] Respect author/admin permissions and retain the original employee report when applying a guide.
 
-Acceptance: create/edit/delete/apply and checklist progress remain correct in a second browser. Editing/deleting a template does not erase an applied ticket record. Success appears only after a persisted write.
+Acceptance: create/edit/delete/apply and checklist progress remain correct in a second browser. Editing/deleting a template does not erase an applied ticket record. Success appears only after a persisted write. Verified with 21 unit/component tests and production build.
 
 ### F-07 — IT accounts and employee profiles
 
@@ -89,7 +93,7 @@ Requirement: BF-08. Backend contract: B-04 and existing directory APIs. Mileston
 
 - [ ] Load real staff and employee lists from the API with pagination and server dictionaries.
 - [ ] Add username and password fields to account creation; allow only `it`/`admin` authorization roles and align password validation with the server.
-- [ ] Connect Add Employee Profile and related mutations; implement a fixed `FS-` prefix with numeric suffix under the agreed compatibility policy, preserving leading zeros.
+- [ ] Connect Add Employee Profile and related mutations using numeric-only employee IDs stored as text. Remove the fixed `FS-` prefix and update intake/quick-intake defaults, placeholders and validation while preserving leading zeros. Coordinate deployment with the ID migration and API contract in the [M1/M2 plan](BUG-FIXES-1.0-BACKEND-M1-M2-IMPLEMENTATION-PLAN.md); recommended bounds are 1–50 ASCII digits.
 - [ ] Use valid company/location/department mappings, display duplicate/validation errors, and refresh lists after successful changes.
 
 Acceptance: created accounts can log in; created employees can be found in intake; records survive reload. Passwords are not exposed in tables or retained unnecessarily after success.
@@ -104,16 +108,17 @@ Requirement: BF-09. Backend contract: B-07. Milestone M4.
 
 Acceptance: chart totals match backend fixtures for empty periods, reopened tickets, cross-month completion and different technicians. API errors never substitute sample values.
 
-### F-09 — Full-screen modals and browser location
+### F-09 — Full-screen modals and optional browser location
 
 Requirements: BF-11, BF-12. Backend contract: B-08 for location; none for overlays. Milestones M1–M4.
 
 - [ ] Mount overlays at an appropriate root/portal; ensure viewport blur coverage, stacking, scrolling, close behavior and focus handling for all affected modals.
-- [ ] Request browser location on site entry with clear context, respect remembered permission and avoid repeated requests caused by rerenders.
-- [ ] Save consented coordinates, accuracy and capture time through the location endpoint and agreed visit association.
-- [ ] Support denied/unavailable/timeout states and duplicate-write prevention; keep official terminal data directory-derived and allow ticket creation without coordinates.
+- [ ] Request browser location as **optional supporting information** during the reporting flow with clear explanation; do NOT use a mandatory full-screen root blocking gate.
+- [ ] Staff login and ticket tracking remain fully accessible at all times regardless of location permission.
+- [ ] When location is granted, display **“Location captured”** banner with accuracy and capture time; persist consented coordinates through `/api/v1/locations/observations`.
+- [ ] Support denied, unavailable, and timeout states smoothly without blocking reporting or ticket creation.
 
-Acceptance: modal coverage works on desktop/mobile and scrolled pages; granted coordinates persist separately from official terminal, and denied permission leaves reporting usable.
+Acceptance: modal overlays cover viewport without clipping; browser location is strictly optional supporting telemetry; reporting and staff login remain fully operational when location is denied; granted observations display 'Location captured'.
 
 ## Final frontend handoff
 

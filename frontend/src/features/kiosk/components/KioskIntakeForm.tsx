@@ -11,21 +11,34 @@ import {
   MapPin,
   ArrowRight,
   Loader2,
+  Lock,
+  Clock,
+  Compass,
 } from 'lucide-react';
 import type { TaskCategoryCode } from '../../../types/ticket';
+import {
+  formatRemainingTime,
+  type LocationObservationState,
+} from '../hooks/useEmployeeIntake';
 
 export interface KioskIntakeFormProps {
   employeeId: string;
   onEmployeeIdChange: (val: string) => void;
-  declaredName: string;
-  isSearchingEmployee: boolean;
-  employeeVerified: boolean;
-  lookupError: string | null;
-  employeeDetails: {
-    company?: string;
-    location?: string;
-    department?: string;
-  };
+  registeredEmail: string;
+  onRegisteredEmailChange: (val: string) => void;
+  isMatching: boolean;
+  isMatched: boolean;
+  matchError: string | null;
+  cooldownSeconds: number;
+  onContinueMatching: () => void;
+  employeeProfile: {
+    fullName: string;
+    company: string;
+    location: string;
+    department: string;
+  } | null;
+  locationState: LocationObservationState;
+  onCaptureLocation: () => void;
   activeHubName: string;
   selectedTask: TaskCategoryCode;
   onSelectTask: (code: TaskCategoryCode) => void;
@@ -82,11 +95,16 @@ export const ISSUE_OPTIONS: {
 export const KioskIntakeForm: React.FC<KioskIntakeFormProps> = ({
   employeeId,
   onEmployeeIdChange,
-  declaredName,
-  isSearchingEmployee,
-  employeeVerified,
-  lookupError,
-  employeeDetails,
+  registeredEmail,
+  onRegisteredEmailChange,
+  isMatching,
+  isMatched,
+  matchError,
+  cooldownSeconds,
+  onContinueMatching,
+  employeeProfile,
+  locationState,
+  onCaptureLocation,
   activeHubName,
   selectedTask,
   onSelectTask,
@@ -95,6 +113,8 @@ export const KioskIntakeForm: React.FC<KioskIntakeFormProps> = ({
   isSubmitting,
   onSubmit,
 }) => {
+  const isCooldown = cooldownSeconds > 0;
+
   const renderIcon = (name: string) => {
     switch (name) {
       case 'printer':
@@ -116,7 +136,7 @@ export const KioskIntakeForm: React.FC<KioskIntakeFormProps> = ({
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
-      {/* Step 1: Employee ID & Auto-Detected Location */}
+      {/* Step 1: Employee Record Matching */}
       <div className="bg-surface border border-line rounded-3xl p-6 shadow-card space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -124,78 +144,213 @@ export const KioskIntakeForm: React.FC<KioskIntakeFormProps> = ({
               1
             </span>
             <h3 className="font-bold text-sm text-ink">
-              Verify Your Employee Profile
+              Match Employee Record
             </h3>
           </div>
           <span className="text-[11px] text-ink-subtle">
-            Required for ticket dispatch
+            Terminal: {activeHubName}
           </span>
         </div>
 
-        <div className="space-y-2">
-          <label className="block text-xs font-semibold text-ink-subtle">
-            Enter your Employee ID No. (e.g. FS-1042)
-          </label>
-          <div className="relative">
+        <p className="text-xs text-ink-subtle leading-relaxed">
+          Enter your numeric Employee ID and registered company email address. Matching your employee record ensures the ticket is assigned to the correct terminal and department.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+          {/* Employee ID */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-ink">
+              Employee ID No.
+            </label>
             <input
               type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               value={employeeId}
-              onChange={(e) => onEmployeeIdChange(e.target.value.toUpperCase())}
-              placeholder="e.g. FS-1042"
-              className="w-full px-4 py-3 bg-canvas border border-line rounded-2xl text-sm font-bold text-ink uppercase tracking-wider focus:outline-none focus:border-zinc-500 transition-colors"
+              onChange={(e) => onEmployeeIdChange(e.target.value)}
+              placeholder="e.g. 1042"
+              disabled={isMatching || isCooldown}
+              className="w-full px-4 py-3 bg-canvas border border-line rounded-2xl text-sm font-bold text-ink tracking-wider focus:outline-none focus:border-zinc-500 disabled:opacity-60 transition-colors"
             />
-            <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center gap-2">
-              {isSearchingEmployee && (
-                <Loader2 className="w-4 h-4 text-ink-faint animate-spin" />
-              )}
-              {employeeVerified && (
-                <span className="flex items-center gap-1 text-xs font-bold text-brand bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>{declaredName}</span>
-                </span>
-              )}
-            </div>
-          </div>
-
-          {lookupError && (
-            <p className="text-xs text-rose-600 flex items-center gap-1.5 pt-1">
-              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-              <span>{lookupError}</span>
-            </p>
-          )}
-
-          {/* Reassuring Auto-Bound Location Pill */}
-          <div
-            className={`p-3 rounded-2xl border text-xs flex items-center justify-between transition-colors ${
-              employeeVerified
-                ? 'bg-emerald-50/70 border-emerald-200/80 text-emerald-950'
-                : 'bg-canvas border-line text-ink-subtle'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-brand shrink-0" />
-              <span>
-                Terminal Location:{' '}
-                <strong>{employeeDetails.location ?? activeHubName}</strong> •
-                Department:{' '}
-                <strong>{employeeDetails.department ?? 'Operation'}</strong>
-              </span>
-            </div>
-            <span
-              className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full border ${
-                employeeVerified
-                  ? 'bg-white text-brand border-emerald-200'
-                  : 'bg-canvas text-ink-faint border-line'
-              }`}
-            >
-              {employeeVerified ? 'Verified Profile' : 'Pending Verification'}
+            <span className="text-[10px] text-ink-faint">
+              1–50 digits (leading zeros preserved)
             </span>
           </div>
+
+          {/* Registered Email */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-ink">
+              Registered Email
+            </label>
+            <input
+              type="email"
+              value={registeredEmail}
+              onChange={(e) => onRegisteredEmailChange(e.target.value)}
+              placeholder="e.g. employee@fivestarbus.com"
+              disabled={isMatching || isCooldown}
+              className="w-full px-4 py-3 bg-canvas border border-line rounded-2xl text-sm font-medium text-ink focus:outline-none focus:border-zinc-500 disabled:opacity-60 transition-colors"
+            />
+            <span className="text-[10px] text-ink-faint">
+              Accepts any registered provider domain
+            </span>
+          </div>
+        </div>
+
+        {/* Continue Button & Status */}
+        <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
+          <button
+            type="button"
+            onClick={onContinueMatching}
+            disabled={
+              isMatching ||
+              isCooldown ||
+              !employeeId.trim() ||
+              !registeredEmail.trim()
+            }
+            className={`w-full sm:w-auto px-6 py-3 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 transition-all press-fx ${
+              isCooldown
+                ? 'bg-amber-100 text-amber-800 border border-amber-300 cursor-not-allowed'
+                : isMatched
+                ? 'bg-zinc-800 text-white hover:bg-zinc-700'
+                : 'bg-zinc-900 text-white hover:bg-zinc-800 disabled:opacity-50'
+            }`}
+          >
+            {isMatching ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>Matching Record...</span>
+              </>
+            ) : isCooldown ? (
+              <>
+                <Clock className="w-3.5 h-3.5 text-amber-700 animate-pulse" />
+                <span>Please try again in {formatRemainingTime(cooldownSeconds)}</span>
+              </>
+            ) : (
+              <>
+                <span>{isMatched ? 'Re-Verify Record' : 'Continue'}</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </>
+            )}
+          </button>
+
+          {isCooldown && (
+            <span className="text-[11px] text-amber-700 flex items-center gap-1">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              Cooldown active to prevent abuse. Matching will re-enable automatically.
+            </span>
+          )}
+        </div>
+
+        {/* Mismatch Error */}
+        {matchError && !isCooldown && (
+          <div className="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-700 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+            <span>{matchError}</span>
+          </div>
+        )}
+
+        {/* Matched Profile Card */}
+        {isMatched && employeeProfile && (
+          <div className="p-4 bg-emerald-50/80 border border-emerald-200 rounded-2xl space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span className="text-xs font-bold text-emerald-950">
+                  Employee details matched.
+                </span>
+              </div>
+              <span className="text-[10px] font-bold text-emerald-800 bg-white border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                Directory Bound
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-xs">
+              <div className="bg-white/80 p-2.5 rounded-xl border border-emerald-100">
+                <span className="block text-[10px] uppercase font-semibold text-emerald-800">
+                  Full Name
+                </span>
+                <strong className="text-ink block truncate">{employeeProfile.fullName}</strong>
+              </div>
+              <div className="bg-white/80 p-2.5 rounded-xl border border-emerald-100">
+                <span className="block text-[10px] uppercase font-semibold text-emerald-800">
+                  Company
+                </span>
+                <strong className="text-ink block truncate">{employeeProfile.company}</strong>
+              </div>
+              <div className="bg-white/80 p-2.5 rounded-xl border border-emerald-100">
+                <span className="block text-[10px] uppercase font-semibold text-emerald-800">
+                  Terminal
+                </span>
+                <strong className="text-ink block truncate">{employeeProfile.location}</strong>
+              </div>
+              <div className="bg-white/80 p-2.5 rounded-xl border border-emerald-100">
+                <span className="block text-[10px] uppercase font-semibold text-emerald-800">
+                  Department
+                </span>
+                <strong className="text-ink block truncate">{employeeProfile.department}</strong>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-emerald-800/80 leading-normal">
+              Notice: Matching confirms these details correspond to an active personnel record. It is not cryptographic proof of identity.
+            </p>
+          </div>
+        )}
+
+        {/* Optional Geolocation Capture */}
+        <div className="pt-2 border-t border-line/60">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 bg-canvas/60 border border-line rounded-2xl">
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-ink">
+                <Compass className="w-3.5 h-3.5 text-brand" />
+                <span>Terminal Bay Location (Optional)</span>
+              </div>
+              <p className="text-[11px] text-ink-subtle">
+                Sharing location telemetry helps dispatchers identify your terminal bay. Not required to submit.
+              </p>
+            </div>
+
+            <div className="shrink-0 flex items-center gap-2">
+              {locationState.status === 'captured' ? (
+                <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200">
+                  <MapPin className="w-3.5 h-3.5" />
+                  <span>
+                    Location captured
+                    {locationState.accuracy ? ` (±${locationState.accuracy}m)` : ''}
+                  </span>
+                </div>
+              ) : locationState.status === 'requesting' ? (
+                <div className="flex items-center gap-1.5 text-xs font-medium text-ink-subtle bg-surface px-3 py-1.5 rounded-xl border border-line">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Requesting GPS...</span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={onCaptureLocation}
+                  className="px-3.5 py-1.5 bg-surface hover:bg-zinc-100 border border-line rounded-xl text-xs font-semibold text-ink flex items-center gap-1.5 transition-colors press-fx"
+                >
+                  <MapPin className="w-3.5 h-3.5 text-ink-subtle" />
+                  <span>Capture Location</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {locationState.message && locationState.status !== 'captured' && (
+            <p className="text-[11px] text-ink-subtle mt-1.5 px-1">
+              {locationState.message}
+            </p>
+          )}
         </div>
       </div>
 
       {/* Step 2: 6 Visual Issue Buttons */}
-      <div className="bg-surface border border-line rounded-3xl p-6 shadow-card space-y-4">
+      <div
+        className={`bg-surface border border-line rounded-3xl p-6 shadow-card space-y-4 transition-opacity ${
+          !isMatched ? 'opacity-60 pointer-events-none' : 'opacity-100'
+        }`}
+      >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="w-6 h-6 rounded-full bg-zinc-900 text-white text-xs font-bold flex items-center justify-center">
@@ -206,7 +361,7 @@ export const KioskIntakeForm: React.FC<KioskIntakeFormProps> = ({
             </h3>
           </div>
           <span className="text-[11px] text-ink-subtle">
-            Tap the category that best matches
+            {!isMatched ? 'Unlock by matching employee record above' : 'Tap the category that best matches'}
           </span>
         </div>
 
@@ -217,6 +372,7 @@ export const KioskIntakeForm: React.FC<KioskIntakeFormProps> = ({
               <button
                 key={item.code}
                 type="button"
+                disabled={!isMatched}
                 onClick={() => onSelectTask(item.code)}
                 className={`p-4 rounded-2xl border text-left flex flex-col justify-between transition-all press-fx ${
                   isSelected
@@ -253,7 +409,11 @@ export const KioskIntakeForm: React.FC<KioskIntakeFormProps> = ({
       </div>
 
       {/* Step 3: Optional Extra Description & Submit Button */}
-      <div className="bg-surface border border-line rounded-3xl p-6 shadow-card space-y-4">
+      <div
+        className={`bg-surface border border-line rounded-3xl p-6 shadow-card space-y-4 transition-opacity ${
+          !isMatched ? 'opacity-60 pointer-events-none' : 'opacity-100'
+        }`}
+      >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="w-6 h-6 rounded-full bg-zinc-900 text-white text-xs font-bold flex items-center justify-center">
@@ -271,6 +431,7 @@ export const KioskIntakeForm: React.FC<KioskIntakeFormProps> = ({
         <textarea
           value={description}
           onChange={(e) => onDescriptionChange(e.target.value)}
+          disabled={!isMatched}
           placeholder="Briefly describe what happened (e.g. Booth 2 receipt cutter jammed during shift change)..."
           rows={3}
           className="w-full px-4 py-3 bg-canvas border border-line rounded-2xl text-xs text-ink placeholder:text-ink-faint focus:outline-none focus:border-zinc-500 transition-colors"
@@ -278,13 +439,18 @@ export const KioskIntakeForm: React.FC<KioskIntakeFormProps> = ({
 
         <button
           type="submit"
-          disabled={isSubmitting || !employeeVerified}
+          disabled={isSubmitting || !isMatched}
           className="w-full py-4 px-6 rounded-2xl bg-zinc-900 hover:bg-zinc-800 disabled:opacity-50 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg transition-all press-fx"
         >
           {isSubmitting ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin" />
               <span>Sending Ticket to IT Support...</span>
+            </>
+          ) : !isMatched ? (
+            <>
+              <Lock className="w-4 h-4" />
+              <span>Match Employee Details to Submit</span>
             </>
           ) : (
             <>

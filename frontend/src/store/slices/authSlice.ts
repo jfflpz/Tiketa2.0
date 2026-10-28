@@ -7,6 +7,7 @@ import { normalizeApiError } from '../../utils/errorUtils';
 
 export interface AuthSlice {
   currentUser: AuthenticatedUser | null;
+  authSessionId: number;
   loginModalRole: StaffRole | null;
   isAuthenticating: boolean;
   authError: string | null;
@@ -26,6 +27,7 @@ let isHydratingInFlight: Promise<boolean> | null = null;
 
 export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
   currentUser: null,
+  authSessionId: 1,
   loginModalRole: null,
   isLogoutModalOpen: false,
   isAuthenticating: false,
@@ -73,6 +75,7 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
                 .slice(0, 2)
                 .toUpperCase(),
             },
+            authSessionId: get().authSessionId + 1,
             loginModalRole: null,
             activeView: targetView,
             isHydratingAuth: false,
@@ -128,6 +131,7 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
             .slice(0, 2)
             .toUpperCase(),
         },
+        authSessionId: get().authSessionId + 1,
         loginModalRole: null,
         activeView: targetView,
         isAuthenticating: false,
@@ -181,6 +185,7 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
 
     set({
       currentUser: user,
+      authSessionId: get().authSessionId + 1,
       loginModalRole: null,
       activeView: 'overview',
       queueFilter: 'ALL',
@@ -199,16 +204,18 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
     setAccessToken(null);
     authApi.logout().catch(() => {});
     get().resetReportsState?.();
-
-    if (typeof window !== 'undefined') {
-      window.history.pushState(null, '', '/report');
-    }
-
+    get().resetNotesState?.();
     set({
       currentUser: null,
-      isLogoutModalOpen: false,
+      authSessionId: get().authSessionId + 1,
       selectedTicketId: null,
+      inspectedTicket: null,
+      isInspectingTicket: false,
+      inspectTicketError: null,
       activeWorkbenchTicketId: null,
+      workbenchTicket: null,
+      isWorkbenchLoading: false,
+      workbenchError: null,
       isQuickIntakeOpen: false,
     });
     get().addToast(

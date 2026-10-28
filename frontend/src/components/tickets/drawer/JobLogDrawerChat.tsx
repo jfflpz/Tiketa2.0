@@ -32,7 +32,10 @@ export const JobLogDrawerChat: React.FC<JobLogDrawerChatProps> = ({
     setChatDraft('');
     setIsSending(true);
     try {
-      await onSendMessage(msg, false);
+      const res = await onSendMessage(msg, false);
+      if (res === false) {
+        setChatDraft(msg);
+      }
     } finally {
       setIsSending(false);
     }

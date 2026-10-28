@@ -1,5 +1,7 @@
 # Backend sprint plan — reconciled 2026-10-17
 
+> **Current backend assignments:** follow the backend column of [S0–S5 in the shared integration sprint](INTEGRATION-SPRINT-PLAN.md#one-sprint-two-coordinated-tracks). Use the [central API map](../03-Contracts/API-INTEGRATION-MAP.md) for frontend handoffs. The historical phases below do not replace the new per-merge integration gate.
+
 Scope: Employee ID intake, it/admin RBAC, backend-only historical CLI, eight reports,
 and operational readiness. Source: current API contracts and SRS v2.1 amendment.
 See BACKEND-PROGRESS.md for evidence and remaining release gates; this plan is not

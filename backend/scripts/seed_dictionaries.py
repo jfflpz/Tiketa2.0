@@ -124,7 +124,7 @@ async def seed(demo=False):
                 await session.execute(
                     insert(Employee)
                     .values(
-                        employee_id="FS-1042",
+                        employee_id="1042",
                         full_name="Maria Santos",
                         email="maria.santos@example.com",
                         company_id=company.id,
