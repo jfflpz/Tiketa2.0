@@ -76,7 +76,7 @@ async def rate_limit(key: str, limit: int, seconds: int):
             )
     except RedisError as e:
         logger.critical(f"Redis rate_limit error: {e}")
-        # Allow operation if rate limiter is down to avoid hard total failure
+        raise HTTPException(503, "Session service unavailable") from e
 
 
 async def check_session_cooldown(session_id: str):
@@ -93,6 +93,7 @@ async def check_session_cooldown(session_id: str):
             )
     except RedisError as e:
         logger.critical(f"Redis session cooldown check error: {e}")
+        raise HTTPException(503, "Session service unavailable") from e
 
 
 async def record_matching_attempt(session_id: str, is_mismatch: bool):
@@ -114,3 +115,4 @@ async def record_matching_attempt(session_id: str, is_mismatch: bool):
             )
     except RedisError as e:
         logger.critical(f"Redis session matching attempt error: {e}")
+        raise HTTPException(503, "Session service unavailable") from e

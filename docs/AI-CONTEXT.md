@@ -39,8 +39,10 @@ Direct your search to these targeted documentation modules:
 2. **IT Fallback Intake (Hotkey `v`)**:
    - Technicians on the IT Queue (`/queue`) tap hotkey `v` to log walk-in or Viber requests in <4 seconds.
 3. **Authenticated Roles**:
-   - `admin`: System management, employee directory, 8 executive reports.
-   - `it`: IT triage queue (`/queue`), ticket claiming (`c`), labor duration logging.
+   - Current implementation: `admin` and `it` only.
+   - **Requested redesign (2026-10-28, not yet implemented):** IT Intern (`intern`), IT Support (retain `it`), Admin (retain `admin`), IT Supervisor (`supervisor`). The user's new requirement supersedes the earlier two-role planning restriction. Follow the permission matrix in `docs/03-Contracts/API-INTEGRATION-MAP.md`; never interpret new roles as generic staff access to every endpoint.
+   - Admin keeps direct account creation; Support submits requests for Supervisor/Admin review. Employees still have no login accounts or public registration.
+   - My Tickets uses Employee ID + registered email matching; Track Code displays a public receipt and requires matching for private details. Session retention is separate from actual logout/revocation. See `docs/04-Sprints/INTEGRATION-SPRINT-PLAN.md` for the current behavior and acceptance checks.
 
 ---
 

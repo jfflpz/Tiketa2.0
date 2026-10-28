@@ -132,11 +132,12 @@ export function useEmployeeIntake() {
       if (result && result.match_token) {
         setIsMatched(true);
         setMatchToken(result.match_token);
+        const emp: any = (result as any).employee || {};
         setEmployeeProfile({
-          fullName: result.employee.full_name,
-          company: result.employee.company_name,
-          location: result.employee.location_name,
-          department: result.employee.department_name,
+          fullName: emp.full_name || emp.fullName || '',
+          company: emp.company_name || emp.companyName || '',
+          location: emp.location_name || emp.locationName || '',
+          department: emp.department_name || emp.departmentName || '',
         });
         setMatchError(null);
       }
@@ -252,9 +253,8 @@ export function useEmployeeIntake() {
     const created = await submitTicketApi({
       employeeId: employeeId.trim(),
       taskCode: selectedTask,
-      description:
-        description.trim() ||
-        `Reported from ${employeeProfile?.location || activeHub.name} employee helpdesk screen.`,
+      taskTitle: undefined,
+      description: description.trim(),
       matchToken,
       observationId: locationState.observationId,
       companyName: employeeProfile?.company ?? 'Pangasinan Five Star Bus Co.',

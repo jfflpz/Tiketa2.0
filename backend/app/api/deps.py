@@ -21,10 +21,17 @@ async def validated_user(token: str, kind: str, db: AsyncSession):
         user_id = UUID(claims["sub"])
     except (jwt.InvalidTokenError, ValueError, TypeError, KeyError):
         raise HTTPException(401, "Invalid or expired credentials") from None
-    if await cache.exists(
-        "revoked:" + claims["jti"], "session-revoked:" + claims["sid"]
-    ):
-        raise HTTPException(401, "Session revoked")
+    try:
+        if await cache.exists(
+            "revoked:" + claims["jti"], "session-revoked:" + claims["sid"]
+        ):
+            raise HTTPException(401, "Session revoked")
+    except Exception as e:
+        from redis.exceptions import RedisError
+
+        if isinstance(e, RedisError):
+            raise HTTPException(503, "Session service unavailable") from e
+        raise
     user = await db.get(User, user_id)
     if (
         not user
