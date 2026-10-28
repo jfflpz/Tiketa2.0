@@ -20,7 +20,7 @@ export interface AuthSlice {
   openLoginModal: (role?: StaffRole) => void;
   closeLoginModal: () => void;
   loginAsStaff: (role: StaffRole, customName?: string) => void;
-  logoutToKiosk: () => void;
+  logoutToKiosk: () => Promise<void>;
 }
 
 let isHydratingInFlight: Promise<boolean> | null = null;
@@ -115,6 +115,8 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
       // Update URL to canonical /dashboard
       if (typeof window !== 'undefined') {
         window.history.pushState(null, '', '/dashboard');
+      window.dispatchEvent(new Event('popstate'));
+        window.dispatchEvent(new Event('popstate'));
       }
 
       set({
@@ -181,6 +183,7 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
 
     if (typeof window !== 'undefined') {
       window.history.pushState(null, '', '/dashboard');
+      window.dispatchEvent(new Event('popstate'));
     }
 
     set({
@@ -199,29 +202,38 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
     );
   },
 
-  logoutToKiosk: () => {
+  logoutToKiosk: async () => {
     localStorage.removeItem('tiketa_active_view');
-    setAccessToken(null);
-    authApi.logout().catch(() => {});
-    get().resetReportsState?.();
-    get().resetNotesState?.();
-    set({
-      currentUser: null,
-      authSessionId: get().authSessionId + 1,
-      selectedTicketId: null,
-      inspectedTicket: null,
-      isInspectingTicket: false,
-      inspectTicketError: null,
-      activeWorkbenchTicketId: null,
-      workbenchTicket: null,
-      isWorkbenchLoading: false,
-      workbenchError: null,
-      isQuickIntakeOpen: false,
-    });
-    get().addToast(
-      'Returned to Employee Ticket Screen',
-      'Staff session signed out cleanly',
-      'info'
-    );
+    try {
+      await authApi.logout();
+    } catch {
+      // Ignore network errors so local state is always cleanly wiped
+    } finally {
+      setAccessToken(null);
+      if (typeof window !== 'undefined') {
+        window.history.pushState(null, '', '/report');
+        window.dispatchEvent(new Event('popstate'));
+      }
+      get().resetReportsState?.();
+      get().resetNotesState?.();
+      set({
+        currentUser: null,
+        authSessionId: get().authSessionId + 1,
+        selectedTicketId: null,
+        inspectedTicket: null,
+        isInspectingTicket: false,
+        inspectTicketError: null,
+        activeWorkbenchTicketId: null,
+        workbenchTicket: null,
+        isWorkbenchLoading: false,
+        workbenchError: null,
+        isQuickIntakeOpen: false,
+      });
+      get().addToast(
+        'Returned to Employee Ticket Screen',
+        'Staff session signed out cleanly',
+        'info'
+      );
+    }
   },
 });

@@ -13,7 +13,7 @@ export function resolvePathToView(pathname: string): AppRoute {
   if (!pathname) return 'public';
   const clean = pathname.replace(/^\/+/, '').split('?')[0].split('#')[0].toLowerCase();
 
-  if (!clean || clean === 'report') return 'public';
+  if (!clean || clean === 'report' || clean === 'kiosk') return 'public';
   if (clean === 'dashboard' || clean === 'overview') return 'overview';
 
   const staffViews: ActiveView[] = [

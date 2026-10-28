@@ -31,12 +31,18 @@ export const EmployeeTicketScreen: React.FC = () => {
   const initiateVerificationFlow = useAppStore((state) => state.initiateVerificationFlow);
   const clearVerificationContext = useAppStore((state) => state.clearVerificationContext);
   const copyTicketShareLink = useAppStore((state) => state.copyTicketShareLink);
+  const fetchMyEmployeeTickets = useAppStore((state) => state.fetchMyEmployeeTickets);
+  const hydrateKioskEmployeeTickets = useAppStore((state) => state.hydrateKioskEmployeeTickets);
 
   const [tab, setTab] = useState<'create' | 'my_tickets' | 'lookup'>('create');
   const [detailTicketId, setDetailTicketId] = useState<string | null>(null);
   const [copiedTicketId, setCopiedTicketId] = useState<string | null>(null);
 
   const intake = useEmployeeIntake();
+
+  useEffect(() => {
+    hydrateKioskEmployeeTickets?.();
+  }, [hydrateKioskEmployeeTickets]);
 
   useEffect(() => {
     if (verifyTicketCode && verificationStatus === 'idle') {
@@ -53,8 +59,13 @@ export const EmployeeTicketScreen: React.FC = () => {
   };
 
   const selectedEmployeeTicket =
-    (verifiedTicket && verifiedTicket.id === detailTicketId ? verifiedTicket : null) ||
-    employeeTickets.find((t) => t.id === detailTicketId) ||
+    (verifiedTicket &&
+    (verifiedTicket.id === detailTicketId || verifiedTicket.ticketCode === detailTicketId)
+      ? verifiedTicket
+      : null) ||
+    employeeTickets.find(
+      (t) => t.id === detailTicketId || t.ticketCode === detailTicketId
+    ) ||
     null;
 
   return (
@@ -211,7 +222,9 @@ export const EmployeeTicketScreen: React.FC = () => {
             ticket={intake.submittedTicket}
             onReset={intake.resetIntake}
             onViewTickets={() => {
-              setDetailTicketId(intake.submittedTicket?.id ?? null);
+              const targetId =
+                intake.submittedTicket?.id ?? intake.submittedTicket?.ticketCode ?? null;
+              setDetailTicketId(targetId);
               setTab('my_tickets');
               intake.resetIntake();
             }}
@@ -246,7 +259,10 @@ export const EmployeeTicketScreen: React.FC = () => {
 
                 <button
                   type="button"
-                  onClick={() => setTab('my_tickets')}
+                  onClick={() => {
+                    setTab('my_tickets');
+                    fetchMyEmployeeTickets();
+                  }}
                   className={`px-4 py-2 rounded-xl text-xs font-bold transition-all press-fx flex items-center gap-1.5 ${
                     tab === 'my_tickets'
                       ? 'bg-zinc-900 text-white shadow-xs'
@@ -322,12 +338,7 @@ export const EmployeeTicketScreen: React.FC = () => {
 
             {/* TAB 3: LOOKUP CODE */}
             {tab === 'lookup' && (
-              <KioskTrackLookupTab
-                onTicketFound={(id) => {
-                  setDetailTicketId(id);
-                  setTab('my_tickets');
-                }}
-              />
+              <KioskTrackLookupTab />
             )}
           </>
         )}
