@@ -14,18 +14,20 @@ class Login(Input):
     username: str = Field(min_length=1, max_length=150)
     password: str = Field(min_length=1, max_length=1024)
 
+StaffRole = Literal["intern", "it", "admin", "supervisor"]
+RequestableRole = Literal["intern", "it"]
 
 class UserCreate(Input):
     username: str = Field(min_length=3, max_length=50, pattern=r"^[a-zA-Z0-9_.-]+$")
     email: EmailStr = Field(max_length=150)
     full_name: str = Field(min_length=2, max_length=150)
-    role: Literal["it", "admin"]
+    role: StaffRole
     password: str = Field(min_length=12, max_length=128)
 
 
 class UserUpdate(Input):
     full_name: str | None = Field(default=None, min_length=2, max_length=150)
-    role: Literal["it", "admin"] | None = None
+    role: StaffRole | None = None
     is_active: bool | None = None
     password: str | None = Field(default=None, min_length=12, max_length=128)
 
@@ -36,7 +38,7 @@ class UserOut(BaseModel):
     username: str
     email: str
     full_name: str
-    role: Literal["it", "admin"]
+    role: StaffRole
     is_active: bool
     closed_repairs: int = 0
     active_bench: int = 0
@@ -200,6 +202,7 @@ class CommentOut(BaseModel):
 
 
 class PublicTicket(BaseModel):
+    id: UUID
     ticket_code: str
     status: str
     created_at: datetime
@@ -369,3 +372,39 @@ class TicketChecklistOut(BaseModel):
     created_at: datetime | None = None
     updated_at: datetime | None = None
     steps: list[TicketChecklistStepOut] = []
+
+class AccountRequestCreate(Input):
+    username: str = Field(min_length=3, max_length=50, pattern=r"^[a-zA-Z0-9_.-]+$")
+    email: EmailStr = Field(max_length=150)
+    full_name: str = Field(min_length=2, max_length=150)
+    role: RequestableRole
+    location_id: UUID | None = None
+    department: str | None = Field(default=None, max_length=100)
+
+
+class AccountRequestRejectInput(Input):
+    rejection_reason: str = Field(min_length=3, max_length=500)
+
+
+class AccountRequestOut(BaseModel):
+    id: UUID
+    username: str
+    email: str
+    full_name: str
+    role: str
+    department: str | None = None
+    location_id: UUID | None = None
+    location_name: str | None = None
+    status: Literal["pending", "approved", "rejected"]
+    rejection_reason: str | None = None
+    requested_by_id: UUID
+    requester_name: str | None = None
+    reviewed_by_id: UUID | None = None
+    reviewer_name: str | None = None
+    reviewed_at: datetime | None = None
+    created_at: datetime
+
+
+class AccountRequestApprovalOut(BaseModel):
+    user: UserOut
+    temporary_password: str

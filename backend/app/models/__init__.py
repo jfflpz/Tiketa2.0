@@ -1,3 +1,4 @@
+from app.models.account_request import AccountRequest
 from app.models.base import Base
 from app.models.company import Company
 from app.models.department import Department
@@ -23,6 +24,7 @@ from app.models.ticket import (
 from app.models.user import User
 
 __all__ = [
+    "AccountRequest",
     "Base",
     "Company",
     "Department",

@@ -1,4 +1,5 @@
 import uuid
+from typing import Literal
 
 from sqlalchemy import Boolean, CheckConstraint, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
@@ -6,10 +7,15 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin
 
+StaffRole = Literal["intern", "it", "admin", "supervisor"]
 
 class User(Base, TimestampMixin):
     __tablename__ = "users"
-    __table_args__ = (CheckConstraint("role IN ('it', 'admin')", name="ck_users_role"),)
+    __table_args__ = (
+        CheckConstraint(
+            "role IN ('intern', 'it', 'admin', 'supervisor')", name="ck_users_role"
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
@@ -22,7 +28,7 @@ class User(Base, TimestampMixin):
     )
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     full_name: Mapped[str] = mapped_column(String(150), nullable=False)
-    role: Mapped[str] = mapped_column(String(20), nullable=False)  # 'it' or 'admin'
+    role: Mapped[StaffRole] = mapped_column(String(20), nullable=False)
 
     location_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("locations.id"), nullable=True

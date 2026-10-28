@@ -331,10 +331,18 @@ async def queue(
     status: Literal["OPEN", "PROG", "RESL", "CLSD", "ALL"] | None = None,
     technician_id: UUID | None = None,
     location_id: UUID | None = None,
-    order: Literal["asc", "desc"] = "asc",
+    order: Literal["asc", "desc"] = "desc",
     offset: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
 ):
+
+    if user.role == "supervisor":
+        raise HTTPException(
+            403, "Supervisor role does not have operational queue access. Use /reports."
+        )
+    if user.role == "intern":
+        technician_id = user.id
+        
     # Every reader is authenticated before accessing this shared, encrypted cache.
     # Versioned keys prevent a fill racing a committed mutation from being reused.
     version = await cache.get("queue:version") or "0"
@@ -345,12 +353,7 @@ async def queue(
     cached = await cache.get(key)
     if cached:
         return Response(decrypt(cached), media_type="application/json")
-    query = select(Ticket).offset(offset).limit(limit)
-    if order == "desc":
-        query = query.order_by(Ticket.created_at.desc(), Ticket.id.desc())
-    else:
-        query = query.order_by(Ticket.created_at.asc(), Ticket.id.asc())
-
+    query = select(Ticket)
     if status == "ALL":
         pass
     elif status in ("OPEN", "PROG", "RESL", "CLSD"):
@@ -363,6 +366,13 @@ async def queue(
 
     if location_id:
         query = query.where(Ticket.location_id == location_id)
+
+    if order == "desc":
+        query = query.order_by(Ticket.created_at.desc(), Ticket.id.desc())
+    else:
+        query = query.order_by(Ticket.created_at.asc(), Ticket.id.asc())
+
+    query = query.offset(offset).limit(limit)
 
     ticket_rows = (await db.scalars(query)).all()
     tech_ids = {t.assigned_tech_id for t in ticket_rows if t.assigned_tech_id}
@@ -411,6 +421,10 @@ async def detail(ticket_id: UUID, db: DB, user: CurrentUser):
 
 @router.patch("/{ticket_id}/claim", response_model=TicketOut)
 async def claim_ticket(ticket_id: UUID, db: DB, user: CurrentUser):
+    if user.role in ("intern", "supervisor"):
+        raise HTTPException(
+            403, f"Role '{user.role}' cannot claim tickets directly from the queue"
+        )
     row = await get_ticket(db, ticket_id, lock=True)
     await claim(db, row, user)
     await db.commit()

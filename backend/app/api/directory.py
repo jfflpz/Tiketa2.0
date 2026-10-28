@@ -5,8 +5,9 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from sqlalchemy import func, select
 from starlette.concurrency import run_in_threadpool
 
-from app.api.deps import DB, Admin, CurrentUser
+from app.api.deps import DB, Admin, CurrentUser, SupervisorOrAdmin
 from app.core.cache import (
+    cache,
     check_session_cooldown,
     rate_limit,
     record_matching_attempt,
@@ -130,7 +131,7 @@ async def dictionaries(db: DB, user: CurrentUser):
 @router.get("/admin/users", response_model=list[UserOut])
 async def users(
     db: DB,
-    admin: Admin,
+    user: SupervisorOrAdmin,
     offset: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=200),
 ):
@@ -203,6 +204,8 @@ async def update_user(user_id: UUID, body: UserUpdate, db: DB, admin: Admin):
         user.password_hash = await run_in_threadpool(hash_password, body.password)
     # Any governance change invalidates existing access and refresh tokens.
     user.token_version += 1
+    if body.is_active is False:
+        await cache.set(f"revoked-user:{user.id}", "1", ex=86400 * 7)
     await db.commit()
     return user
 
@@ -210,7 +213,7 @@ async def update_user(user_id: UUID, body: UserUpdate, db: DB, admin: Admin):
 @router.get("/admin/employees")
 async def employees(
     db: DB,
-    admin: Admin,
+    user: SupervisorOrAdmin,
     offset: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=200),
 ):

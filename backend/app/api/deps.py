@@ -36,7 +36,7 @@ async def validated_user(token: str, kind: str, db: AsyncSession):
     if (
         not user
         or not user.is_active
-        or user.role not in ("it", "admin")
+        or user.role not in ("intern", "it", "admin", "supervisor")
         or user.token_version != claims["ver"]
     ):
         raise HTTPException(401, "Account unavailable or credentials changed")
@@ -63,3 +63,16 @@ async def administrator(user: CurrentUser):
 
 
 Admin = Annotated[User, Depends(administrator)]
+
+
+def require_roles(*allowed_roles: str):
+    async def role_checker(user: CurrentUser):
+        if user.role not in allowed_roles:
+            raise HTTPException(403, "Insufficient role permissions")
+        return user
+
+    return role_checker
+
+
+SupervisorOrAdmin = Annotated[User, Depends(require_roles("admin", "supervisor"))]
+OperationsStaff = Annotated[User, Depends(require_roles("it", "admin"))]
