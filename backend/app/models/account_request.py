@@ -27,19 +27,29 @@ class AccountRequest(Base, TimestampMixin):
     role: Mapped[str] = mapped_column(String(20), nullable=False)
     department: Mapped[str | None] = mapped_column(String(100), nullable=True)
     location_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("locations.id"), nullable=True
+        UUID(as_uuid=True),
+        ForeignKey("locations.id", ondelete="SET NULL"),
+        nullable=True,
     )
 
     status: Mapped[str] = mapped_column(
-        String(20), nullable=False, default="pending", server_default="pending"
+        String(20),
+        nullable=False,
+        default="pending",
+        server_default="pending",
+        index=True,
     )
     rejection_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     requested_by_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
     )
     reviewed_by_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
     )
     reviewed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
