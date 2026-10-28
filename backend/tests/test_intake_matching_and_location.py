@@ -15,11 +15,15 @@ async def test_intake_matching_and_security(client: AsyncClient, accounts):
 
     # Ensure clean test employee 0012 exists with leading zeros
     async with AsyncSessionLocal() as db:
-        emp1042 = await db.scalar(select(Employee).where(Employee.employee_id == "1042"))
+        emp1042 = await db.scalar(
+            select(Employee).where(Employee.employee_id == "1042")
+        )
         assert emp1042 is not None
         emp_email = emp1042.email
 
-        emp0012 = await db.scalar(select(Employee).where(Employee.employee_id == "0012"))
+        emp0012 = await db.scalar(
+            select(Employee).where(Employee.employee_id == "0012")
+        )
         if not emp0012:
             emp0012 = Employee(
                 employee_id="0012",

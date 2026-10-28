@@ -3,6 +3,7 @@
 Revision ID: 0007_repair_notes_and_checklists
 Revises: 0006_location_observations
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
@@ -161,9 +162,7 @@ def upgrade():
         ),
         sa.Column("position", sa.Integer(), nullable=False),
         sa.Column("text_enc", sa.Text(), nullable=False),
-        sa.Column(
-            "completed", sa.Boolean(), nullable=False, server_default=sa.false()
-        ),
+        sa.Column("completed", sa.Boolean(), nullable=False, server_default=sa.false()),
         sa.Column("completed_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column(
             "completed_by_id",
@@ -183,9 +182,7 @@ def upgrade():
             server_default=sa.func.now(),
             nullable=False,
         ),
-        sa.CheckConstraint(
-            "position >= 0", name="ck_ticket_checklist_steps_position"
-        ),
+        sa.CheckConstraint("position >= 0", name="ck_ticket_checklist_steps_position"),
         sa.CheckConstraint(
             "(completed = false AND completed_at IS NULL AND completed_by_id IS NULL) "
             "OR (completed = true AND completed_at IS NOT NULL AND completed_by_id IS NOT NULL)",

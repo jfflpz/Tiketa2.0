@@ -16,9 +16,13 @@ BODY = {
 
 
 @pytest.mark.parametrize("counter_value", [None, 150, 200])
-async def test_intake_recovers_counter_without_duplicates(client, accounts, counter_value):
+async def test_intake_recovers_counter_without_duplicates(
+    client, accounts, counter_value
+):
     headers = accounts["tech"]
-    response = await client.post("/api/v1/tickets/quick-intake", json=BODY, headers=headers)
+    response = await client.post(
+        "/api/v1/tickets/quick-intake", json=BODY, headers=headers
+    )
     assert response.status_code == 201, response.text
     created = response.json()
     month = created["ticket_code"].split("-")[1]
@@ -32,12 +36,18 @@ async def test_intake_recovers_counter_without_duplicates(client, accounts, coun
             counter.value = counter_value
         await db.commit()
 
-    responses = await asyncio.gather(*[
-        client.post("/api/v1/tickets/quick-intake", json=BODY, headers=headers)
-        for _ in range(8)
-    ])
-    assert all(result.status_code == 201 for result in responses), [r.text for r in responses]
-    numbers = sorted(int(result.json()["ticket_code"].split("-")[-1]) for result in responses)
+    responses = await asyncio.gather(
+        *[
+            client.post("/api/v1/tickets/quick-intake", json=BODY, headers=headers)
+            for _ in range(8)
+        ]
+    )
+    assert all(result.status_code == 201 for result in responses), [
+        r.text for r in responses
+    ]
+    numbers = sorted(
+        int(result.json()["ticket_code"].split("-")[-1]) for result in responses
+    )
     first = max(counter_value or 0, 151) + 1
     assert numbers == list(range(first, first + 8))
 

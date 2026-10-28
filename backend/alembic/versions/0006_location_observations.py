@@ -3,6 +3,7 @@
 Revision ID: 0006_location_observations
 Revises: 0005_numeric_employee_ids
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

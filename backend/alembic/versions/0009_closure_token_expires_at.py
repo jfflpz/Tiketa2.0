@@ -3,6 +3,7 @@
 Revision ID: 0009_closure_token_expires_at
 Revises: 0008_employee_verification
 """
+
 import sqlalchemy as sa
 from alembic import op
 
@@ -21,7 +22,11 @@ def upgrade():
         if "closure_token_expires_at" not in columns:
             op.add_column(
                 "tickets",
-                sa.Column("closure_token_expires_at", sa.DateTime(timezone=True), nullable=True),
+                sa.Column(
+                    "closure_token_expires_at",
+                    sa.DateTime(timezone=True),
+                    nullable=True,
+                ),
             )
 
 

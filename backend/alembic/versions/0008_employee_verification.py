@@ -3,6 +3,7 @@
 Revision ID: 0008_employee_verification
 Revises: 0007_repair_notes_and_checklists
 """
+
 import sqlalchemy as sa
 from alembic import op
 
@@ -26,7 +27,9 @@ def upgrade():
         if "author_role" not in columns:
             op.add_column(
                 "ticket_comments",
-                sa.Column("author_role", sa.String(20), nullable=True, server_default="it"),
+                sa.Column(
+                    "author_role", sa.String(20), nullable=True, server_default="it"
+                ),
             )
         op.alter_column(
             "ticket_comments",

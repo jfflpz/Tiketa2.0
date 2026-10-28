@@ -176,7 +176,7 @@ async def test_hub_summaries_closure_semantics_and_future_exclusion(
         )
 
         # Ticket 2: date_finished was in previous month, but user_confirmed_at is in current month (MUST count in current month)
-        prev_month_date = (start_of_month_date - timedelta(days=5))
+        prev_month_date = start_of_month_date - timedelta(days=5)
         t2 = Ticket(
             ticket_code=f"T-TEST-{uuid4().hex[:4].upper()}",
             company_id=company.id,
@@ -228,7 +228,9 @@ async def test_hub_summaries_closure_semantics_and_future_exclusion(
             department_id=dept.id,
             requester_name="Test Requestor",
             task_code=task.code,
-            description_enc=encrypt("Legacy closed ticket without confirmation timestamp"),
+            description_enc=encrypt(
+                "Legacy closed ticket without confirmation timestamp"
+            ),
             month="October 2026",
             date_started=b_now.date(),
             status="CLSD",

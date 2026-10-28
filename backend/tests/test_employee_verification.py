@@ -33,6 +33,7 @@ async def verification_fixtures(client, accounts):
         tech = await db.scalar(select(User).where(User.username == "tech"))
 
         from app.models import LocationDepartment
+
         loc_dept = await db.scalar(
             select(LocationDepartment).where(
                 LocationDepartment.location_id == location.id,
@@ -40,7 +41,9 @@ async def verification_fixtures(client, accounts):
             )
         )
         if not loc_dept:
-            loc_dept = LocationDepartment(location_id=location.id, department_id=dept.id)
+            loc_dept = LocationDepartment(
+                location_id=location.id, department_id=dept.id
+            )
             db.add(loc_dept)
             await db.flush()
 
@@ -74,6 +77,7 @@ async def verification_fixtures(client, accounts):
             await db.flush()
 
         from app.core.security import encrypt
+
         valid_token = "test-secret-token-32-chars-long-abc"
         t1 = Ticket(
             ticket_code="T-2610-0115",
@@ -165,7 +169,9 @@ async def verification_fixtures(client, accounts):
         }
 
 
-async def test_id_only_access_denial_and_verified_credentials(client, verification_fixtures):
+async def test_id_only_access_denial_and_verified_credentials(
+    client, verification_fixtures
+):
     data = verification_fixtures
     code = data["t1"].ticket_code
 
@@ -218,7 +224,9 @@ async def test_id_only_access_denial_and_verified_credentials(client, verificati
     assert res_bad_token.status_code == 400
 
 
-async def test_staff_cannot_perform_employee_sign_off(client, verification_fixtures, accounts):
+async def test_staff_cannot_perform_employee_sign_off(
+    client, verification_fixtures, accounts
+):
     data = verification_fixtures
     t1_code = data["t1"].ticket_code
     t1_id = str(data["t1"].id)
@@ -239,7 +247,10 @@ async def test_staff_cannot_perform_employee_sign_off(client, verification_fixtu
         headers=accounts["tech"],
     )
     assert res_assigned_close.status_code == 403
-    assert "staff cannot perform employee sign-off" in res_assigned_close.json()["detail"].lower()
+    assert (
+        "staff cannot perform employee sign-off"
+        in res_assigned_close.json()["detail"].lower()
+    )
 
     # 2. Unassigned staff calling verify-access without token gets can_close=False
     res_unassigned_verify = await client.post(
@@ -398,15 +409,18 @@ async def test_successful_closure_and_reopen_retains_full_ticket_details(
 
 async def test_upgrade_from_0008_schema():
     import asyncio
+
     config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
     # Downgrade to 0008 (the previous deployed revision) in a worker thread
     await asyncio.to_thread(command.downgrade, config, "0008_employee_verification")
 
     # Verify column closure_token_expires_at is absent
     async with engine.connect() as conn:
+
         def check_column(connection):
             insp = inspect(connection)
             return [c["name"] for c in insp.get_columns("tickets")]
+
         columns_before = await conn.run_sync(check_column)
         assert "closure_token_expires_at" not in columns_before
 
@@ -415,14 +429,18 @@ async def test_upgrade_from_0008_schema():
 
     # Verify column closure_token_expires_at is now safely added
     async with engine.connect() as conn:
+
         def check_column(connection):
             insp = inspect(connection)
             return [c["name"] for c in insp.get_columns("tickets")]
+
         columns_after = await conn.run_sync(check_column)
         assert "closure_token_expires_at" in columns_after
 
 
-async def test_token_scope_by_credential_type_and_wrong_ticket_use(client, verification_fixtures):
+async def test_token_scope_by_credential_type_and_wrong_ticket_use(
+    client, verification_fixtures
+):
     data = verification_fixtures
     t1_code = data["t1"].ticket_code
     t1_id = str(data["t1"].id)
@@ -442,7 +460,10 @@ async def test_token_scope_by_credential_type_and_wrong_ticket_use(client, verif
         headers={"Authorization": f"Bearer {token_t1}"},
     )
     assert res_my_tickets.status_code == 403
-    assert "ticket-scoped token cannot access employee ticket list" in res_my_tickets.json()["detail"].lower()
+    assert (
+        "ticket-scoped token cannot access employee ticket list"
+        in res_my_tickets.json()["detail"].lower()
+    )
 
     # Gap 2: Ticket-scoped token for Ticket 1 MUST NOT view comments for Ticket 2
     res_t2_comments = await client.get(
@@ -450,7 +471,10 @@ async def test_token_scope_by_credential_type_and_wrong_ticket_use(client, verif
         headers={"Authorization": f"Bearer {token_t1}"},
     )
     assert res_t2_comments.status_code == 403
-    assert "closure-scoped credentials cannot be used for conversation" in res_t2_comments.json()["detail"].lower()
+    assert (
+        "closure-scoped credentials cannot be used for conversation"
+        in res_t2_comments.json()["detail"].lower()
+    )
 
     # Match token can access /my-tickets
     session_id = "test-session-kiosk-2"
@@ -478,7 +502,9 @@ async def test_token_scope_by_credential_type_and_wrong_ticket_use(client, verif
     assert res_match_close.status_code == 400
 
 
-async def test_reissue_after_72_hours_resets_validity_window(client, verification_fixtures, accounts):
+async def test_reissue_after_72_hours_resets_validity_window(
+    client, verification_fixtures, accounts
+):
     data = verification_fixtures
     t1 = data["t1"]
     t1_id = str(t1.id)
@@ -532,7 +558,9 @@ async def test_reissue_after_72_hours_resets_validity_window(client, verificatio
     assert res_confirm.json()["id"] == t1_id
 
 
-async def test_old_credentials_invalidated_after_rotation(client, verification_fixtures, accounts):
+async def test_old_credentials_invalidated_after_rotation(
+    client, verification_fixtures, accounts
+):
     data = verification_fixtures
     t1 = data["t1"]
     t1_id = str(t1.id)
@@ -582,7 +610,9 @@ async def test_old_credentials_invalidated_after_rotation(client, verification_f
     assert res_new_confirm.json()["id"] == t1_id
 
 
-async def test_production_link_behavior(client, verification_fixtures, accounts, monkeypatch):
+async def test_production_link_behavior(
+    client, verification_fixtures, accounts, monkeypatch
+):
     data = verification_fixtures
     t1_id = str(data["t1"].id)
 
@@ -590,6 +620,7 @@ async def test_production_link_behavior(client, verification_fixtures, accounts,
         return True
 
     from app.services import mail
+
     monkeypatch.setattr(mail, "send_closure", mock_send_closure)
 
     original_env = settings.ENVIRONMENT
@@ -614,14 +645,19 @@ async def test_production_link_behavior(client, verification_fixtures, accounts,
         settings.ENVIRONMENT = original_env
 
 
-async def test_comments_internal_privacy_enforced(client, verification_fixtures, accounts):
+async def test_comments_internal_privacy_enforced(
+    client, verification_fixtures, accounts
+):
     data = verification_fixtures
     t1_id = str(data["t1"].id)
 
     # 1. Staff adds internal note
     add_internal = await client.post(
         f"/api/v1/tickets/{t1_id}/comments",
-        json={"body": "INTERNAL IT NOTE: Investigating suspected faulty cabling.", "is_internal": True},
+        json={
+            "body": "INTERNAL IT NOTE: Investigating suspected faulty cabling.",
+            "is_internal": True,
+        },
         headers=accounts["tech"],
     )
     assert add_internal.status_code == 201
@@ -666,7 +702,10 @@ async def test_comments_internal_privacy_enforced(client, verification_fixtures,
     # 5. Employee posts comment -> forced is_internal=False
     emp_post = await client.post(
         f"/api/v1/tickets/{t1_id}/comments",
-        json={"body": "Done restarting, printer green light is on.", "is_internal": True},
+        json={
+            "body": "Done restarting, printer green light is on.",
+            "is_internal": True,
+        },
         headers={"Authorization": f"Bearer {emp_token}"},
     )
     assert emp_post.status_code == 201

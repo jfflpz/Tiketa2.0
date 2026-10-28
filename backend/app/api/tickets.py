@@ -63,7 +63,9 @@ async def get_requester_identity(
     db: DB,
 ) -> tuple[User | None, dict | None]:
     auth = request.headers.get("Authorization") or ""
-    emp_token = request.headers.get("X-Employee-Token") or request.headers.get("X-Match-Token")
+    emp_token = request.headers.get("X-Employee-Token") or request.headers.get(
+        "X-Match-Token"
+    )
 
     if auth.startswith("Bearer "):
         token = auth.split("Bearer ", 1)[1].strip()
@@ -78,7 +80,11 @@ async def get_requester_identity(
         except Exception:
             pass
         try:
-            session_id = request.headers.get("X-Kiosk-Session-ID") or request.headers.get("x-kiosk-session-id") or ""
+            session_id = (
+                request.headers.get("X-Kiosk-Session-ID")
+                or request.headers.get("x-kiosk-session-id")
+                or ""
+            )
             emp_id = verify_match_token(token, session_id if session_id else None)
             return None, {"employee_id": emp_id, "type": "employee_match"}
         except Exception:
@@ -91,7 +97,11 @@ async def get_requester_identity(
         except Exception:
             pass
         try:
-            session_id = request.headers.get("X-Kiosk-Session-ID") or request.headers.get("x-kiosk-session-id") or ""
+            session_id = (
+                request.headers.get("X-Kiosk-Session-ID")
+                or request.headers.get("x-kiosk-session-id")
+                or ""
+            )
             emp_id = verify_match_token(emp_token, session_id if session_id else None)
             return None, {"employee_id": emp_id, "type": "employee_match"}
         except Exception:
@@ -131,7 +141,11 @@ async def my_tickets(request: Request, db: DB):
             403, "Ticket-scoped token cannot access employee ticket list"
         )
     target_emp_id = None
-    if emp_claims and emp_claims.get("type") == "employee_match" and emp_claims.get("employee_id"):
+    if (
+        emp_claims
+        and emp_claims.get("type") == "employee_match"
+        and emp_claims.get("employee_id")
+    ):
         target_emp_id = emp_claims["employee_id"]
 
     if not target_emp_id:
@@ -213,7 +227,7 @@ async def verify_access(
 
     is_authorized = False
     can_close = False
-    can_reopen = (ticket.status in ("RESL", "CLSD"))
+    can_reopen = ticket.status in ("RESL", "CLSD")
     verified_closure_hash = None
 
     if staff_user:
@@ -225,20 +239,21 @@ async def verify_access(
         if ticket.status == "CLSD" and ticket.user_confirmed_at:
             raise HTTPException(410, "Ticket has already been verified and closed")
         if (
-            ticket.closure_token_expires_at
-            and now() > ticket.closure_token_expires_at
+            ticket.closure_token_expires_at and now() > ticket.closure_token_expires_at
         ) or (
             not ticket.closure_token_expires_at
             and ticket.resolved_at
             and (now() - ticket.resolved_at > timedelta(hours=72))
         ):
-            raise HTTPException(410, "Closure verification token has expired (72-hour window)")
+            raise HTTPException(
+                410, "Closure verification token has expired (72-hour window)"
+            )
         if not ticket.closure_token_hash or not secrets.compare_digest(
             ticket.closure_token_hash, digest(body.token)
         ):
             raise HTTPException(400, "Invalid or expired closure verification token")
         is_authorized = True
-        can_close = (ticket.status == "RESL")
+        can_close = ticket.status == "RESL"
         verified_closure_hash = ticket.closure_token_hash
 
     if not is_authorized and body.match_token:
@@ -662,10 +677,7 @@ async def confirm(ticket_id: UUID, body: ClosureInput, request: Request, db: DB)
         raise HTTPException(400, "Ticket is already closed")
     if row.status != "RESL":
         raise HTTPException(400, f"Ticket cannot be confirmed in status {row.status}")
-    if (
-        row.closure_token_expires_at
-        and now() > row.closure_token_expires_at
-    ) or (
+    if (row.closure_token_expires_at and now() > row.closure_token_expires_at) or (
         not row.closure_token_expires_at
         and row.resolved_at
         and (now() - row.resolved_at > timedelta(hours=72))
@@ -772,10 +784,7 @@ async def reopen(ticket_id: UUID, body: ReopenInput, request: Request, db: DB):
         authorized = True
     elif body.token:
         # Check expiry
-        if (
-            row.closure_token_expires_at
-            and now() > row.closure_token_expires_at
-        ) or (
+        if (row.closure_token_expires_at and now() > row.closure_token_expires_at) or (
             not row.closure_token_expires_at
             and row.resolved_at
             and (now() - row.resolved_at > timedelta(hours=72))

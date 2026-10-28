@@ -101,7 +101,9 @@ async def hub_summaries(
     # Legacy data without user_confirmed_at lacks an audited closure date and is not fabricated
     start_of_month_date = b_now.date().replace(day=1)
     if b_now.month == 12:
-        start_of_next_month_date = start_of_month_date.replace(year=b_now.year + 1, month=1)
+        start_of_next_month_date = start_of_month_date.replace(
+            year=b_now.year + 1, month=1
+        )
     else:
         start_of_next_month_date = start_of_month_date.replace(month=b_now.month + 1)
 

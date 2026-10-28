@@ -114,4 +114,3 @@ async def record_matching_attempt(session_id: str, is_mismatch: bool):
             )
     except RedisError as e:
         logger.critical(f"Redis session matching attempt error: {e}")
-

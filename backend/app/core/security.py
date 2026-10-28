@@ -162,4 +162,3 @@ def verify_employee_ticket_token(token: str) -> dict:
     if claims.get("type") != "employee_ticket_access":
         raise jwt.InvalidTokenError("Incorrect token type")
     return claims
-
