@@ -2,6 +2,7 @@ import type { AppSliceCreator } from '../types';
 import type { Ticket } from '../../types/ticket';
 import { ticketsApi, extractApiErrorMessage, setEmployeeToken } from '../../api/client';
 import { mapStaffTicket } from '../../utils/mapStaffTicket';
+import { getPersistedEmployeeTickets, persistEmployeeTickets } from '../../utils/session';
 
 export type VerificationViewStatus =
   | 'idle'
@@ -64,7 +65,7 @@ export const createTicketVerificationSlice: AppSliceCreator<TicketVerificationSl
     verificationStatus: initialParams.code ? 'loading' : 'idle',
     verificationErrorMessage: null,
     verifiedTicket: null,
-    employeeTickets: [],
+    employeeTickets: getPersistedEmployeeTickets(),
     isVerifyingIdentity: false,
     unlockedTicketCodes: {},
     verificationModalTicketId: null,
@@ -252,11 +253,18 @@ export const createTicketVerificationSlice: AppSliceCreator<TicketVerificationSl
     fetchMyEmployeeTickets: async () => {
       const currentSeq = verificationSequence;
       try {
-        const res = await ticketsApi.getMyTickets();
+        const matchToken = get().employeeMatchToken || undefined;
+        const res = await ticketsApi.getMyTickets(matchToken);
         if (currentSeq !== verificationSequence) return;
         if (Array.isArray(res)) {
           const mapped = res.map((item) => mapStaffTicket(item, get().serverDictionaries));
-          set({ employeeTickets: mapped });
+          const serverCodes = new Set(mapped.map((t) => t.ticketCode.toUpperCase()));
+          const localOnly = get().employeeTickets.filter(
+            (t) => !serverCodes.has(t.ticketCode.toUpperCase())
+          );
+          const combined = [...mapped, ...localOnly];
+          set({ employeeTickets: combined });
+          persistEmployeeTickets(combined);
         }
       } catch {
         // Unauthenticated or employee session without my-tickets

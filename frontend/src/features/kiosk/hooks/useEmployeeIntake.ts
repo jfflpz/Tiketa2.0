@@ -24,6 +24,7 @@ export function useEmployeeIntake() {
   const matchEmployeeApi = useAppStore((state) => state.matchEmployeeApi);
   const recordLocationObservationApi = useAppStore((state) => state.recordLocationObservationApi);
   const submitTicketApi = useAppStore((state) => state.submitTicketApi);
+  const setEmployeeMatch = useAppStore((state) => state.setEmployeeMatch);
 
   // Form Fields
   const [employeeId, setEmployeeId] = useState('');
@@ -98,6 +99,7 @@ export function useEmployeeIntake() {
       setIsMatched(false);
       setMatchToken(null);
       setEmployeeProfile(null);
+      setEmployeeMatch(null, null);
     }
     setMatchError(null);
   };
@@ -108,6 +110,7 @@ export function useEmployeeIntake() {
       setIsMatched(false);
       setMatchToken(null);
       setEmployeeProfile(null);
+      setEmployeeMatch(null, null);
     }
     setMatchError(null);
   };
@@ -132,19 +135,21 @@ export function useEmployeeIntake() {
       if (result && result.match_token) {
         setIsMatched(true);
         setMatchToken(result.match_token);
-        const emp: any = (result as any).employee || {};
-        setEmployeeProfile({
-          fullName: emp.full_name || emp.fullName || '',
-          company: emp.company_name || emp.companyName || '',
-          location: emp.location_name || emp.locationName || '',
-          department: emp.department_name || emp.departmentName || '',
-        });
+        const profile = {
+          fullName: result.employee.full_name,
+          company: result.employee.company_name,
+          location: result.employee.location_name,
+          department: result.employee.department_name,
+        };
+        setEmployeeProfile(profile);
+        setEmployeeMatch(result.match_token, profile);
         setMatchError(null);
       }
     } catch (err: unknown) {
       setIsMatched(false);
       setMatchToken(null);
       setEmployeeProfile(null);
+      setEmployeeMatch(null, null);
 
       if (axios.isAxiosError(err)) {
         if (err.response?.status === 429) {
@@ -247,19 +252,26 @@ export function useEmployeeIntake() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isMatched || !matchToken || isSubmitting) return;
-    if (!description.trim() && !selectedTask) return;
+
+    // Minimum 10 characters description fallback so Pydantic (min_length=10) never fails with 422
+    const cleanDesc = description.trim();
+    const finalDescription =
+      cleanDesc.length >= 10
+        ? cleanDesc
+        : cleanDesc.length > 0
+        ? `${cleanDesc} - Reported via IT Kiosk`
+        : `Reported issue from ${employeeProfile?.location || activeHub.name} terminal workstation.`;
 
     setIsSubmitting(true);
     const created = await submitTicketApi({
       employeeId: employeeId.trim(),
       taskCode: selectedTask,
-      taskTitle: undefined,
-      description: description.trim(),
+      description: finalDescription,
       matchToken,
       observationId: locationState.observationId,
       companyName: employeeProfile?.company ?? 'Pangasinan Five Star Bus Co.',
       locationName: employeeProfile?.location ?? activeHub.name,
-      departmentName: employeeProfile?.department ?? 'Operation',
+      departmentName: employeeProfile?.department ?? 'Operations',
       requestorName: employeeProfile?.fullName ?? 'Terminal Staff',
     });
 
@@ -273,7 +285,6 @@ export function useEmployeeIntake() {
   const resetIntake = () => {
     setSubmittedTicket(null);
     setDescription('');
-    // Retain matched profile if desired, or reset
   };
 
   return {

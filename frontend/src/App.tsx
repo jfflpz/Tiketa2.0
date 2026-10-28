@@ -31,6 +31,7 @@ export default function App() {
   const isHydratingAuth = useAppStore((state) => state.isHydratingAuth);
   const fetchQueueApi = useAppStore((state) => state.fetchQueueApi);
   const hydrateAuthApi = useAppStore((state) => state.hydrateAuthApi);
+  const hydrateKioskEmployeeTickets = useAppStore((state) => state.hydrateKioskEmployeeTickets);
 
   const [currentPath, setCurrentPath] = useState(() =>
     typeof window !== 'undefined' ? window.location.pathname : '/'
@@ -38,7 +39,8 @@ export default function App() {
 
   useEffect(() => {
     hydrateAuthApi();
-  }, [hydrateAuthApi]);
+    hydrateKioskEmployeeTickets?.();
+  }, [hydrateAuthApi, hydrateKioskEmployeeTickets]);
 
   // BF-02: Handle browser back/forward and external URL navigation
   useEffect(() => {
@@ -95,10 +97,11 @@ export default function App() {
     );
   }
 
-  const currentRoute = resolvePathToView(currentPath);
+  const currentPathStr = typeof window !== 'undefined' ? window.location.pathname : currentPath;
+  const currentRoute = resolvePathToView(currentPathStr);
   const isPublicPage = currentRoute === 'public';
 
-  // BF-02: If unauthenticated, on public /report page, or verification link override is active, render Employee Helpdesk
+  // BF-02: If unauthenticated, on public /report or /kiosk page, or verification link override is active, render Employee Helpdesk
   if (!currentUser || verifyTicketCode || isPublicPage) {
     return (
       <>

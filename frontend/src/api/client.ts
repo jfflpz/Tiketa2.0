@@ -1,12 +1,14 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { readableError } from '../utils/errorMessages';
 import type { SupportMode, TicketStatus } from '../types/ticket';
+import { getOrCreateKioskSessionId } from '../utils/session';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
 // In-Memory Access Token (ADR-003: RAM only, zero localStorage exposure)
 let inMemoryAccessToken: string | null = null;
 let inMemoryEmployeeToken: string | null = null;
+let inMemoryMatchToken: string | null = null;
 
 export const setAccessToken = (token: string | null) => {
     inMemoryAccessToken = token;
@@ -19,6 +21,12 @@ export const setEmployeeToken = (token: string | null) => {
 };
 
 export const getEmployeeToken = () => inMemoryEmployeeToken;
+
+export const setMatchToken = (token: string | null) => {
+    inMemoryMatchToken = token;
+};
+
+export const getMatchToken = () => inMemoryMatchToken;
 
 export const apiClient = axios.create({
     baseURL: BASE_URL,
@@ -36,6 +44,9 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
         } else if (inMemoryEmployeeToken) {
             config.headers.Authorization = `Bearer ${inMemoryEmployeeToken}`;
         }
+    }
+    if (config.headers && inMemoryMatchToken && !config.headers['X-Match-Token']) {
+        config.headers['X-Match-Token'] = inMemoryMatchToken;
     }
     return config;
 });
@@ -405,8 +416,19 @@ export const ticketsApi = {
     );
     return res.data;
     },
-    getMyTickets: async (): Promise<StaffTicketResponse[]> => {
-    const res = await apiClient.get<StaffTicketResponse[]>('/tickets/my-tickets');
+    getMyTickets: async (matchToken?: string | null): Promise<StaffTicketResponse[]> => {
+    const token = matchToken || inMemoryMatchToken || inMemoryEmployeeToken;
+    const headers: Record<string, string> = {};
+    if (token) {
+        headers['X-Match-Token'] = token;
+    }
+    const sessionId = getOrCreateKioskSessionId();
+    if (sessionId) {
+        headers['X-Kiosk-Session-ID'] = sessionId;
+    }
+    const res = await apiClient.get<StaffTicketResponse[]>('/tickets/my-tickets', {
+        headers: Object.keys(headers).length ? headers : undefined,
+    });
     return res.data;
     },
     confirmClosure: async (

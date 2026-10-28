@@ -428,14 +428,26 @@ export const KioskIntakeForm: React.FC<KioskIntakeFormProps> = ({
           </span>
         </div>
 
-        <textarea
-          value={description}
-          onChange={(e) => onDescriptionChange(e.target.value)}
-          disabled={!isMatched}
-          placeholder="Briefly describe what happened (e.g. Booth 2 receipt cutter jammed during shift change)..."
-          rows={3}
-          className="w-full px-4 py-3 bg-canvas border border-line rounded-2xl text-xs text-ink placeholder:text-ink-faint focus:outline-none focus:border-zinc-500 transition-colors"
-        />
+        <div className="space-y-1.5">
+          <textarea
+            value={description}
+            onChange={(e) => onDescriptionChange(e.target.value)}
+            disabled={!isMatched}
+            placeholder="Briefly describe what happened (e.g. Booth 2 receipt cutter jammed during shift change)..."
+            rows={3}
+            className="w-full px-4 py-3 bg-canvas border border-line rounded-2xl text-xs text-ink placeholder:text-ink-faint focus:outline-none focus:border-zinc-500 transition-colors"
+          />
+          <div className="flex justify-between items-center text-[11px] text-ink-subtle px-1">
+            <span>
+              {description.trim().length === 0
+                ? 'Optional: An automated issue summary will be used if left blank.'
+                : description.trim().length < 10
+                ? `${description.trim().length}/10 chars (auto-completed if under 10 chars)`
+                : `${description.trim().length} characters`}
+            </span>
+            <span className="text-ink-faint">Min. 10 chars</span>
+          </div>
+        </div>
 
         <button
           type="submit"

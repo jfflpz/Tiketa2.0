@@ -728,7 +728,7 @@ describe('TerminalHubsView & TerminalHubDetailModal', () => {
     const fetchPromise = useAppStore.getState().fetchInspectedTicketApi('ticket-late-1');
 
     // User logs out before promise finishes
-    useAppStore.getState().logoutToKiosk();
+    await useAppStore.getState().logoutToKiosk();
 
     // Now resolve late response
     resolveTicket(createMockServerTicket('ticket-late-1', 'T-LATE-01', 'OPEN'));
