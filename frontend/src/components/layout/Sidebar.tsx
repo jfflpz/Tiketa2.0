@@ -1,4 +1,4 @@
-// @spec UI-LAYOUT-01: Nexora Categorized Dark Sidebar (#111315) with Separated Staff & Knowledge Governance & Active Orange Highlights
+// @spec UI-LAYOUT-01: Nexora Categorized Dark Sidebar (#111315) with 4-Tier Role Layouts
 import React, { useState } from 'react';
 import {
   Home,
@@ -17,6 +17,7 @@ import {
   Box,
 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
+import type { StaffRole, ActiveView } from '../../store/slices/uiSlice';
 
 export const Sidebar: React.FC = () => {
   const currentUser = useAppStore((state) => state.currentUser);
@@ -26,9 +27,14 @@ export const Sidebar: React.FC = () => {
   const sidebarCollapsed = useAppStore((state) => state.sidebarCollapsed);
   const tickets = useAppStore((state) => state.tickets);
 
-  const [mainOpen, setMainOpen] = useState(true);
+  const [itDashboardOpen, setItDashboardOpen] = useState(true);
   const [adminAnalyticsOpen, setAdminAnalyticsOpen] = useState(true);
-  const isAdmin = currentUser?.role === 'admin';
+
+  const role: StaffRole = currentUser?.role ?? 'it';
+  const isAdmin = role === 'admin';
+  const isSupervisorOrAnalyst = role === 'supervisor' || role === 'analyst';
+  const isIntern = role === 'intern';
+  const isIT = role === 'it';
 
   // Badge count for active tickets
   const activeTicketsCount = tickets.filter((t) => t.status !== 'CLSD').length;
@@ -36,6 +42,52 @@ export const Sidebar: React.FC = () => {
   const isOverviewGroupActive = activeView === 'overview' || activeView === 'joblogs';
   const isAnalyticsGroupActive =
     activeView === 'analytics' || activeView === 'reports' || activeView === 'joblogs';
+
+  const handleBrandClick = () => {
+    if (isAdmin || isSupervisorOrAnalyst) {
+      setActiveView('analytics');
+    } else {
+      setActiveView('overview');
+    }
+  };
+
+  const renderNavButton = (
+    view: ActiveView,
+    label: string,
+    Icon: React.ElementType,
+    iconColor: string,
+    badge?: number | string
+  ) => {
+    const isActive = activeView === view;
+    return (
+      <button
+        type="button"
+        onClick={() => setActiveView(view)}
+        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all press-fx ${
+          isActive
+            ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold shadow-md shadow-orange-950/40'
+            : 'text-zinc-400 hover:text-white hover:bg-white/5 font-medium'
+        }`}
+        title={label}
+      >
+        <div className="flex items-center gap-2.5 min-w-0">
+          <Icon
+            className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : iconColor}`}
+          />
+          {!sidebarCollapsed && <span className="truncate">{label}</span>}
+        </div>
+        {!sidebarCollapsed && badge !== undefined && (
+          <span
+            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+              isActive ? 'bg-black/25 text-white' : 'bg-zinc-800 text-zinc-300'
+            }`}
+          >
+            {badge}
+          </span>
+        )}
+      </button>
+    );
+  };
 
   return (
     <aside
@@ -47,24 +99,68 @@ export const Sidebar: React.FC = () => {
       <div className="p-4 space-y-6 overflow-y-auto flex-1">
         {/* Nexora-Style Brand Header */}
         <div
-          onClick={() => setActiveView(isAdmin ? 'analytics' : 'overview')}
+          onClick={handleBrandClick}
           className="flex items-center gap-3 px-2 pt-1 cursor-pointer group"
         >
           <div className="w-8 h-8 rounded-xl bg-orange-500/15 border border-orange-500/40 text-orange-500 flex items-center justify-center shadow-sm shrink-0 group-hover:bg-orange-500 group-hover:text-white transition-colors">
             <Box className="w-4 h-4 stroke-[2.4]" />
           </div>
           {!sidebarCollapsed && (
-            <span className="font-extrabold text-base tracking-wider text-white uppercase">
-              TIKETA
-            </span>
+            <div className="flex flex-col min-w-0">
+              <span className="font-extrabold text-base tracking-wider text-white uppercase leading-none">
+                TIKETA
+              </span>
+              <span className="text-[10px] font-mono text-orange-400 uppercase tracking-widest mt-0.5">
+                {role.toUpperCase()}
+              </span>
+            </div>
           )}
         </div>
 
         {/* ============================================================
-            IT SUPPORT CATEGORIZED NAVIGATION (When role === 'it')
-            Each screen appears in ONLY ONE category (Zero Duplicates!)
+            TIER 1: INTERN NAVIGATION LAYOUT (role === 'intern')
+            Restricted to assigned tickets, overview, personal notes & logs
            ============================================================ */}
-        {!isAdmin && (
+        {isIntern && (
+          <>
+            {/* CATEGORY 1: MY DASHBOARD */}
+            <div className="space-y-1.5">
+              {!sidebarCollapsed && (
+                <div className="px-2.5 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                  MY DASHBOARD
+                </div>
+              )}
+              {renderNavButton('overview', 'KPI Overview', Home, 'text-orange-400')}
+            </div>
+
+            {/* CATEGORY 2: ACTIVE WORKBENCH */}
+            <div className="space-y-1.5">
+              {!sidebarCollapsed && (
+                <div className="px-2.5 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                  ACTIVE WORKBENCH
+                </div>
+              )}
+              {renderNavButton('workbench', 'My Assigned Workbench', Wrench, 'text-orange-400')}
+            </div>
+
+            {/* CATEGORY 3: KNOWLEDGE & LOGS */}
+            <div className="space-y-1.5">
+              {!sidebarCollapsed && (
+                <div className="px-2.5 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                  KNOWLEDGE &amp; LOGS
+                </div>
+              )}
+              {renderNavButton('notes', 'Saved Repair Notes', BookOpen, 'text-amber-400')}
+              {renderNavButton('joblogs', 'My Job Logs', FileSpreadsheet, 'text-emerald-400')}
+            </div>
+          </>
+        )}
+
+        {/* ============================================================
+            TIER 2: IT SUPPORT SPECIALIST (role === 'it')
+            Full operational fleet triage, workbench, and terminal hubs
+           ============================================================ */}
+        {isIT && (
           <>
             {/* CATEGORY 1: MY DASHBOARD */}
             <div className="space-y-2">
@@ -81,25 +177,23 @@ export const Sidebar: React.FC = () => {
                     if (sidebarCollapsed) {
                       setActiveView('overview');
                     } else {
-                      setMainOpen((prev) => !prev);
+                      setItDashboardOpen((prev) => !prev);
                       setActiveView('overview');
                     }
                   }}
                   className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-semibold text-xs transition-all press-fx ${
-                    (mainOpen ? activeView === 'overview' : isOverviewGroupActive)
+                    (itDashboardOpen ? activeView === 'overview' : isOverviewGroupActive)
                       ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-md shadow-orange-950/40'
                       : 'text-zinc-400 hover:text-white hover:bg-white/5'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <Home className="w-4 h-4 shrink-0" />
-                    {!sidebarCollapsed && (
-                      <span className="truncate">KPI Overview</span>
-                    )}
+                    {!sidebarCollapsed && <span className="truncate">KPI Overview</span>}
                   </div>
                   {!sidebarCollapsed && (
                     <div className="flex items-center gap-1.5">
-                      {mainOpen ? (
+                      {itDashboardOpen ? (
                         <ChevronDown className="w-3.5 h-3.5" />
                       ) : (
                         <ChevronRight className="w-3.5 h-3.5" />
@@ -108,7 +202,7 @@ export const Sidebar: React.FC = () => {
                   )}
                 </button>
 
-                {!sidebarCollapsed && mainOpen && (
+                {!sidebarCollapsed && itDashboardOpen && (
                   <div className="mt-1 ml-2 pl-2 border-l border-zinc-800 space-y-1">
                     <button
                       type="button"
@@ -131,7 +225,6 @@ export const Sidebar: React.FC = () => {
                       </div>
                     </button>
 
-                    {/* Job Logs is under MY DASHBOARD */}
                     <button
                       type="button"
                       onClick={() => setActiveView('joblogs')}
@@ -162,86 +255,15 @@ export const Sidebar: React.FC = () => {
                   REPAIR OPERATIONS
                 </div>
               )}
-
-              {/* 1. Dedicated Active Ticket Lists Screen Button */}
-              <button
-                type="button"
-                onClick={() => setActiveView('tickets')}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all press-fx ${
-                  activeView === 'tickets'
-                    ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold shadow-md shadow-orange-950/40'
-                    : 'text-zinc-400 hover:text-white hover:bg-white/5 font-medium'
-                }`}
-                title="Active Ticket Lists (Table & 3-Col Kanban)"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <Inbox
-                    className={`w-4 h-4 shrink-0 ${
-                      activeView === 'tickets' ? 'text-white' : 'text-sky-400'
-                    }`}
-                  />
-                  {!sidebarCollapsed && (
-                    <span className="truncate">Active Ticket Lists</span>
-                  )}
-                </div>
-                {!sidebarCollapsed && (
-                  <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                      activeView === 'tickets'
-                        ? 'bg-black/25 text-white'
-                        : 'bg-zinc-800 text-zinc-300'
-                    }`}
-                  >
-                    {activeTicketsCount}
-                  </span>
-                )}
-              </button>
-
-              {/* 2. My Active Workbench Screen Button */}
-              <button
-                type="button"
-                onClick={() => setActiveView('workbench')}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all press-fx ${
-                  activeView === 'workbench'
-                    ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold shadow-md shadow-orange-950/40'
-                    : 'text-zinc-400 hover:text-white hover:bg-white/5 font-medium'
-                }`}
-                title="My Active Workbench (Focused Ticket & Live Chat)"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <Wrench
-                    className={`w-4 h-4 shrink-0 ${
-                      activeView === 'workbench' ? 'text-white' : 'text-orange-400'
-                    }`}
-                  />
-                  {!sidebarCollapsed && (
-                    <span className="truncate">My Active Workbench</span>
-                  )}
-                </div>
-              </button>
-
-              {/* 3. Terminal Hubs Screen Button */}
-              <button
-                type="button"
-                onClick={() => setActiveView('terminals')}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all press-fx ${
-                  activeView === 'terminals'
-                    ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold shadow-md shadow-orange-950/40'
-                    : 'text-zinc-400 hover:text-white hover:bg-white/5 font-medium'
-                }`}
-                title="15 Bus Terminal Hubs Monitor"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <Building2
-                    className={`w-4 h-4 shrink-0 ${
-                      activeView === 'terminals' ? 'text-white' : 'text-teal-400'
-                    }`}
-                  />
-                  {!sidebarCollapsed && (
-                    <span className="truncate">Terminal Hubs</span>
-                  )}
-                </div>
-              </button>
+              {renderNavButton(
+                'tickets',
+                'Active Ticket Lists',
+                Inbox,
+                'text-sky-400',
+                activeTicketsCount
+              )}
+              {renderNavButton('workbench', 'My Active Workbench', Wrench, 'text-orange-400')}
+              {renderNavButton('terminals', 'Terminal Hubs', Building2, 'text-teal-400')}
             </div>
 
             {/* CATEGORY 3: KNOWLEDGE BASE */}
@@ -251,39 +273,76 @@ export const Sidebar: React.FC = () => {
                   KNOWLEDGE BASE
                 </div>
               )}
-
-              {/* Saved Repair Notes */}
-              <button
-                type="button"
-                onClick={() => setActiveView('notes')}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all press-fx ${
-                  activeView === 'notes'
-                    ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold shadow-md shadow-orange-950/40'
-                    : 'text-zinc-400 hover:text-white hover:bg-white/5 font-medium'
-                }`}
-                title="Saved Repair Notes & Troubleshooting Guides"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <BookOpen
-                    className={`w-4 h-4 shrink-0 ${
-                      activeView === 'notes' ? 'text-white' : 'text-amber-400'
-                    }`}
-                  />
-                  {!sidebarCollapsed && (
-                    <span className="truncate">Saved Repair Notes</span>
-                  )}
-                </div>
-              </button>
+              {renderNavButton('notes', 'Saved Repair Notes', BookOpen, 'text-amber-400')}
             </div>
           </>
         )}
 
         {/* ============================================================
-            ADMIN CATEGORIZED NAVIGATION (When role === 'admin')
+            TIER 3: SUPERVISOR & ANALYST NAVIGATION (role === 'supervisor' | 'analyst')
+            Executive analytics, standardized reporting, governance & triage
+           ============================================================ */}
+        {isSupervisorOrAnalyst && (
+          <>
+            {/* CATEGORY 1: OPERATIONAL ANALYTICS */}
+            <div className="space-y-1.5">
+              {!sidebarCollapsed && (
+                <div className="px-2.5 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                  OPERATIONAL ANALYTICS
+                </div>
+              )}
+              {renderNavButton('analytics', 'Executive Analytics', LineChart, 'text-orange-400')}
+              {renderNavButton('reports', '8 Standard Reports', BarChart3, 'text-amber-400')}
+            </div>
+
+            {/* CATEGORY 2: GOVERNANCE & AUDIT */}
+            <div className="space-y-1.5">
+              {!sidebarCollapsed && (
+                <div className="px-2.5 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                  GOVERNANCE &amp; AUDIT
+                </div>
+              )}
+              {renderNavButton('team', 'IT Team & Accounts', Users, 'text-emerald-400')}
+              {renderNavButton('joblogs', 'Fleet Master Job Logs', FileSpreadsheet, 'text-emerald-400')}
+            </div>
+
+            {/* CATEGORY 3: OPERATIONS & FLEET MONITOR */}
+            <div className="space-y-1.5">
+              {!sidebarCollapsed && (
+                <div className="px-2.5 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                  {role === 'supervisor' ? 'OPERATIONS & FLEET TRIAGE' : 'FLEET MONITOR'}
+                </div>
+              )}
+              {role === 'supervisor' && (
+                <>
+                  {renderNavButton(
+                    'tickets',
+                    'Active Ticket Lists',
+                    Layers,
+                    'text-sky-400',
+                    activeTicketsCount
+                  )}
+                  {renderNavButton('terminals', 'Terminal Hubs Monitor', Building2, 'text-teal-400')}
+                  {renderNavButton('notes', 'Saved Repair Notes', BookOpen, 'text-amber-400')}
+                </>
+              )}
+              {role === 'analyst' && (
+                <>
+                  {renderNavButton('overview', 'Fleet Overview', Home, 'text-orange-400')}
+                  {renderNavButton('terminals', 'Terminal Hubs Monitor', Building2, 'text-teal-400')}
+                </>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* ============================================================
+            TIER 4: SYSTEM ADMINISTRATOR (role === 'admin')
+            Full suite across all categories with zero screen duplicates
            ============================================================ */}
         {isAdmin && (
           <>
-            {/* ADMIN CATEGORY 1: EXECUTIVE ANALYTICS (With Dropdown Accordion) */}
+            {/* ADMIN CATEGORY 1: EXECUTIVE ANALYTICS */}
             <div className="space-y-2">
               {!sidebarCollapsed && (
                 <div className="px-2.5 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
@@ -292,7 +351,6 @@ export const Sidebar: React.FC = () => {
               )}
 
               <div>
-                {/* Primary Orange Header with Dropdown Accordion */}
                 <button
                   type="button"
                   onClick={() => {
@@ -311,9 +369,7 @@ export const Sidebar: React.FC = () => {
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <LineChart className="w-4 h-4 shrink-0" />
-                    {!sidebarCollapsed && (
-                      <span className="truncate">Executive Analytics</span>
-                    )}
+                    {!sidebarCollapsed && <span className="truncate">Executive Analytics</span>}
                   </div>
                   {!sidebarCollapsed && (
                     <div className="flex items-center gap-1.5">
@@ -328,7 +384,6 @@ export const Sidebar: React.FC = () => {
 
                 {!sidebarCollapsed && adminAnalyticsOpen && (
                   <div className="mt-1 ml-2 pl-2 border-l border-zinc-800 space-y-1">
-                    {/* Sub-item 1: Overview & KPIs */}
                     <button
                       type="button"
                       onClick={() => setActiveView('analytics')}
@@ -350,7 +405,6 @@ export const Sidebar: React.FC = () => {
                       </div>
                     </button>
 
-                    {/* Sub-item 2: 8 Standardized Reports Suite */}
                     <button
                       type="button"
                       onClick={() => setActiveView('reports')}
@@ -370,7 +424,6 @@ export const Sidebar: React.FC = () => {
                       </div>
                     </button>
 
-                    {/* Sub-item 3: 15-Col Master Sheet (Included in analytics category) */}
                     <button
                       type="button"
                       onClick={() => setActiveView('joblogs')}
@@ -401,57 +454,15 @@ export const Sidebar: React.FC = () => {
                   OPERATIONS &amp; FLEET TRIAGE
                 </div>
               )}
-
-              {/* Active Ticket Lists & Triage */}
-              <button
-                type="button"
-                onClick={() => setActiveView('tickets')}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all press-fx ${
-                  activeView === 'tickets'
-                    ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold shadow-md shadow-orange-950/40'
-                    : 'text-zinc-400 hover:text-white hover:bg-white/5 font-medium'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <Layers
-                    className={`w-4 h-4 shrink-0 ${
-                      activeView === 'tickets' ? 'text-white' : 'text-sky-400'
-                    }`}
-                  />
-                  {!sidebarCollapsed && <span>Active Ticket Lists</span>}
-                </div>
-                {!sidebarCollapsed && (
-                  <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                      activeView === 'tickets'
-                        ? 'bg-black/25 text-white'
-                        : 'bg-zinc-800 text-zinc-300'
-                    }`}
-                  >
-                    {activeTicketsCount}
-                  </span>
-                )}
-              </button>
-
-              {/* Terminal Hubs Monitor */}
-              <button
-                type="button"
-                onClick={() => setActiveView('terminals')}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all press-fx ${
-                  activeView === 'terminals'
-                    ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold shadow-md shadow-orange-950/40'
-                    : 'text-zinc-400 hover:text-white hover:bg-white/5 font-medium'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <Building2
-                    className={`w-4 h-4 shrink-0 ${
-                      activeView === 'terminals' ? 'text-white' : 'text-teal-400'
-                    }`}
-                  />
-                  {!sidebarCollapsed && <span>Terminal Hubs Monitor</span>}
-                </div>
-              </button>
+              {renderNavButton(
+                'tickets',
+                'Active Ticket Lists',
+                Layers,
+                'text-sky-400',
+                activeTicketsCount
+              )}
+              {renderNavButton('workbench', 'My Active Workbench', Wrench, 'text-orange-400')}
+              {renderNavButton('terminals', 'Terminal Hubs Monitor', Building2, 'text-teal-400')}
             </div>
 
             {/* ADMIN CATEGORY 3: STAFF GOVERNANCE */}
@@ -461,26 +472,7 @@ export const Sidebar: React.FC = () => {
                   STAFF GOVERNANCE
                 </div>
               )}
-
-              {/* IT Team & Accounts */}
-              <button
-                type="button"
-                onClick={() => setActiveView('team')}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all press-fx ${
-                  activeView === 'team'
-                    ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold shadow-md shadow-orange-950/40'
-                    : 'text-zinc-400 hover:text-white hover:bg-white/5 font-medium'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <Users
-                    className={`w-4 h-4 shrink-0 ${
-                      activeView === 'team' ? 'text-white' : 'text-emerald-400'
-                    }`}
-                  />
-                  {!sidebarCollapsed && <span>IT Team &amp; Accounts</span>}
-                </div>
-              </button>
+              {renderNavButton('team', 'IT Team & Accounts', Users, 'text-emerald-400')}
             </div>
 
             {/* ADMIN CATEGORY 4: KNOWLEDGE BASE */}
@@ -490,26 +482,7 @@ export const Sidebar: React.FC = () => {
                   KNOWLEDGE BASE
                 </div>
               )}
-
-              {/* Saved Repair Notes */}
-              <button
-                type="button"
-                onClick={() => setActiveView('notes')}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all press-fx ${
-                  activeView === 'notes'
-                    ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold shadow-md shadow-orange-950/40'
-                    : 'text-zinc-400 hover:text-white hover:bg-white/5 font-medium'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <BookOpen
-                    className={`w-4 h-4 shrink-0 ${
-                      activeView === 'notes' ? 'text-white' : 'text-amber-400'
-                    }`}
-                  />
-                  {!sidebarCollapsed && <span>Saved Repair Notes</span>}
-                </div>
-              </button>
+              {renderNavButton('notes', 'Saved Repair Notes', BookOpen, 'text-amber-400')}
             </div>
           </>
         )}
@@ -530,10 +503,10 @@ export const Sidebar: React.FC = () => {
             {!sidebarCollapsed && (
               <div className="min-w-0">
                 <p className="text-xs font-semibold text-white truncate">
-                  {currentUser?.name ?? 'Nathaniel D. Esguerra'}
+                  {currentUser?.name ?? 'Staff User'}
                 </p>
                 <p className="text-[11px] text-zinc-400 truncate">
-                  {currentUser?.title ?? 'IT Support Specialist'}
+                  {currentUser?.title ?? role.toUpperCase()}
                 </p>
               </div>
             )}

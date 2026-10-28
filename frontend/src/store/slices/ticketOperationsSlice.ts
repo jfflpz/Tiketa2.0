@@ -26,7 +26,9 @@ export interface TicketOperationsSlice {
   updateTicketStatusApi: (
     ticketId: string,
     status: TicketStatus,
-    mode?: SupportMode, task_code?: string) => Promise<boolean>;
+    mode?: SupportMode,
+    taskCode?: string
+  ) => Promise<boolean>;
   fetchTicketCommentsApi: (ticketId: string) => Promise<void>;
   sendTicketMessageApi: (
     ticketId: string,
@@ -177,7 +179,7 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
     }
   },
 
-  updateTicketStatusApi: async (ticketId: string, status: TicketStatus, mode?: SupportMode) => {
+  updateTicketStatusApi: async (ticketId: string, status: TicketStatus, mode?: SupportMode, taskCode?: string) => {
     const sessionAtStart = get().authSessionId;
     const sessionUser = get().currentUser;
     if (!sessionUser) return false;
@@ -209,6 +211,7 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
         ...t,
         status,
         mode: mode || t.mode,
+        taskCode: (taskCode as TaskCategoryCode) || t.taskCode,
       }))
     );
 
@@ -216,6 +219,7 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
       const res = await ticketsApi.updateStatus(ticketId, {
         status: status as any,
         mode: mode || (target.mode as any),
+        task_code: taskCode || (target.taskCode as any),
       });
 
       if (get().authSessionId !== sessionAtStart || !get().currentUser) return false;
@@ -524,7 +528,8 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
     const target = findTargetTicket(get(), ticketId);
     if (!target) return;
     const mode = target.mode || 'SITE';
-    await get().updateTicketStatusApi(ticketId, 'RESL', mode);
+    const taskCode = target.taskCode;
+    await get().updateTicketStatusApi(ticketId, 'RESL', mode, taskCode);
   },
 
   requestValidation: (ticketId) => {

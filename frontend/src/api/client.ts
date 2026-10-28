@@ -1,4 +1,6 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import type { StaffRole } from '../types';
+export type { StaffRole };
 import { readableError } from '../utils/errorMessages';
 import type { SupportMode, TicketStatus } from '../types/ticket';
 import { getOrCreateKioskSessionId } from '../utils/session';
@@ -249,7 +251,7 @@ export interface AdminUserItem {
   username: string;
   email: string;
   full_name: string;
-  role: 'it' | 'admin';
+  role: StaffRole;
   is_active: boolean;
 }
 
@@ -268,6 +270,34 @@ export interface AdminEmployeeItem {
 }
 
 export const directoryApi = {
+  updateAdminUser: async (
+    id: string,
+    payload: Partial<AdminUserItem> & { password?: string }
+  ): Promise<AdminUserItem> => {
+    const res = await apiClient.patch<AdminUserItem>(`/admin/users/${id}`, payload);
+    return res.data;
+  },
+  deactivateAdminUser: async (id: string): Promise<AdminUserItem> => {
+    const res = await apiClient.patch<AdminUserItem>(`/admin/users/${id}`, { is_active: false });
+    return res.data;
+  },
+  updateAdminEmployee: async (
+    id: string,
+    payload: Partial<AdminEmployeeItem>
+  ): Promise<AdminEmployeeItem> => {
+    const res = await apiClient.put<AdminEmployeeItem>(`/admin/employees/${id}`, payload);
+    return res.data;
+  },
+  deactivateAdminEmployee: async (
+    id: string,
+    currentData?: Partial<AdminEmployeeItem>
+  ): Promise<AdminEmployeeItem> => {
+    const res = await apiClient.put<AdminEmployeeItem>(`/admin/employees/${id}`, {
+      ...currentData,
+      is_active: false,
+    });
+    return res.data;
+  },
   lookupEmployee: async (query: string): Promise<EmployeeLookupResult> => {
     const res = await apiClient.get<EmployeeLookupResult>('/employees/lookup', {
       params: { q: query },
@@ -516,7 +546,7 @@ export interface BackendUser {
     username: string;
     email: string;
     full_name: string;
-    role: 'it' | 'admin';
+    role: StaffRole;
     is_active: boolean;
     location_id?: string | null;
     closed_repairs?: number;
@@ -530,13 +560,13 @@ export interface UserCreateInput {
     username: string;
     email: string;
     full_name: string;
-    role: 'it' | 'admin';
+    role: StaffRole;
     password: string;
 }
 
 export interface UserUpdateInput {
     full_name?: string | null;
-    role?: 'it' | 'admin' | null;
+    role?: StaffRole | null;
     is_active?: boolean | null;
     password?: string | null;
 }
@@ -577,6 +607,34 @@ export const extractApiErrorMessage = (err: unknown, fallback: string): string =
 };
 
 export const adminApi = {
+    updateAdminUser: async (
+        id: string,
+        payload: Partial<AdminUserItem> & { password?: string }
+    ): Promise<AdminUserItem> => {
+        const res = await apiClient.patch<AdminUserItem>(`/admin/users/${id}`, payload);
+        return res.data;
+    },
+    deactivateAdminUser: async (id: string): Promise<AdminUserItem> => {
+        const res = await apiClient.patch<AdminUserItem>(`/admin/users/${id}`, { is_active: false });
+        return res.data;
+    },
+    updateAdminEmployee: async (
+        id: string,
+        payload: Partial<AdminEmployeeItem>
+    ): Promise<AdminEmployeeItem> => {
+        const res = await apiClient.put<AdminEmployeeItem>(`/admin/employees/${id}`, payload);
+        return res.data;
+    },
+    deactivateAdminEmployee: async (
+        id: string,
+        currentData?: Partial<AdminEmployeeItem>
+    ): Promise<AdminEmployeeItem> => {
+        const res = await apiClient.put<AdminEmployeeItem>(`/admin/employees/${id}`, {
+            ...currentData,
+            is_active: false,
+        });
+        return res.data;
+    },
     getUsers: async (params?: { offset?: number; limit?: number }): Promise<BackendUser[]> => {
         const res = await apiClient.get<BackendUser[]>('/admin/users', { params });
         return res.data;

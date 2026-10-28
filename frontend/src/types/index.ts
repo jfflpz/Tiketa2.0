@@ -1,4 +1,5 @@
-export type UserRole = 'it' | 'admin';
+export type StaffRole = 'intern' | 'it' | 'supervisor' | 'admin' | 'analyst';
+export type UserRole = StaffRole;
 
 export interface Company {
   id: string;

@@ -1,5 +1,7 @@
 // @spec UI-TEAM-01: Team, Roles, and Dispatch Models (Matching Reference Screenshot)
 
+export type StaffRole = 'intern' | 'it' | 'supervisor' | 'admin' | 'analyst';
+
 export type TeamMemberStatus = 'active' | 'away' | 'offline' | 'pending';
 
 export type TeamRole =
@@ -18,7 +20,7 @@ export interface TeamMember {
   username?: string;
   email: string;
   role: TeamRole;
-  systemRole?: 'it' | 'admin';
+  systemRole?: StaffRole;
   avatar: string;
   department: string;
   status: TeamMemberStatus;
