@@ -146,6 +146,7 @@ export const createPublicIntakeSlice: AppSliceCreator<PublicIntakeSlice> = (set,
         {
           employee_id: input.employeeId,
           task_code: input.taskCode,
+          reported_issue_code: input.taskCode,
           description: input.description,
           match_token: input.matchToken,
           observation_id: input.observationId ?? null,

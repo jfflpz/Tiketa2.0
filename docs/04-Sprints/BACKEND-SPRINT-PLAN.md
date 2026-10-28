@@ -1,31 +1,21 @@
-# Backend sprint plan — reconciled 2026-10-17
+# Backend sprint plan — Jefferson Lopez
 
-> **Current backend assignments:** follow the backend column of [S0–S5 in the shared integration sprint](INTEGRATION-SPRINT-PLAN.md#one-sprint-two-coordinated-tracks). Use the [central API map](../03-Contracts/API-INTEGRATION-MAP.md) for frontend handoffs. The historical phases below do not replace the new per-merge integration gate.
+Revised 2026-10-28. **Planning only; implementation and live verification remain open.**
+Use the [shared sprint](INTEGRATION-SPRINT-PLAN.md) for status/acceptance and the [API map](../03-Contracts/API-INTEGRATION-MAP.md) for the single endpoint and role contract. This replaces the older backend phase list. Existing BF requirements remain unless explicitly amended there.
 
-Scope: Employee ID intake, it/admin RBAC, backend-only historical CLI, eight reports,
-and operational readiness. Source: current API contracts and SRS v2.1 amendment.
-See BACKEND-PROGRESS.md for evidence and remaining release gates; this plan is not
-proof of implementation. No device enrollment, device cookies/table, branch login,
-public registration, historical web uploader, or frontend changes.
+| Order | Backend deliverable | Frontend can work on concurrently | Handoff proof |
+| --- | --- | --- | --- |
+| S0 | Repeatable database/migration/readiness setup; combined GitHub integration job | Browser regression, error states, reproduction | Both developers can run the same real-stack smoke flow |
+| S1 | Add intern/supervisor roles while preserving it/admin; audit every endpoint's permissions, assignment scope and cache isolation; fix session revocation | S2 tracking/history/location using existing APIs | Role matrix allow/deny tests; current-session revoke and refresh cannot resurrect access |
+| S2 | Verify employee matching/history ownership, public tracking and optional location save; bounded history paging if needed | My Tickets, Track Code result, location preview and Tiketa branding | Known employee sees own requests; public receipt returns only allowed fields; expired/wrong identity denied |
+| S3 | Apply role/ownership checks consistently to ticket, comment, checklist and resolution actions | Connect Workbench using merged S1 contract | Assigned Intern updates persist; other tickets and employee sign-off remain protected |
+| S4 | Add Support account requests and Supervisor/Admin decisions; preserve Admin direct creation; Supervisor report access | S1/S3 integration against available APIs | Atomic approval creates one account; rejection none; duplicate decisions conflict |
+| S5 | Complete migration/OpenAPI/backend CI gates and retained operational features | Full browser role/session acceptance | Required combined check passes on merge candidate and develop after merge |
 
-| Phase | Requirements | Deliverables and acceptance |
-| --- | --- | --- |
-| B1 Foundation | B1.0–B1.5 | Importable FastAPI; explicit Alembic schema; 11/15/19 dictionaries plus 13 tasks; idempotent seeding; Docker health; actual OpenAPI; develop-targeted CI |
-| B2 Identity/intake | B2.1–B2.6 | Argon2id 64 MiB/3/4; legacy bcrypt upgrade; 15-minute JWT; seven-day HttpOnly refresh rotation; Redis revocation; admin provisioning; verified employee lookup and scope validation; login/lookup rate limits |
-| B3 Workflows/import | B3.1–B3.5 | Public submit and IT quick intake; unique codes and concurrent claims; OPEN→PROG→RESL→CLSD; UTC labor timestamps and canonical calendar fields; AES-GCM; comments/evidence; single-use closure tokens and 72-hour admin override; validated/dry-run/idempotent historical CLI |
-| B4 Analytics | B4.1–B4.3 | KPI plus monthly SLA, staff productivity, department demand, backlog, transit lag, hardware risk, PMS service-plan coverage, chronic requestors; authorized CSV; known-result and boundary tests; measured indexes |
-| B5 Operations | B5.1–B5.5 | Non-root production image; isolated DB/cache; TLS proxy; backup and restore validation; deploy/rollback/recovery runbook; >=80% coverage and CI |
+Scope reaches models, role constraint migration, schemas/OpenAPI, auth/dependencies, ticket/notes/checklist/report/directory services, scoped cache keys, account-request storage/routes, existing fixtures/tests and combined CI. Preserve accounts, UUIDs, ticket assignments and it/admin wire values. No destructive reset or downgrade that strands new-role accounts.
 
-The former Solution 4 items B2.3–B2.5 and B3.2 are superseded by employee-directory
-validation and `/api/v1/tickets/submit`. They must not be implemented. The former
-fixed table count is superseded by the actual normalized migration schema. PMS plans
-represent expected services, not enrolled devices. Report formulas and policy
-choices are defined in ../03-Contracts/REPORTING-RULES.md and mirrored to the SRS.
+Account-request API is proposed in the shared API map; do not assume it already exists. Reuse current provisioning validation/hashing. Employee matching is accountless; no public registration or web Excel/CSV uploader. Intern mutation scope is an explicit working assumption until confirmed.
 
-All feature work starts from develop; all PRs target develop. Only Jefferson Lopez
-may merge. No force-push, protected-branch write, release promotion, or production
-cutover is authorized by this sprint implementation request.
+Before handoff provide tested revision, migrations, runnable request/response, access/error rules and actual persisted ID. Frontend owns its callers; backend owns server fixes. Contract changes and shared CI need both reviews. Keep compatible APIs available while frontend work proceeds.
 
-Verification must include PostgreSQL 16, Redis 7, migrations/drift, seeds, API and
-RBAC tests, concurrency, reports, import and actual recovery. Do not equate local
-checks with production acceptance or a successful admin merge.
+Branches: feat/backend-* from develop; conventional commits; PRs target develop. Only Jefferson merges. Required checks automate integration verification, not merging, deployment or defect repair. Use the shared plan's evidence record; do not mark a backend-only success as a finished feature.

@@ -1,6 +1,6 @@
 # Sprint Board & Execution Log
 
-**Current integration execution plan (2026-10-27):** [Shared frontend/backend sprint](INTEGRATION-SPRINT-PLAN.md) and [central endpoint map](../03-Contracts/API-INTEGRATION-MAP.md). Use S0–S5 for coordinated work and per-merge acceptance; existing BF-01–BF-12 scope remains. Status: planned after source review; live integration not verified. The dated logs below are historical evidence, not acceptance of the current checkout.
+**Current integration execution plan (revised 2026-10-28):** [Shared frontend/backend sprint](INTEGRATION-SPRINT-PLAN.md), [backend assignments](BACKEND-SPRINT-PLAN.md), [frontend assignments](FRONTEND-SPRINT-PLAN.md), and [central endpoint/role map](../03-Contracts/API-INTEGRATION-MAP.md). S0–S5 now include four roles (IT Supervisor replaces IT Analyst), session retention/revoke choice, location preview, matched My Tickets + working Track Code, Tiketa branding, account approvals and automated checks on both-tier PRs and post-merge develop. Existing BF scope remains except explicit amendments in the shared plan. Status: planned; live integration and GitHub enforcement not verified. Historical logs below do not certify the current checkout.
 
 **Project**: Tiketa 2.0  
 **Current Milestone**: Backend sprints 1–5 integration and verification  

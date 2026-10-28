@@ -50,6 +50,8 @@ flowchart TD
 - Verified records **hard-lock Location and Department** as read-only fields, preventing 100% of human dropdown routing mistakes.
 
 ### Pillar 2: Simplified 2-Tier RBAC
+> **2026-10-28 planned replacement:** the user requested IT Intern, IT Support, Admin and IT Supervisor. Current code still implements the two roles below. Use the [target permission matrix](../03-Contracts/API-INTEGRATION-MAP.md#target-roles-and-permissions--s1s4) and [integration sprint](../04-Sprints/INTEGRATION-SPRINT-PLAN.md) for migration, session and approval work; the older two-role restriction does not apply to that authorized redesign.
+
 The authenticated `users` table is restricted to two roles:
 1. `it` (**IT Technician**): Access to `/queue`, one-click ticket claiming (`c`), status/labor updates, and fallback quick intake (`v`).
 2. `admin` (**IT Head / System Admin**): Access to all 8 executive analytics reports, employee directory management, and system administration.

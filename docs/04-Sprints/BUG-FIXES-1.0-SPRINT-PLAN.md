@@ -2,6 +2,8 @@
 
 > **2026-10-27 execution update:** use the [shared integration sprint](INTEGRATION-SPRINT-PLAN.md) and [API map](../03-Contracts/API-INTEGRATION-MAP.md) for delivery order and merge gates. All BF-01–BF-12 requirements remain. The current no-runtime-mock policy supersedes the development-fixture allowance below; fixtures are limited to isolated automated tests.
 
+> **2026-10-28 amendment:** the shared plan's R1–R7 add four-role permissions (IT Supervisor), an exit/session checkbox, location preview, employee-matched My Tickets, direct Track Code results, Tiketa branding and staff account requests/approval. These explicitly replace conflicting earlier role/session requirements. Backend and frontend work concurrently against the shared contracts; verification runs before and after each merge.
+
 Updated: 2026-10-24. Status: planned; implementation has not started under this plan.
 
 ## 1. Sprint structure

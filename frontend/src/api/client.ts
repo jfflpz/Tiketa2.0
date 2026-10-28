@@ -136,7 +136,8 @@ export interface EmployeeScopeOut {
 }
 
 export interface EmployeeMatchOut {
-    status: string;
+    matched?: boolean;
+    status?: string;
     match_token: string;
     employee: EmployeeScopeOut;
 }
@@ -325,6 +326,7 @@ export const ticketsApi = {
     submitPublicTicket: async (payload: {
     employee_id: string;
     task_code: string;
+    reported_issue_code?: string;
     description: string;
     match_token: string;
     observation_id?: string | null;

@@ -498,6 +498,9 @@ describe('TerminalHubsView & TerminalHubDetailModal', () => {
 
     render(<JobLogDrawer />);
 
+    expect(screen.queryByPlaceholderText(/Message Maria Santos/i)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /Live Chat with Employee/i }));
+
     // Comments load
     await waitFor(() => {
       expect(screen.getByText('Investigating cable connection')).toBeTruthy();
@@ -527,6 +530,10 @@ describe('TerminalHubsView & TerminalHubDetailModal', () => {
 
     // Rollback: inspected ticket status remains PROG because server rejected
     await waitFor(() => {
+      expect(ticketsApi.updateStatus).toHaveBeenCalledWith(
+        'ticket-indep-1',
+        expect.objectContaining({ status: 'RESL' })
+      );
       expect(useAppStore.getState().inspectedTicket?.status).toBe('PROG');
     });
   });
@@ -768,6 +775,8 @@ describe('TerminalHubsView & TerminalHubDetailModal', () => {
     vi.mocked(ticketsApi.addComment).mockRejectedValueOnce(new Error('Server unavailable'));
 
     render(<JobLogDrawer />);
+    expect(screen.queryByPlaceholderText(/Message Maria Santos/i)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /Live Chat with Employee/i }));
 
     await waitFor(() => {
       expect(screen.getByPlaceholderText(/Message Maria Santos/i)).toBeTruthy();
@@ -780,6 +789,10 @@ describe('TerminalHubsView & TerminalHubDetailModal', () => {
     fireEvent.click(sendBtn);
 
     await waitFor(() => {
+      expect(ticketsApi.addComment).toHaveBeenCalledWith('t-msg-fail', {
+        body: 'Important update note',
+        is_internal: false,
+      });
       const messages = useAppStore.getState().inspectedTicket?.messages || [];
       expect(messages.length).toBe(0);
       expect((screen.getByPlaceholderText(/Message Maria Santos/i) as HTMLInputElement).value).toBe(

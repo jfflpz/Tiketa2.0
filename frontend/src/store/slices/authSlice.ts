@@ -159,47 +159,9 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
   openLoginModal: (role = 'it') => set({ loginModalRole: role }),
   closeLoginModal: () => set({ loginModalRole: null, authError: null }),
 
-  loginAsStaff: (role, customName) => {
-    const user: AuthenticatedUser =
-      role === 'admin'
-        ? {
-            id: 'tm-1',
-            name: customName || 'Stephen I. Miralles',
-            email: 'stephen@fivestarbus.com',
-            role: 'admin',
-            title: 'Senior IT Analyst (Admin)',
-            avatar:
-              'https://api.dicebear.com/7.x/avataaars/svg?seed=William&backgroundColor=b6e3f4',
-          }
-        : {
-            id: 'tm-2',
-            name: customName || 'Nathaniel D. Esguerra',
-            email: 'nathaniel@fivestarbus.com',
-            role: 'it',
-            title: 'IT Support Specialist',
-            avatar:
-              'https://api.dicebear.com/7.x/avataaars/svg?seed=Edward&backgroundColor=fed7aa',
-          };
-
-    if (typeof window !== 'undefined') {
-      window.history.pushState(null, '', '/dashboard');
-      window.dispatchEvent(new Event('popstate'));
-    }
-
-    set({
-      currentUser: user,
-      authSessionId: get().authSessionId + 1,
-      loginModalRole: null,
-      activeView: 'overview',
-      queueFilter: 'ALL',
-      locationFilter: 'ALL',
-    });
-
-    get().addToast(
-      `Welcome back, ${user.name}!`,
-      `Logged in as ${user.title}`,
-      'success'
-    );
+  loginAsStaff: () => {
+    // Fake-login removed; use real API login only.
+    set({ loginModalRole: 'it' });
   },
 
   logoutToKiosk: async () => {
