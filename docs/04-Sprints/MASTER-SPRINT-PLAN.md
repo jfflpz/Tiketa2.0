@@ -14,6 +14,8 @@ tags: [tiketa, sprint-plan, agile, docker, fast-api, react, typescript, postgres
 
 > Current integration work follows the [shared integration sprint](INTEGRATION-SPRINT-PLAN.md) and [API integration map](../03-Contracts/API-INTEGRATION-MAP.md). This older roadmap remains historical context; conflicting endpoint examples, mock-data practices and handoff guidance are superseded.
 
+> **2026-10-28 scope amendment:** planned roles are IT Intern, IT Support, Admin and IT Supervisor; the earlier two-tier invariant below is historical. Admin retains direct account creation; Support requests Supervisor/Admin approval. Current implementation has not yet migrated. Use the shared plan for session choice, employee tracking/location and required integration checks before/after each merge.
+
 **Pangasinan Five Star Bus Co. & Regional Affiliate Transit Fleets**  
 *Internal IT Helpdesk, Terminal Maintenance Management, and Executive Velocity Analytics System*  
 **Specification Baseline**: [[01-Projects/Tiketa/SRS|SRS.md (v2.1.0)]] & [[01-Projects/Tiketa/Tiketa-Employee-Access-Decision-Report.pdf|Employee Access Decision Report]]

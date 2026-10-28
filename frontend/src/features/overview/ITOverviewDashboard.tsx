@@ -661,11 +661,11 @@ export const ITOverviewDashboard: React.FC = () => {
               </button>
               <button
                 type="button"
-                onClick={() => setActiveView('notes')}
+                onClick={() => setActiveView('tickets')}
                 className="flex-1 py-2 px-3 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold inline-flex items-center justify-center gap-1.5 shadow-sm transition-colors press-fx"
               >
                 <BookOpen className="w-3.5 h-3.5" />
-                <span>Open Library ({savedRepairNotes.length})</span>
+                <span>View active tickets</span>
               </button>
             </div>
           </div>
