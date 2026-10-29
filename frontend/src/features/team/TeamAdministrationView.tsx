@@ -2,23 +2,29 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { UserPlus, Plus, Briefcase, Fingerprint, Clock, Search, RefreshCw, Loader2 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
+import type { TeamMember } from '../../types/team';
+import type { EmployeeProfile } from '../../types';
 import { TeamKpiSummaryCards } from './components/TeamKpiSummaryCards';
 import { ITStaffTable } from './components/ITStaffTable';
 import { VerifiedEmployeeTable } from './components/VerifiedEmployeeTable';
 import { TechnicianActivityFeed } from './components/TechnicianActivityFeed';
 import { CreateITStaffModal } from './components/CreateITStaffModal';
+import { EditITStaffModal } from './components/EditITStaffModal';
 import { AddEmployeeModal } from './components/AddEmployeeModal';
+import { EditEmployeeModal } from './components/EditEmployeeModal';
 
 export const TeamAdministrationView: React.FC = () => {
   const itTeamMembers = useAppStore((state) => state.itTeamMembers);
   const fetchITMembers = useAppStore((state) => state.fetchITMembers);
   const createITMemberApi = useAppStore((state) => state.createITMemberApi);
-  const deleteITMemberApi = useAppStore((state) => state.deleteITMemberApi);
+  const updateITMemberApi = useAppStore((state) => state.updateITMemberApi);
+  const deactivateITMemberApi = useAppStore((state) => state.deactivateITMemberApi);
 
   const verifiedEmployeesList = useAppStore((state) => state.verifiedEmployeesList);
   const fetchEmployees = useAppStore((state) => state.fetchEmployees);
   const createEmployeeApi = useAppStore((state) => state.createEmployeeApi);
-  const deleteEmployeeApi = useAppStore((state) => state.deleteEmployeeApi);
+  const updateEmployeeApi = useAppStore((state) => state.updateEmployeeApi);
+  const deactivateEmployeeApi = useAppStore((state) => state.deactivateEmployeeApi);
 
   const fetchDictionaries = useAppStore((state) => state.fetchDictionaries);
   const isLoadingTeam = useAppStore((state) => state.isLoadingTeam);
@@ -37,7 +43,12 @@ export const TeamAdministrationView: React.FC = () => {
 
   // Modals state
   const [isAddITModalOpen, setAddITModalOpen] = useState(false);
+  const [isEditITModalOpen, setEditITModalOpen] = useState(false);
+  const [selectedITMemberForEdit, setSelectedITMemberForEdit] = useState<TeamMember | null>(null);
+
   const [isAddEmployeeModalOpen, setAddEmployeeModalOpen] = useState(false);
+  const [isEditEmployeeModalOpen, setEditEmployeeModalOpen] = useState(false);
+  const [selectedEmployeeForEdit, setSelectedEmployeeForEdit] = useState<EmployeeProfile | null>(null);
 
   // Load real database records on mount
   useEffect(() => {
@@ -269,8 +280,12 @@ export const TeamAdministrationView: React.FC = () => {
             <ITStaffTable
               staff={itStaffWithLiveMetrics}
               currentUserEmail={currentUser?.email}
+              onEditMember={(member) => {
+                setSelectedITMemberForEdit(member);
+                setEditITModalOpen(true);
+              }}
               onDeleteMember={(id, name) => {
-                deleteITMemberApi(id, name);
+                deactivateITMemberApi(id, name);
               }}
             />
           )}
@@ -280,8 +295,12 @@ export const TeamAdministrationView: React.FC = () => {
             <VerifiedEmployeeTable
               employees={filteredEmployees}
               onOpenAddModal={() => setAddEmployeeModalOpen(true)}
+              onEditEmployee={(emp) => {
+                setSelectedEmployeeForEdit(emp);
+                setEditEmployeeModalOpen(true);
+              }}
               onDeleteEmployee={(empId, name) => {
-                deleteEmployeeApi(empId, name);
+                deactivateEmployeeApi(empId, name);
               }}
             />
           )}
@@ -328,12 +347,38 @@ export const TeamAdministrationView: React.FC = () => {
         }}
       />
 
-      {/* MODAL 2: ADD EMPLOYEE PROFILE */}
+      {/* MODAL 2: EDIT IT SPECIALIST ACCOUNT */}
+      <EditITStaffModal
+        isOpen={isEditITModalOpen}
+        onClose={() => {
+          setEditITModalOpen(false);
+          setSelectedITMemberForEdit(null);
+        }}
+        member={selectedITMemberForEdit}
+        onSubmit={async (id, data) => {
+          return await updateITMemberApi(id, data);
+        }}
+      />
+
+      {/* MODAL 3: ADD EMPLOYEE PROFILE */}
       <AddEmployeeModal
         isOpen={isAddEmployeeModalOpen}
         onClose={() => setAddEmployeeModalOpen(false)}
         onSubmit={async (data) => {
           return await createEmployeeApi(data);
+        }}
+      />
+
+      {/* MODAL 4: EDIT EMPLOYEE PROFILE */}
+      <EditEmployeeModal
+        isOpen={isEditEmployeeModalOpen}
+        onClose={() => {
+          setEditEmployeeModalOpen(false);
+          setSelectedEmployeeForEdit(null);
+        }}
+        employee={selectedEmployeeForEdit}
+        onSubmit={async (id, data) => {
+          return await updateEmployeeApi(id, data);
         }}
       />
     </div>

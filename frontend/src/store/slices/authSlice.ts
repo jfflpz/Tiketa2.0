@@ -5,6 +5,22 @@ import { authApi, setAccessToken } from '../../api/client';
 import { resolvePathToView } from '../../utils/routeUtils';
 import { normalizeApiError } from '../../utils/errorUtils';
 
+const getStaffTitle = (role: StaffRole): string => {
+  switch (role) {
+    case 'admin':
+      return 'IT Administrator';
+    case 'supervisor':
+      return 'IT Helpdesk Supervisor';
+    case 'analyst':
+      return 'IT Systems Analyst';
+    case 'intern':
+      return 'IT Intern';
+    case 'it':
+    default:
+      return 'Senior IT Support Specialist';
+  }
+};
+
 export interface AuthSlice {
   currentUser: AuthenticatedUser | null;
   authSessionId: number;
@@ -20,7 +36,7 @@ export interface AuthSlice {
   openLoginModal: (role?: StaffRole) => void;
   closeLoginModal: () => void;
   loginAsStaff: (role: StaffRole, customName?: string) => void;
-  logoutToKiosk: () => Promise<void>;
+  logoutToKiosk: (options?: { retainSession?: boolean }) => Promise<void>;
 }
 
 let isHydratingInFlight: Promise<boolean> | null = null;
@@ -43,7 +59,7 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
         const data = await authApi.refresh();
         if (data?.access_token && data?.user) {
           setAccessToken(data.access_token);
-          const userRole: StaffRole = data.user.role === 'admin' ? 'admin' : 'it';
+          const userRole: StaffRole = (data.user.role as StaffRole) || 'it';
 
           // BF-02: Check URL path on session restoration
           const currentPath = typeof window !== 'undefined' ? window.location.pathname : '/';
@@ -67,7 +83,7 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
               name: data.user.full_name,
               email: data.user.email,
               role: userRole,
-              title: userRole === 'admin' ? 'IT Administrator' : 'Senior IT Support Specialist',
+              title: getStaffTitle(userRole),
               avatar: data.user.full_name
                 .split(' ')
                 .map((n: string) => n[0])
@@ -101,7 +117,7 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
       const data = await authApi.login({ username, password });
       setAccessToken(data.access_token);
 
-      const userRole: StaffRole = data.user.role === 'admin' ? 'admin' : 'it';
+      const userRole: StaffRole = (data.user.role as StaffRole) || 'it';
 
       // BF-02: Explicit login for either staff role always lands on /dashboard (overview view)
       const targetView: ActiveView = 'overview';
@@ -115,7 +131,6 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
       // Update URL to canonical /dashboard
       if (typeof window !== 'undefined') {
         window.history.pushState(null, '', '/dashboard');
-      window.dispatchEvent(new Event('popstate'));
         window.dispatchEvent(new Event('popstate'));
       }
 
@@ -125,7 +140,7 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
           name: data.user.full_name,
           email: data.user.email,
           role: userRole,
-          title: userRole === 'admin' ? 'IT Administrator' : 'Senior IT Support Specialist',
+          title: getStaffTitle(userRole),
           avatar: data.user.full_name
             .split(' ')
             .map((n: string) => n[0])
@@ -164,7 +179,31 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
     set({ loginModalRole: 'it' });
   },
 
-  logoutToKiosk: async () => {
+  logoutToKiosk: async (options) => {
+    if (options?.retainSession) {
+      if (typeof window !== 'undefined') {
+        window.history.pushState(null, '', '/report');
+        window.dispatchEvent(new Event('popstate'));
+      }
+      set({
+        selectedTicketId: null,
+        inspectedTicket: null,
+        isInspectingTicket: false,
+        inspectTicketError: null,
+        activeWorkbenchTicketId: null,
+        workbenchTicket: null,
+        isWorkbenchLoading: false,
+        workbenchError: null,
+        isQuickIntakeOpen: false,
+      });
+      get().addToast(
+        'Returned to Employee Ticket Screen',
+        'Staff session kept on device for quick return',
+        'info'
+      );
+      return;
+    }
+
     localStorage.removeItem('tiketa_active_view');
     try {
       await authApi.logout();

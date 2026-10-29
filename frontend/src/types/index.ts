@@ -1,4 +1,5 @@
-export type UserRole = 'it' | 'admin';
+export type StaffRole = 'intern' | 'it' | 'supervisor' | 'admin' | 'analyst';
+export type UserRole = StaffRole;
 
 export interface Company {
   id: string;
@@ -30,6 +31,7 @@ export interface EmployeeProfile {
   location_name: string;
   department_id: string;
   department_name: string;
+  is_active?: boolean;
 }
 
 export * from './ticket';

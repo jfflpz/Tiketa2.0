@@ -1,7 +1,7 @@
 // @spec BF-08: IT accounts, employee directory profiles & server dictionaries
 import type { AppSliceCreator } from '../types';
 import type { TeamMember, TeamRole, TeamMemberStatus } from '../../types/team';
-import type { EmployeeProfile } from '../../types';
+import type { EmployeeProfile, StaffRole } from '../../types';
 import {
   adminApi,
   extractApiErrorMessage,
@@ -9,6 +9,7 @@ import {
   UserCreateInput,
   EmployeeCreateInput,
   DictionariesResponse,
+  AdminEmployeeItem,
 } from '../../api/client';
 
 export interface TeamSlice {
@@ -20,11 +21,31 @@ export interface TeamSlice {
 
   fetchITMembers: () => Promise<void>;
   createITMemberApi: (payload: UserCreateInput) => Promise<boolean>;
+  updateITMemberApi: (
+    id: string,
+    payload: {
+      name: string;
+      email: string;
+      role: TeamRole;
+      systemRole: StaffRole;
+      department: string;
+      primaryLocation: string;
+      locationId?: string | null;
+      is_active: boolean;
+      password?: string;
+    }
+  ) => Promise<boolean>;
   deleteITMemberApi: (id: string, name?: string) => Promise<boolean>;
+  deactivateITMemberApi: (id: string, name?: string) => Promise<boolean>;
 
   fetchEmployees: () => Promise<void>;
   createEmployeeApi: (payload: EmployeeCreateInput) => Promise<boolean>;
+  updateEmployeeApi: (
+    id: string,
+    payload: Partial<AdminEmployeeItem>
+  ) => Promise<boolean>;
   deleteEmployeeApi: (id: string, name?: string) => Promise<boolean>;
+  deactivateEmployeeApi: (id: string, name?: string) => Promise<boolean>;
 
   fetchDictionaries: () => Promise<void>;
 
@@ -163,13 +184,66 @@ export const createTeamSlice: AppSliceCreator<TeamSlice> = (set, get) => ({
     }
   },
 
+  updateITMemberApi: async (id, payload) => {
+    try {
+      const updateData: {
+        full_name?: string;
+        email?: string;
+        role?: StaffRole;
+        is_active?: boolean;
+        password?: string;
+        location_id?: string | null;
+      } = {
+        full_name: payload.name,
+        email: payload.email,
+        role: payload.systemRole,
+        is_active: payload.is_active,
+      };
+      if (payload.password && payload.password.trim().length >= 12) {
+        updateData.password = payload.password.trim();
+      }
+      if (payload.locationId !== undefined) {
+        updateData.location_id = payload.locationId;
+      }
+      await adminApi.updateUser(id, updateData as any);
+
+      // Persist UI metadata locally
+      const existingMember = get().itTeamMembers.find((m) => m.id === id);
+      const key = existingMember?.username || id;
+      try {
+        localStorage.setItem(
+          `tiketa_staff_meta_${key}`,
+          JSON.stringify({
+            roleTitle: payload.role,
+            department: payload.department,
+            primaryLocation: payload.primaryLocation,
+          })
+        );
+      } catch (e) {
+        // ignore storage error
+      }
+
+      await get().fetchITMembers();
+      get().addToast(
+        'Staff Account Updated',
+        `Account details for ${payload.name} saved successfully.`,
+        'success'
+      );
+      return true;
+    } catch (err: unknown) {
+      const msg = extractApiErrorMessage(err, 'Failed to update staff account');
+      get().addToast('Account Update Failed', msg, 'warning');
+      return false;
+    }
+  },
+
   deleteITMemberApi: async (id: string, name?: string) => {
     try {
       await adminApi.updateUser(id, { is_active: false });
       await get().fetchITMembers();
       get().addToast(
         'Account Deactivated',
-        `${name ?? 'Specialist'} account marked inactive.`,
+        `${name ?? 'Specialist'} account marked inactive. Historical audit logs preserved.`,
         'info'
       );
       return true;
@@ -178,6 +252,10 @@ export const createTeamSlice: AppSliceCreator<TeamSlice> = (set, get) => ({
       get().addToast('Deactivation Failed', msg, 'warning');
       return false;
     }
+  },
+
+  deactivateITMemberApi: async (id: string, name?: string) => {
+    return get().deleteITMemberApi(id, name);
   },
 
   fetchEmployees: async () => {
@@ -194,6 +272,7 @@ export const createTeamSlice: AppSliceCreator<TeamSlice> = (set, get) => ({
         location_name: e.location_name || 'Terminal Hub',
         department_id: e.department_id,
         department_name: e.department_name || 'Department',
+        is_active: (e as any).is_active !== false,
       }));
       set({ verifiedEmployeesList: mapped });
     } catch (err: unknown) {
@@ -218,16 +297,44 @@ export const createTeamSlice: AppSliceCreator<TeamSlice> = (set, get) => ({
     }
   },
 
-  deleteEmployeeApi: async (id: string, name?: string) => {
+  updateEmployeeApi: async (id, payload) => {
     try {
-      get().addToast('Employee Removed', `${name ?? id} removed from view.`, 'info');
-      set((state) => ({
-        verifiedEmployeesList: state.verifiedEmployeesList.filter((e) => e.id !== id),
-      }));
+      await adminApi.updateAdminEmployee(id, payload);
+      await get().fetchEmployees();
+      get().addToast(
+        'Employee Profile Updated',
+        `Profile for ${payload.full_name || 'employee'} saved successfully.`,
+        'success'
+      );
       return true;
     } catch (err: unknown) {
+      const msg = extractApiErrorMessage(err, 'Failed to update employee profile');
+      get().addToast('Update Failed', msg, 'warning');
       return false;
     }
+  },
+
+  deleteEmployeeApi: async (id: string, name?: string) => {
+    try {
+      const existing = get().verifiedEmployeesList.find((e) => e.id === id || e.employee_id === id);
+      const targetId = existing?.id || id;
+      await adminApi.deactivateAdminEmployee(targetId, existing as any);
+      await get().fetchEmployees();
+      get().addToast(
+        'Employee Profile Deactivated',
+        `${name ?? existing?.full_name ?? id} deactivated. Historical job logs preserved.`,
+        'info'
+      );
+      return true;
+    } catch (err: unknown) {
+      const msg = extractApiErrorMessage(err, 'Failed to deactivate employee profile');
+      get().addToast('Deactivation Failed', msg, 'warning');
+      return false;
+    }
+  },
+
+  deactivateEmployeeApi: async (id: string, name?: string) => {
+    return get().deleteEmployeeApi(id, name);
   },
 
   // Backward compatibility handlers

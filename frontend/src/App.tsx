@@ -21,7 +21,40 @@ import { QuickIntakeModal } from './components/tickets/QuickIntakeModal';
 import { TicketVerificationModal } from './components/tickets/TicketVerificationModal';
 import { ToastContainer } from './components/common/ToastContainer';
 import { useAppStore } from './store/useAppStore';
-import { resolvePathToView } from './utils/routeUtils';
+import type { StaffRole, ActiveView } from './store/slices/uiSlice';
+import { resolvePathToView, viewToCanonicalPath } from './utils/routeUtils';
+
+export const ROLE_ALLOWED_VIEWS: Record<StaffRole, ActiveView[]> = {
+  intern: ['overview', 'workbench', 'notes', 'joblogs'],
+  it: ['overview', 'tickets', 'workbench', 'notes', 'joblogs', 'terminals'],
+  supervisor: ['overview', 'analytics', 'reports', 'team', 'joblogs'],
+  analyst: ['overview', 'analytics', 'reports', 'team', 'joblogs', 'terminals'],
+  admin: [
+    'overview',
+    'tickets',
+    'workbench',
+    'notes',
+    'joblogs',
+    'terminals',
+    'analytics',
+    'reports',
+    'team',
+  ],
+};
+
+const getDefaultHomeForRole = (role: StaffRole): ActiveView => {
+  switch (role) {
+    case 'supervisor':
+    case 'analyst':
+      return 'analytics';
+    case 'intern':
+      return 'workbench';
+    case 'admin':
+    case 'it':
+    default:
+      return 'overview';
+  }
+};
 
 export default function App() {
   const currentUser = useAppStore((state) => state.currentUser);
@@ -42,24 +75,30 @@ export default function App() {
     hydrateKioskEmployeeTickets?.();
   }, [hydrateAuthApi, hydrateKioskEmployeeTickets]);
 
-  // BF-02: Handle browser back/forward and external URL navigation
+  // BF-02: Handle browser back/forward and external URL navigation with strict RBAC guards
   useEffect(() => {
     const onPopState = () => {
       const path = window.location.pathname;
       setCurrentPath(path);
       const route = resolvePathToView(path);
       if (route !== 'public' && currentUser) {
-        const isAdmin = currentUser.role === 'admin';
-        const isRestrictedAdminRoute =
-          route === 'analytics' || route === 'team' || route === 'reports';
-        if (!isRestrictedAdminRoute || isAdmin) {
+        const role: StaffRole = currentUser.role ?? 'it';
+        const allowed = ROLE_ALLOWED_VIEWS[role] ?? ['overview'];
+        if (allowed.includes(route)) {
           setActiveView(route);
+        } else {
+          const fallback: ActiveView = getDefaultHomeForRole(role);
+          setActiveView(fallback);
+          if (typeof window !== 'undefined') {
+            window.history.replaceState(null, '', viewToCanonicalPath(fallback));
+          }
         }
       }
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
   }, [currentUser, setActiveView]);
+
   useEffect(() => {
     if (!currentUser) return;
     fetchQueueApi();
@@ -113,13 +152,12 @@ export default function App() {
     );
   }
 
-  const isAdmin = currentUser.role === 'admin';
-
-  // Enforce strict role isolation so IT Support only accesses designated screens
-  const resolvedView =
-    !isAdmin && (activeView === 'analytics' || activeView === 'team' || activeView === 'reports')
-      ? 'overview'
-      : activeView;
+  // Enforce strict 4-tier role isolation so unauthorized views redirect cleanly to default home
+  const userRole: StaffRole = currentUser.role ?? 'it';
+  const allowedViews = ROLE_ALLOWED_VIEWS[userRole] ?? ['overview'];
+  const resolvedView: ActiveView = allowedViews.includes(activeView)
+    ? activeView
+    : getDefaultHomeForRole(userRole);
 
   // Authenticated Staff Workspace: Nexora Categorized Dark Sidebar + Role-Isolated Screens
   return (
@@ -137,9 +175,9 @@ export default function App() {
             {resolvedView === 'notes' && <RepairNotesLibraryView />}
             {resolvedView === 'joblogs' && <JobLogSheetView />}
             {resolvedView === 'terminals' && <TerminalHubsView />}
-            {isAdmin && resolvedView === 'analytics' && <ExecutiveAnalyticsView />}
-            {isAdmin && resolvedView === 'reports' && <StandardizedReportsView />}
-            {isAdmin && resolvedView === 'team' && <TeamWorkbenchView />}
+            {resolvedView === 'analytics' && <ExecutiveAnalyticsView />}
+            {resolvedView === 'reports' && <StandardizedReportsView />}
+            {resolvedView === 'team' && <TeamWorkbenchView />}
           </div>
         </main>
       </div>

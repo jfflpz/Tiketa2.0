@@ -51,13 +51,33 @@ export const ITWorkbenchBoardView: React.FC = () => {
   const claimTicketApi = useAppStore((state) => state.claimTicketApi);
   const addToast = useAppStore((state) => state.addToast);
   const updateTicketDescription = useAppStore((state) => state.updateTicketDescription);
+  const currentUser = useAppStore((state) => state.currentUser);
+  const isIntern = currentUser?.role === 'intern';
 
-  const progTickets = tickets.filter((t) => t.status === 'PROG');
-  const openTickets = tickets.filter((t) => t.status === 'OPEN');
+  const progTickets = isIntern
+    ? tickets.filter(
+        (t) =>
+          t.status === 'PROG' &&
+          (t.assigned_tech_id === currentUser?.id ||
+            t.workedById === currentUser?.id ||
+            (Boolean(currentUser?.name) &&
+              t.workedBy?.toLowerCase() === currentUser?.name.toLowerCase()))
+      )
+    : tickets.filter((t) => t.status === 'PROG');
+  const openTickets = isIntern ? [] : tickets.filter((t) => t.status === 'OPEN');
 
-  const focusedTicket = activeWorkbenchTicketId
+  const rawFocusedTicket = activeWorkbenchTicketId
     ? tickets.find((t) => t.id === activeWorkbenchTicketId) ?? workbenchTicket
     : null;
+
+  const isAssignedToIntern =
+    !isIntern ||
+    (rawFocusedTicket?.status === 'PROG' &&
+      (rawFocusedTicket?.assigned_tech_id === currentUser?.id ||
+        rawFocusedTicket?.workedById === currentUser?.id ||
+        (Boolean(currentUser?.name) &&
+          rawFocusedTicket?.workedBy?.toLowerCase() === currentUser?.name.toLowerCase())));
+  const focusedTicket = isAssignedToIntern ? rawFocusedTicket : null;
 
   // Poll comments for focused ticket
   useEffect(() => {
@@ -215,7 +235,7 @@ export const ITWorkbenchBoardView: React.FC = () => {
             <button
               type="button"
               onClick={() => setActiveView('tickets')}
-              className="px-3.5 py-2 rounded-xl bg-white hover:bg-orange-50 text-ink border border-[#ECEEF2] text-xs font-semibold inline-flex items-center gap-1.5 shadow-card transition-colors press-fx"
+              className={`px-3.5 py-2 rounded-xl bg-white hover:bg-orange-50 text-ink border border-[#ECEEF2] text-xs font-semibold inline-flex items-center gap-1.5 shadow-card transition-colors press-fx ${isIntern ? 'hidden' : ''}`}
             >
               <Inbox className="w-3.5 h-3.5 text-sky-500" />
               <span>Browse All Ticket Lists</span>
@@ -243,7 +263,7 @@ export const ITWorkbenchBoardView: React.FC = () => {
                 <Wrench className="w-6 h-6" />
               </div>
               <div className="max-w-sm mx-auto space-y-1">
-                <h3 className="text-sm font-bold text-ink">No active repairs on your bench</h3>
+                <h3 className="text-sm font-bold text-ink">{isIntern ? 'No active workbench ticket assigned' : 'No active repairs on your bench'}</h3>
                 <p className="text-xs text-zinc-500">
                   You currently have no tickets in progress. Claim an open ticket below or from the Ticket Lists to start working.
                 </p>

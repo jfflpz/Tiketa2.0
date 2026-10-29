@@ -320,21 +320,48 @@ export const ITOverviewDashboard: React.FC = () => {
                   <CheckCircle2 className="w-4 h-4" />
                 </div>
               </div>
-              <div className="flex items-end justify-between pt-1">
-                <svg className="w-24 h-7 overflow-visible" viewBox="0 0 100 30">
-                  <path
-                    d="M 2 24 Q 20 10, 38 18 T 72 8 T 98 14"
-                    fill="none"
-                    stroke="#F97316"
-                    strokeWidth="2.2"
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <div className="text-right">
-                  <span className="text-xs font-bold text-emerald-600">
-                    +24% vs last mo
-                  </span>
-                  <p className="text-[11px] text-zinc-400">personal output</p>
+              <div className="space-y-1.5 pt-1">
+                <div className="flex items-end justify-between">
+                  <div className="relative">
+                    <svg className="w-28 h-9 overflow-visible" viewBox="0 0 100 32">
+                      <defs>
+                        <linearGradient id="kpiGrad1" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#F97316" stopOpacity={0.22} />
+                          <stop offset="100%" stopColor="#F97316" stopOpacity={0.00} />
+                        </linearGradient>
+                      </defs>
+                      {/* Ground Zero Baseline */}
+                      <line x1="2" y1="28" x2="98" y2="28" stroke="#E2E8F0" strokeWidth="1" strokeDasharray="2 2" />
+                      {/* Midline Target Guideline */}
+                      <line x1="2" y1="14" x2="98" y2="14" stroke="#FDBA74" strokeWidth="1" strokeDasharray="3 3" opacity={0.65} />
+                      {/* Area Fill */}
+                      <path
+                        d="M 2 24 Q 20 10, 38 18 T 72 8 T 98 12 L 98 28 L 2 28 Z"
+                        fill="url(#kpiGrad1)"
+                      />
+                      {/* Trend Curve */}
+                      <path
+                        d="M 2 24 Q 20 10, 38 18 T 72 8 T 98 12"
+                        fill="none"
+                        stroke="#F97316"
+                        strokeWidth="2.2"
+                        strokeLinecap="round"
+                      />
+                      {/* Latest Active Dot */}
+                      <circle cx="98" cy="12" r="2.8" fill="#F97316" stroke="#FFFFFF" strokeWidth="1.5" />
+                    </svg>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs font-bold text-emerald-600">
+                      +24% vs last mo
+                    </span>
+                    <p className="text-[11px] text-zinc-400">personal output</p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between text-[9px] text-zinc-400 font-mono pt-1 px-0.5 border-t border-zinc-100">
+                  <span>W1</span>
+                  <span className="text-orange-500 font-sans font-semibold">Tgt 40+</span>
+                  <span>W4</span>
                 </div>
               </div>
             </div>
@@ -354,21 +381,48 @@ export const ITOverviewDashboard: React.FC = () => {
                   <Wrench className="w-4 h-4" />
                 </div>
               </div>
-              <div className="flex items-end justify-between pt-1">
-                <svg className="w-24 h-7 overflow-visible" viewBox="0 0 100 30">
-                  <path
-                    d="M 2 20 Q 25 26, 45 14 T 78 18 T 98 6"
-                    fill="none"
-                    stroke="#F97316"
-                    strokeWidth="2.2"
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <div className="text-right">
-                  <span className="text-xs font-bold text-orange-600">
-                    {openPoolCount} in open pool
-                  </span>
-                  <p className="text-[11px] text-zinc-400">ready to claim</p>
+              <div className="space-y-1.5 pt-1">
+                <div className="flex items-end justify-between">
+                  <div className="relative">
+                    <svg className="w-28 h-9 overflow-visible" viewBox="0 0 100 32">
+                      <defs>
+                        <linearGradient id="kpiGrad2" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#EA580C" stopOpacity={0.22} />
+                          <stop offset="100%" stopColor="#EA580C" stopOpacity={0.00} />
+                        </linearGradient>
+                      </defs>
+                      {/* Ground Zero Baseline */}
+                      <line x1="2" y1="28" x2="98" y2="28" stroke="#E2E8F0" strokeWidth="1" strokeDasharray="2 2" />
+                      {/* Safe Capacity Guideline */}
+                      <line x1="2" y1="12" x2="98" y2="12" stroke="#FDBA74" strokeWidth="1" strokeDasharray="3 3" opacity={0.65} />
+                      {/* Area Fill */}
+                      <path
+                        d="M 2 20 Q 25 26, 45 14 T 78 18 T 98 8 L 98 28 L 2 28 Z"
+                        fill="url(#kpiGrad2)"
+                      />
+                      {/* Trend Curve */}
+                      <path
+                        d="M 2 20 Q 25 26, 45 14 T 78 18 T 98 8"
+                        fill="none"
+                        stroke="#EA580C"
+                        strokeWidth="2.2"
+                        strokeLinecap="round"
+                      />
+                      {/* Latest Active Dot */}
+                      <circle cx="98" cy="8" r="2.8" fill="#EA580C" stroke="#FFFFFF" strokeWidth="1.5" />
+                    </svg>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs font-bold text-orange-600">
+                      {openPoolCount} in open pool
+                    </span>
+                    <p className="text-[11px] text-zinc-400">ready to claim</p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between text-[9px] text-zinc-400 font-mono pt-1 px-0.5 border-t border-zinc-100">
+                  <span>W1</span>
+                  <span className="text-orange-600 font-sans font-semibold">Cap ≤ 5</span>
+                  <span>W4</span>
                 </div>
               </div>
             </div>
@@ -388,21 +442,48 @@ export const ITOverviewDashboard: React.FC = () => {
                   <span className="font-mono text-xs font-extrabold">#11</span>
                 </div>
               </div>
-              <div className="flex items-end justify-between pt-1">
-                <svg className="w-24 h-7 overflow-visible" viewBox="0 0 100 30">
-                  <path
-                    d="M 2 6 Q 25 20, 50 12 T 80 24 T 98 22"
-                    fill="none"
-                    stroke="#10B981"
-                    strokeWidth="2.2"
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <div className="text-right">
-                  <span className="text-xs font-bold text-emerald-600">
-                    -12 min faster
-                  </span>
-                  <p className="text-[11px] text-zinc-400">vs 45 min target</p>
+              <div className="space-y-1.5 pt-1">
+                <div className="flex items-end justify-between">
+                  <div className="relative">
+                    <svg className="w-28 h-9 overflow-visible" viewBox="0 0 100 32">
+                      <defs>
+                        <linearGradient id="kpiGrad3" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#10B981" stopOpacity={0.22} />
+                          <stop offset="100%" stopColor="#10B981" stopOpacity={0.00} />
+                        </linearGradient>
+                      </defs>
+                      {/* Ground Zero Baseline */}
+                      <line x1="2" y1="28" x2="98" y2="28" stroke="#E2E8F0" strokeWidth="1" strokeDasharray="2 2" />
+                      {/* SLA Target Guideline: 45m */}
+                      <line x1="2" y1="16" x2="98" y2="16" stroke="#6EE7B7" strokeWidth="1" strokeDasharray="3 3" opacity={0.8} />
+                      {/* Area Fill */}
+                      <path
+                        d="M 2 8 Q 25 18, 50 12 T 80 20 T 98 10 L 98 28 L 2 28 Z"
+                        fill="url(#kpiGrad3)"
+                      />
+                      {/* Trend Curve */}
+                      <path
+                        d="M 2 8 Q 25 18, 50 12 T 80 20 T 98 10"
+                        fill="none"
+                        stroke="#10B981"
+                        strokeWidth="2.2"
+                        strokeLinecap="round"
+                      />
+                      {/* Latest Active Dot */}
+                      <circle cx="98" cy="10" r="2.8" fill="#10B981" stroke="#FFFFFF" strokeWidth="1.5" />
+                    </svg>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs font-bold text-emerald-600">
+                      -12 min faster
+                    </span>
+                    <p className="text-[11px] text-zinc-400">vs 45 min target</p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between text-[9px] text-zinc-400 font-mono pt-1 px-0.5 border-t border-zinc-100">
+                  <span>W1</span>
+                  <span className="text-emerald-600 font-sans font-semibold">Target 45m</span>
+                  <span>W4</span>
                 </div>
               </div>
             </div>
@@ -422,21 +503,48 @@ export const ITOverviewDashboard: React.FC = () => {
                   <span className="font-mono text-xs font-extrabold">#13</span>
                 </div>
               </div>
-              <div className="flex items-end justify-between pt-1">
-                <svg className="w-24 h-7 overflow-visible" viewBox="0 0 100 30">
-                  <path
-                    d="M 2 24 Q 25 10, 50 14 T 75 8 T 98 6"
-                    fill="none"
-                    stroke="#0284C7"
-                    strokeWidth="2.2"
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <div className="text-right">
-                  <span className="text-xs font-bold text-sky-600">
-                    Verified First-Time
-                  </span>
-                  <p className="text-[11px] text-zinc-400">terminal approval</p>
+              <div className="space-y-1.5 pt-1">
+                <div className="flex items-end justify-between">
+                  <div className="relative">
+                    <svg className="w-28 h-9 overflow-visible" viewBox="0 0 100 32">
+                      <defs>
+                        <linearGradient id="kpiGrad4" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#0284C7" stopOpacity={0.22} />
+                          <stop offset="100%" stopColor="#0284C7" stopOpacity={0.00} />
+                        </linearGradient>
+                      </defs>
+                      {/* Ground Zero Baseline */}
+                      <line x1="2" y1="28" x2="98" y2="28" stroke="#E2E8F0" strokeWidth="1" strokeDasharray="2 2" />
+                      {/* 95% Quality Threshold Guideline */}
+                      <line x1="2" y1="12" x2="98" y2="12" stroke="#7DD3FC" strokeWidth="1" strokeDasharray="3 3" opacity={0.8} />
+                      {/* Area Fill */}
+                      <path
+                        d="M 2 22 Q 25 10, 50 14 T 75 8 T 98 6 L 98 28 L 2 28 Z"
+                        fill="url(#kpiGrad4)"
+                      />
+                      {/* Trend Curve */}
+                      <path
+                        d="M 2 22 Q 25 10, 50 14 T 75 8 T 98 6"
+                        fill="none"
+                        stroke="#0284C7"
+                        strokeWidth="2.2"
+                        strokeLinecap="round"
+                      />
+                      {/* Latest Active Dot */}
+                      <circle cx="98" cy="6" r="2.8" fill="#0284C7" stroke="#FFFFFF" strokeWidth="1.5" />
+                    </svg>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs font-bold text-sky-600">
+                      Verified First-Time
+                    </span>
+                    <p className="text-[11px] text-zinc-400">terminal approval</p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between text-[9px] text-zinc-400 font-mono pt-1 px-0.5 border-t border-zinc-100">
+                  <span>W1</span>
+                  <span className="text-sky-600 font-sans font-semibold">SLA 95%</span>
+                  <span>W4</span>
                 </div>
               </div>
             </div>

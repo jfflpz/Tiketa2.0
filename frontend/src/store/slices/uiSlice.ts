@@ -14,7 +14,7 @@ export type ActiveView =
   | 'analytics' // Admin Screen: Executive Analytics Overview
   | 'reports'; // Admin Screen: Dedicated 8 Standardized Reports Suite
 
-export type StaffRole = 'it' | 'admin' | 'intern' | 'supervisor';
+export type StaffRole = 'intern' | 'it' | 'supervisor' | 'admin' | 'analyst';
 export type QueueFilterTab = 'ALL' | 'OPEN' | 'MY_ACTIVE' | 'RESL' | 'CLSD';
 
 export interface AuthenticatedUser {

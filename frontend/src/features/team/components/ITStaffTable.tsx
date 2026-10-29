@@ -1,16 +1,18 @@
 import React from 'react';
-import { MapPin, Briefcase, Trash2, ShieldAlert } from 'lucide-react';
+import { MapPin, Briefcase, Trash2, ShieldAlert, Pencil } from 'lucide-react';
 import type { TeamMember } from '../../../types/team';
 
 export interface ITStaffTableProps {
   staff: TeamMember[];
   currentUserEmail?: string;
+  onEditMember: (member: TeamMember) => void;
   onDeleteMember: (id: string, name: string) => void;
 }
 
 export const ITStaffTable: React.FC<ITStaffTableProps> = ({
   staff,
   currentUserEmail,
+  onEditMember,
   onDeleteMember,
 }) => {
   if (staff.length === 0) {
@@ -133,20 +135,35 @@ export const ITStaffTable: React.FC<ITStaffTableProps> = ({
                   {member.systemRole === 'admin' ? 'System Administrator' : 'IT Specialist'}
                 </span>
 
-                {!isCurrentUser && !isDeactivated && (
+                <div className="flex items-center gap-1">
                   <button
                     type="button"
-                    onClick={() => {
-                      if (window.confirm(`Deactivate staff account @${member.username || member.name}?`)) {
-                        onDeleteMember(member.id, member.name);
-                      }
-                    }}
-                    className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-600 hover:bg-rose-50 transition-colors press-fx"
-                    title="Deactivate Staff Account"
+                    onClick={() => onEditMember(member)}
+                    className="p-1.5 rounded-lg text-zinc-400 hover:text-orange-600 hover:bg-orange-50 transition-colors press-fx"
+                    title="Edit Staff Account"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Pencil className="w-4 h-4" />
                   </button>
-                )}
+
+                  {!isCurrentUser && !isDeactivated && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (
+                          window.confirm(
+                            `Are you sure you want to deactivate staff account @${member.username || member.name}?\n\nHistorical logs, ticket assignments, and performance audit records are preserved.`
+                          )
+                        ) {
+                          onDeleteMember(member.id, member.name);
+                        }
+                      }}
+                      className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-600 hover:bg-rose-50 transition-colors press-fx"
+                      title="Deactivate Staff Account"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           );
