@@ -72,7 +72,13 @@ async def client():
 async def accounts(client):
     async with AsyncSessionLocal() as db:
         password_hash = hash_password("correct-horse-battery")
-        for username, role in (("admin", "admin"), ("tech", "it"), ("tech2", "it")):
+        for username, role in (
+            ("admin", "admin"),
+            ("tech", "it"),
+            ("tech2", "it"),
+            ("supervisor", "supervisor"),
+            ("intern", "intern"),
+        ):
             db.add(
                 User(
                     username=username,
@@ -84,7 +90,7 @@ async def accounts(client):
             )
         await db.commit()
     result = {}
-    for username in ("admin", "tech", "tech2"):
+    for username in ("admin", "tech", "tech2", "supervisor", "intern"):
         response = await client.post(
             "/api/v1/auth/login",
             json={"username": username, "password": "correct-horse-battery"},
