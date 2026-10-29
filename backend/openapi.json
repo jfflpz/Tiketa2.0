@@ -2286,6 +2286,19 @@
       "UserUpdate": {
         "additionalProperties": false,
         "properties": {
+          "email": {
+            "anyOf": [
+              {
+                "format": "email",
+                "maxLength": 150,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
           "full_name": {
             "anyOf": [
               {
@@ -2309,6 +2322,18 @@
               }
             ],
             "title": "Is Active"
+          },
+          "location_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Id"
           },
           "password": {
             "anyOf": [
