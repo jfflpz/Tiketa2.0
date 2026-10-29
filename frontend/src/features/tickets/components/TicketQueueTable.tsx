@@ -150,11 +150,13 @@ export const TicketQueueTable: React.FC<TicketQueueTableProps> = ({
                         className="px-2 py-1 bg-white border border-[#ECEEF2] rounded-lg text-xs font-semibold text-ink focus:border-orange-500 focus:outline-none cursor-pointer shadow-xs"
                       >
                         <option value="" disabled>Assign Tech...</option>
-                        {itTeamMembers.map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {m.name}
-                          </option>
-                        ))}
+                        {itTeamMembers
+                          .filter((m) => (m.systemRole === 'it' || m.systemRole === 'intern') && m.is_active !== false)
+                          .map((m) => (
+                            <option key={m.id} value={m.id}>
+                              {m.name}
+                            </option>
+                          ))}
                       </select>
                     ) : ticket.workedBy ? (
                       <span className="text-ink font-medium">{ticket.workedBy}</span>

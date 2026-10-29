@@ -196,11 +196,13 @@ export const JobLogDrawerRecordForm: React.FC<JobLogDrawerRecordFormProps> = ({
                   className="px-2.5 py-1 bg-surface border border-line rounded-lg text-xs font-semibold text-ink focus:border-orange-500 focus:outline-none"
                 >
                   <option value="" disabled>Assign Tech...</option>
-                  {itTeamMembers.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name} ({m.primaryLocation.split(' ')[0]})
-                    </option>
-                  ))}
+                  {itTeamMembers
+                    .filter((m) => (m.systemRole === 'it' || m.systemRole === 'intern') && m.is_active !== false)
+                    .map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name} ({m.primaryLocation.split(' ')[0]})
+                      </option>
+                    ))}
                 </select>
               ) : (
                 <span className="font-semibold text-ink text-right max-w-[65%]">
