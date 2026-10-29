@@ -482,9 +482,13 @@ async def assign_ticket(
         )
 
     target_tech = await db.get(User, body.technician_id)
-    if not target_tech or target_tech.role != "it" or not target_tech.is_active:
+    if (
+        not target_tech
+        or target_tech.role not in ("it", "intern")
+        or not target_tech.is_active
+    ):
         raise HTTPException(
-            422, "Target technician must be an active technician with IT role"
+            422, "Target technician must be an active technician with IT or intern role"
         )
 
     # Idempotent no-op if already assigned to this technician
