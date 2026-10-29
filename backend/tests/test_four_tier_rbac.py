@@ -133,16 +133,13 @@ async def test_public_ticket_uuid_and_supervisor_reports(client: AsyncClient, ac
     """Test RCA-2 (PublicTicket has UUID) and Task B-04 (Supervisor can access reports)."""
     admin_headers = accounts["admin"]
 
-    # 1. Create a ticket as Admin
+    # 1. Create a public ticket (verifying RCA-2 authoritative UUID is present)
     ticket_payload = {
-        "title": "Hardware diagnostic check on depot terminal",
+        "employee_id": "1042",
+        "task_code": "PRN-TS",
         "description": "Terminal scanner is experiencing communication timeouts.",
-        "category": "HARDWARE",
-        "priority": "MEDIUM",
     }
-    res_ticket = await client.post(
-        "/api/v1/tickets", json=ticket_payload, headers=admin_headers
-    )
+    res_ticket = await client.post("/api/v1/tickets/submit", json=ticket_payload)
     assert res_ticket.status_code == 201
     ticket_data = res_ticket.json()
     assert "id" in ticket_data  # Verifies authoritative UUID is present
