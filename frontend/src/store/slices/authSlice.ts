@@ -20,7 +20,7 @@ export interface AuthSlice {
   openLoginModal: (role?: StaffRole) => void;
   closeLoginModal: () => void;
   loginAsStaff: (role: StaffRole, customName?: string) => void;
-  logoutToKiosk: () => Promise<void>;
+  logoutToKiosk: (options?: { retainSession?: boolean }) => Promise<void>;
 }
 
 let isHydratingInFlight: Promise<boolean> | null = null;
@@ -115,7 +115,6 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
       // Update URL to canonical /dashboard
       if (typeof window !== 'undefined') {
         window.history.pushState(null, '', '/dashboard');
-      window.dispatchEvent(new Event('popstate'));
         window.dispatchEvent(new Event('popstate'));
       }
 
@@ -164,7 +163,31 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
     set({ loginModalRole: 'it' });
   },
 
-  logoutToKiosk: async () => {
+  logoutToKiosk: async (options) => {
+    if (options?.retainSession) {
+      if (typeof window !== 'undefined') {
+        window.history.pushState(null, '', '/report');
+        window.dispatchEvent(new Event('popstate'));
+      }
+      set({
+        selectedTicketId: null,
+        inspectedTicket: null,
+        isInspectingTicket: false,
+        inspectTicketError: null,
+        activeWorkbenchTicketId: null,
+        workbenchTicket: null,
+        isWorkbenchLoading: false,
+        workbenchError: null,
+        isQuickIntakeOpen: false,
+      });
+      get().addToast(
+        'Returned to Employee Ticket Screen',
+        'Staff session kept on device for quick return',
+        'info'
+      );
+      return;
+    }
+
     localStorage.removeItem('tiketa_active_view');
     try {
       await authApi.logout();

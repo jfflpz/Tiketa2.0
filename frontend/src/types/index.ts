@@ -30,6 +30,7 @@ export interface EmployeeProfile {
   location_name: string;
   department_id: string;
   department_name: string;
+  is_active?: boolean;
 }
 
 export * from './ticket';
