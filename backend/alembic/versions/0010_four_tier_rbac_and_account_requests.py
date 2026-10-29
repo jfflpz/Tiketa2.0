@@ -72,5 +72,6 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.drop_table("account_requests")
+    op.execute("DELETE FROM users WHERE role NOT IN ('it', 'admin')")
     op.drop_constraint("ck_users_role", "users", type_="check")
     op.create_check_constraint("ck_users_role", "users", "role IN ('it', 'admin')")

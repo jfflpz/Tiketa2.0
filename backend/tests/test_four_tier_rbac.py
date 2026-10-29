@@ -131,8 +131,6 @@ async def test_account_request_rejection(client: AsyncClient, accounts):
 @pytest.mark.asyncio
 async def test_public_ticket_uuid_and_supervisor_reports(client: AsyncClient, accounts):
     """Test RCA-2 (PublicTicket has UUID) and Task B-04 (Supervisor can access reports)."""
-    admin_headers = accounts["admin"]
-
     # 1. Create a public ticket (verifying RCA-2 authoritative UUID is present)
     ticket_payload = {
         "employee_id": "1042",
@@ -145,5 +143,7 @@ async def test_public_ticket_uuid_and_supervisor_reports(client: AsyncClient, ac
     assert "id" in ticket_data  # Verifies authoritative UUID is present
 
     # 2. Verify Admin/Supervisor can fetch monthly-sla report
-    res_report = await client.get("/api/v1/reports/monthly-sla", headers=admin_headers)
+    res_report = await client.get(
+        "/api/v1/reports/monthly-sla", headers=accounts["supervisor"]
+    )
     assert res_report.status_code == 200
