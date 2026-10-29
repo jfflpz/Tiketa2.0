@@ -36,22 +36,8 @@ export interface AuthSlice {
   openLoginModal: (role?: StaffRole) => void;
   closeLoginModal: () => void;
   loginAsStaff: (role: StaffRole, customName?: string) => void;
-  logoutToKiosk: () => Promise<void>;
+  logoutToKiosk: (options?: { retainSession?: boolean }) => Promise<void>;
 }
-
-const getJobTitleForRole = (role: StaffRole): string => {
-  switch (role) {
-    case 'admin':
-      return 'IT Administrator';
-    case 'supervisor':
-      return 'IT Operations Supervisor';
-    case 'intern':
-      return 'Junior IT Intern';
-    case 'it':
-    default:
-      return 'IT Support Specialist';
-  }
-};
 
 let isHydratingInFlight: Promise<boolean> | null = null;
 
@@ -97,11 +83,7 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
               name: data.user.full_name,
               email: data.user.email,
               role: userRole,
-<<<<<<< Updated upstream
               title: getStaffTitle(userRole),
-=======
-              title: getJobTitleForRole(userRole),
->>>>>>> Stashed changes
               avatar: data.user.full_name
                 .split(' ')
                 .map((n: string) => n[0])
@@ -149,7 +131,6 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
       // Update URL to canonical /dashboard
       if (typeof window !== 'undefined') {
         window.history.pushState(null, '', '/dashboard');
-      window.dispatchEvent(new Event('popstate'));
         window.dispatchEvent(new Event('popstate'));
       }
 
@@ -159,11 +140,7 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
           name: data.user.full_name,
           email: data.user.email,
           role: userRole,
-<<<<<<< Updated upstream
           title: getStaffTitle(userRole),
-=======
-          title: getJobTitleForRole(userRole),
->>>>>>> Stashed changes
           avatar: data.user.full_name
             .split(' ')
             .map((n: string) => n[0])
@@ -202,7 +179,31 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
     set({ loginModalRole: 'it' });
   },
 
-  logoutToKiosk: async () => {
+  logoutToKiosk: async (options) => {
+    if (options?.retainSession) {
+      if (typeof window !== 'undefined') {
+        window.history.pushState(null, '', '/report');
+        window.dispatchEvent(new Event('popstate'));
+      }
+      set({
+        selectedTicketId: null,
+        inspectedTicket: null,
+        isInspectingTicket: false,
+        inspectTicketError: null,
+        activeWorkbenchTicketId: null,
+        workbenchTicket: null,
+        isWorkbenchLoading: false,
+        workbenchError: null,
+        isQuickIntakeOpen: false,
+      });
+      get().addToast(
+        'Returned to Employee Ticket Screen',
+        'Staff session kept on device for quick return',
+        'info'
+      );
+      return;
+    }
+
     localStorage.removeItem('tiketa_active_view');
     try {
       await authApi.logout();

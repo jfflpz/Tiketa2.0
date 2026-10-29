@@ -42,7 +42,7 @@ export const JobLogDrawer: React.FC = () => {
 
   const ticket = tickets.find((t) => t.id === selectedTicketId) ?? inspectedTicket;
   const [notesDraft, setNotesDraft] = useState('');
-  const [drawerTab, setDrawerTab] = useState<'CHAT' | 'JOB_LOG'>('CHAT');
+  const [drawerTab, setDrawerTab] = useState<'CHAT' | 'JOB_LOG'>('JOB_LOG');
   const [isSavingNotes, setIsSavingNotes] = useState(false);
 
   const drawerRef = useRef<HTMLDivElement>(null);

@@ -1,8 +1,4 @@
-<<<<<<< Updated upstream
 export type StaffRole = 'intern' | 'it' | 'supervisor' | 'admin' | 'analyst';
-=======
-export type StaffRole = 'intern' | 'it' | 'supervisor' | 'admin';
->>>>>>> Stashed changes
 export type UserRole = StaffRole;
 
 export interface Company {
@@ -35,6 +31,7 @@ export interface EmployeeProfile {
   location_name: string;
   department_id: string;
   department_name: string;
+  is_active?: boolean;
 }
 
 export * from './ticket';
