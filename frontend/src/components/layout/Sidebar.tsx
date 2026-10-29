@@ -1,9 +1,11 @@
 // @spec UI-LAYOUT-01: Nexora Categorized Dark Sidebar (#111315) with 4-Tier Role Layouts
+<<<<<<< Updated upstream
 import React, { useState } from 'react';
+=======
+import React from 'react';
+>>>>>>> Stashed changes
 import {
   Home,
-  ChevronDown,
-  ChevronRight,
   Inbox,
   Wrench,
   BookOpen,
@@ -12,8 +14,6 @@ import {
   LineChart,
   Users,
   BarChart3,
-  Layers,
-  LogOut,
   Box,
 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
@@ -21,27 +21,90 @@ import type { StaffRole, ActiveView } from '../../store/slices/uiSlice';
 
 export const Sidebar: React.FC = () => {
   const currentUser = useAppStore((state) => state.currentUser);
-  const openLogoutModal = useAppStore((state) => state.openLogoutModal);
   const activeView = useAppStore((state) => state.activeView);
   const setActiveView = useAppStore((state) => state.setActiveView);
   const sidebarCollapsed = useAppStore((state) => state.sidebarCollapsed);
   const tickets = useAppStore((state) => state.tickets);
 
+<<<<<<< Updated upstream
   const [itDashboardOpen, setItDashboardOpen] = useState(true);
   const [adminAnalyticsOpen, setAdminAnalyticsOpen] = useState(true);
 
   const role: StaffRole = currentUser?.role ?? 'it';
   const isAdmin = role === 'admin';
   const isSupervisorOrAnalyst = role === 'supervisor' || role === 'analyst';
+=======
+  const role: StaffRole = currentUser?.role ?? 'it';
+  const isAdmin = role === 'admin';
+  const isSupervisor = role === 'supervisor';
+>>>>>>> Stashed changes
   const isIntern = role === 'intern';
   const isIT = role === 'it';
 
   // Badge count for active tickets
   const activeTicketsCount = tickets.filter((t) => t.status !== 'CLSD').length;
 
-  const isOverviewGroupActive = activeView === 'overview' || activeView === 'joblogs';
-  const isAnalyticsGroupActive =
-    activeView === 'analytics' || activeView === 'reports' || activeView === 'joblogs';
+  const handleBrandClick = () => {
+    if (isAdmin || isSupervisor) {
+      setActiveView('analytics');
+    } else if (isIntern) {
+      setActiveView('workbench');
+    } else {
+      setActiveView('overview');
+    }
+  };
+
+  const getRoleBadgeLabel = (r: StaffRole): string => {
+    switch (r) {
+      case 'admin':
+        return 'ADMIN';
+      case 'supervisor':
+        return 'SUPERVISOR';
+      case 'intern':
+        return 'INTERN';
+      case 'it':
+      default:
+        return 'IT SUPPORT';
+    }
+  };
+
+  const renderNavButton = (
+    view: ActiveView,
+    label: string,
+    Icon: React.ElementType,
+    iconColor: string,
+    badge?: number | string
+  ) => {
+    const isActive = activeView === view;
+    return (
+      <button
+        type="button"
+        onClick={() => setActiveView(view)}
+        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all press-fx ${
+          isActive
+            ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold shadow-md shadow-orange-950/40'
+            : 'text-zinc-400 hover:text-white hover:bg-white/5 font-medium'
+        }`}
+        title={label}
+      >
+        <div className="flex items-center gap-2.5 min-w-0">
+          <Icon
+            className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : iconColor}`}
+          />
+          {!sidebarCollapsed && <span className="truncate">{label}</span>}
+        </div>
+        {!sidebarCollapsed && badge !== undefined && (
+          <span
+            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+              isActive ? 'bg-black/25 text-white' : 'bg-zinc-800 text-zinc-300'
+            }`}
+          >
+            {badge}
+          </span>
+        )}
+      </button>
+    );
+  };
 
   const handleBrandClick = () => {
     if (isAdmin || isSupervisorOrAnalyst) {
@@ -111,7 +174,11 @@ export const Sidebar: React.FC = () => {
                 TIKETA
               </span>
               <span className="text-[10px] font-mono text-orange-400 uppercase tracking-widest mt-0.5">
+<<<<<<< Updated upstream
                 {role.toUpperCase()}
+=======
+                {getRoleBadgeLabel(role)}
+>>>>>>> Stashed changes
               </span>
             </div>
           )}
@@ -119,6 +186,7 @@ export const Sidebar: React.FC = () => {
 
         {/* ============================================================
             TIER 1: INTERN NAVIGATION LAYOUT (role === 'intern')
+<<<<<<< Updated upstream
             Restricted to assigned tickets, overview, personal notes & logs
            ============================================================ */}
         {isIntern && (
@@ -161,15 +229,23 @@ export const Sidebar: React.FC = () => {
             Full operational fleet triage, workbench, and terminal hubs
            ============================================================ */}
         {isIT && (
+=======
+            Restricted ONLY to: Personal KPIs, Workbench, Notes, Job Logs
+           ============================================================ */}
+        {isIntern && (
+>>>>>>> Stashed changes
           <>
             {/* CATEGORY 1: MY DASHBOARD */}
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {!sidebarCollapsed && (
                 <div className="px-2.5 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
                   MY DASHBOARD
                 </div>
               )}
+              {renderNavButton('overview', 'Personal KPIs', Home, 'text-orange-400')}
+            </div>
 
+<<<<<<< Updated upstream
               <div>
                 <button
                   type="button"
@@ -246,6 +322,46 @@ export const Sidebar: React.FC = () => {
                   </div>
                 )}
               </div>
+=======
+            {/* CATEGORY 2: ACTIVE WORKBENCH */}
+            <div className="space-y-1.5">
+              {!sidebarCollapsed && (
+                <div className="px-2.5 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                  ACTIVE WORKBENCH
+                </div>
+              )}
+              {renderNavButton('workbench', 'My Assigned Workbench', Wrench, 'text-orange-400')}
+            </div>
+
+            {/* CATEGORY 3: KNOWLEDGE & LOGS */}
+            <div className="space-y-1.5">
+              {!sidebarCollapsed && (
+                <div className="px-2.5 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                  KNOWLEDGE &amp; LOGS
+                </div>
+              )}
+              {renderNavButton('notes', 'Saved Repair Notes', BookOpen, 'text-amber-400')}
+              {renderNavButton('joblogs', 'My Job Logs', FileSpreadsheet, 'text-emerald-400')}
+            </div>
+          </>
+        )}
+
+        {/* ============================================================
+            TIER 2: IT SUPPORT SPECIALIST (role === 'it')
+            Personal KPIs at top of MY DASHBOARD, followed by Job Logs
+           ============================================================ */}
+        {isIT && (
+          <>
+            {/* CATEGORY 1: MY DASHBOARD */}
+            <div className="space-y-1.5">
+              {!sidebarCollapsed && (
+                <div className="px-2.5 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                  MY DASHBOARD
+                </div>
+              )}
+              {renderNavButton('overview', 'Personal KPIs', Home, 'text-orange-400')}
+              {renderNavButton('joblogs', '15-Col Job Logs', FileSpreadsheet, 'text-emerald-400')}
+>>>>>>> Stashed changes
             </div>
 
             {/* CATEGORY 2: REPAIR OPERATIONS */}
@@ -279,10 +395,17 @@ export const Sidebar: React.FC = () => {
         )}
 
         {/* ============================================================
+<<<<<<< Updated upstream
             TIER 3: SUPERVISOR & ANALYST NAVIGATION (role === 'supervisor' | 'analyst')
             Executive analytics, standardized reporting, governance & triage
            ============================================================ */}
         {isSupervisorOrAnalyst && (
+=======
+            TIER 3: SUPERVISOR NAVIGATION (role === 'supervisor')
+            Executive analytics, 8 standard reports, IT team & fleet logs
+           ============================================================ */}
+        {isSupervisor && (
+>>>>>>> Stashed changes
           <>
             {/* CATEGORY 1: OPERATIONAL ANALYTICS */}
             <div className="space-y-1.5">
@@ -305,6 +428,7 @@ export const Sidebar: React.FC = () => {
               {renderNavButton('team', 'IT Team & Accounts', Users, 'text-emerald-400')}
               {renderNavButton('joblogs', 'Fleet Master Job Logs', FileSpreadsheet, 'text-emerald-400')}
             </div>
+<<<<<<< Updated upstream
 
             {/* CATEGORY 3: OPERATIONS & FLEET MONITOR */}
             <div className="space-y-1.5">
@@ -333,22 +457,44 @@ export const Sidebar: React.FC = () => {
                 </>
               )}
             </div>
+=======
+>>>>>>> Stashed changes
           </>
         )}
 
         {/* ============================================================
             TIER 4: SYSTEM ADMINISTRATOR (role === 'admin')
+<<<<<<< Updated upstream
             Full suite across all categories with zero screen duplicates
            ============================================================ */}
         {isAdmin && (
           <>
             {/* ADMIN CATEGORY 1: EXECUTIVE ANALYTICS */}
             <div className="space-y-2">
+=======
+            Personal KPIs at top under MY DASHBOARD, followed by Executive Analytics
+           ============================================================ */}
+        {isAdmin && (
+          <>
+            {/* ADMIN CATEGORY 1: MY DASHBOARD */}
+            <div className="space-y-1.5">
+              {!sidebarCollapsed && (
+                <div className="px-2.5 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                  MY DASHBOARD
+                </div>
+              )}
+              {renderNavButton('overview', 'Personal KPIs', Home, 'text-orange-400')}
+            </div>
+
+            {/* ADMIN CATEGORY 2: EXECUTIVE ANALYTICS */}
+            <div className="space-y-1.5">
+>>>>>>> Stashed changes
               {!sidebarCollapsed && (
                 <div className="px-2.5 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
                   EXECUTIVE ANALYTICS
                 </div>
               )}
+<<<<<<< Updated upstream
 
               <div>
                 <button
@@ -445,9 +591,14 @@ export const Sidebar: React.FC = () => {
                   </div>
                 )}
               </div>
+=======
+              {renderNavButton('analytics', 'Executive Analytics', LineChart, 'text-orange-400')}
+              {renderNavButton('reports', '8 Standard Reports', BarChart3, 'text-amber-400')}
+              {renderNavButton('joblogs', '15-Col Master Sheet', FileSpreadsheet, 'text-emerald-400')}
+>>>>>>> Stashed changes
             </div>
 
-            {/* ADMIN CATEGORY 2: OPERATIONS & FLEET TRIAGE */}
+            {/* ADMIN CATEGORY 3: OPERATIONS & FLEET TRIAGE */}
             <div className="space-y-1.5">
               {!sidebarCollapsed && (
                 <div className="px-2.5 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
@@ -457,7 +608,11 @@ export const Sidebar: React.FC = () => {
               {renderNavButton(
                 'tickets',
                 'Active Ticket Lists',
+<<<<<<< Updated upstream
                 Layers,
+=======
+                Inbox,
+>>>>>>> Stashed changes
                 'text-sky-400',
                 activeTicketsCount
               )}
@@ -465,7 +620,7 @@ export const Sidebar: React.FC = () => {
               {renderNavButton('terminals', 'Terminal Hubs Monitor', Building2, 'text-teal-400')}
             </div>
 
-            {/* ADMIN CATEGORY 3: STAFF GOVERNANCE */}
+            {/* ADMIN CATEGORY 4: STAFF GOVERNANCE */}
             <div className="space-y-1.5">
               {!sidebarCollapsed && (
                 <div className="px-2.5 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
@@ -475,7 +630,7 @@ export const Sidebar: React.FC = () => {
               {renderNavButton('team', 'IT Team & Accounts', Users, 'text-emerald-400')}
             </div>
 
-            {/* ADMIN CATEGORY 4: KNOWLEDGE BASE */}
+            {/* ADMIN CATEGORY 5: KNOWLEDGE BASE */}
             <div className="space-y-1.5">
               {!sidebarCollapsed && (
                 <div className="px-2.5 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
@@ -487,6 +642,7 @@ export const Sidebar: React.FC = () => {
           </>
         )}
       </div>
+<<<<<<< Updated upstream
 
       {/* Bottom User Session Footer */}
       <div className="p-3.5 border-t border-zinc-800/80 bg-[#0D0F11]">
@@ -523,6 +679,8 @@ export const Sidebar: React.FC = () => {
           )}
         </div>
       </div>
+=======
+>>>>>>> Stashed changes
     </aside>
   );
 };

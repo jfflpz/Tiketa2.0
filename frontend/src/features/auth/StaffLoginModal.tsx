@@ -1,6 +1,21 @@
 // @spec FR-AUTH-02: Staff Authentication Modal for IT Support and Administrators
 import React, { useState, useEffect } from 'react';
+<<<<<<< Updated upstream
 import { X, ShieldCheck, Wrench, Lock, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
+=======
+import {
+  X,
+  ShieldCheck,
+  Shield,
+  Wrench,
+  Lock,
+  ArrowRight,
+  Loader2,
+  AlertCircle,
+  Eye,
+  EyeOff,
+} from 'lucide-react';
+>>>>>>> Stashed changes
 import { useAppStore, StaffRole } from '../../store/useAppStore';
 
 export const StaffLoginModal: React.FC = () => {
@@ -12,6 +27,7 @@ export const StaffLoginModal: React.FC = () => {
   const [role, setRole] = useState<StaffRole>('admin');
   const [username, setUsername] = useState('admin');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     if (loginModalRole) {
@@ -134,6 +150,7 @@ zinc-500 disabled:opacity-60"
               <label className="block text-xs font-semibold text-ink mb-1">
                 Password
               </label>
+<<<<<<< Updated upstream
               <input
                 type="password"
                 value={password}
@@ -144,6 +161,33 @@ zinc-500 disabled:opacity-60"
                 className="w-full px-3.5 py-2.5 bg-canvas border border-line rounded-xl text-xs font-medium text-ink focus:outline-none focus:border-
 zinc-500 disabled:opacity-60"
               />
+=======
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter password (min 12 characters)"
+                  required
+                  disabled={isAuthenticating}
+                  className="w-full pl-3.5 pr-10 py-2.5 bg-canvas border border-line rounded-xl text-xs font-medium text-ink focus:outline-none focus:border-orange-500 disabled:opacity-60"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  tabIndex={-1}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-subtle hover:text-ink transition-colors p-0.5"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  title={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-4 h-4 text-zinc-400 hover:text-zinc-600" />
+                  ) : (
+                    <Eye className="w-4 h-4 text-zinc-400 hover:text-zinc-600" />
+                  )}
+                </button>
+              </div>
+>>>>>>> Stashed changes
             </div>
           </div>
 

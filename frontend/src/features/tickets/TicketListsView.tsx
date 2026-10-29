@@ -12,6 +12,15 @@ import { TicketQueueFilterToolbar } from './components/TicketQueueFilterToolbar'
 import { TicketQueueTable } from './components/TicketQueueTable';
 import { TicketQueueKanbanBoard } from './components/TicketQueueKanbanBoard';
 import { TicketResolveModal } from './components/TicketResolveModal';
+import { TicketAssignModal } from './components/TicketAssignModal';
+
+interface PendingAssignment {
+  ticketId: string;
+  ticketCode: string;
+  ticketTask: string;
+  techName: string;
+  techId: string;
+}
 
 export const TicketListsView: React.FC = () => {
   const currentUser = useAppStore((state) => state.currentUser);
@@ -38,6 +47,7 @@ export const TicketListsView: React.FC = () => {
   const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [ticketToResolve, setTicketToResolve] = useState<Ticket | null>(null);
+  const [pendingAssignment, setPendingAssignment] = useState<PendingAssignment | null>(null);
 
   const currentTechName = currentUser?.name ?? 'Nathaniel D. Esguerra';
   const isAdmin = currentUser?.role === 'admin';
@@ -115,6 +125,23 @@ export const TicketListsView: React.FC = () => {
     e.stopPropagation();
     setActiveWorkbenchTicketId(ticket.id);
     setActiveView('workbench');
+  };
+
+  const handleRequestAssign = (ticketId: string, techName: string, techId: string) => {
+    const ticket = tickets.find((t) => t.id === ticketId);
+    setPendingAssignment({
+      ticketId,
+      ticketCode: ticket?.ticketCode || 'Ticket',
+      ticketTask: ticket?.task || '',
+      techName,
+      techId,
+    });
+  };
+
+  const handleConfirmAssign = () => {
+    if (!pendingAssignment) return;
+    assignTicket(pendingAssignment.ticketId, pendingAssignment.techName, pendingAssignment.techId);
+    setPendingAssignment(null);
   };
 
   return (
@@ -212,7 +239,7 @@ export const TicketListsView: React.FC = () => {
             setTicketToResolve(ticket);
           }}
           onCopyVerification={handleCopyVerification}
-          onAssignTicket={assignTicket}
+          onAssignTicket={handleRequestAssign}
         />
       ) : (
         /* VIEW 2: 3-COLUMN KANBAN BOARD */
@@ -228,7 +255,7 @@ export const TicketListsView: React.FC = () => {
           onFocusWorkbench={handleFocusWorkbench}
           onResolveTicket={(ticket) => setTicketToResolve(ticket)}
           onCopyVerification={handleCopyVerification}
-          onAssignTicket={assignTicket}
+          onAssignTicket={handleRequestAssign}
         />
       )}
 
@@ -236,6 +263,16 @@ export const TicketListsView: React.FC = () => {
       <TicketResolveModal
         ticket={ticketToResolve}
         onClose={() => setTicketToResolve(null)}
+      />
+
+      {/* Ticket Assignment Confirmation Modal */}
+      <TicketAssignModal
+        isOpen={pendingAssignment !== null}
+        ticketCode={pendingAssignment?.ticketCode || ''}
+        ticketTask={pendingAssignment?.ticketTask || ''}
+        techName={pendingAssignment?.techName || ''}
+        onConfirm={handleConfirmAssign}
+        onCancel={() => setPendingAssignment(null)}
       />
     </div>
   );

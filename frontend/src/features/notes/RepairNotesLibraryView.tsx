@@ -11,6 +11,7 @@ import {
   X,
   Clock,
   User,
+  AlertTriangle,
 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { TASK_CATEGORIES } from '../../constants/domain';
@@ -33,6 +34,10 @@ export const RepairNotesLibraryView: React.FC = () => {
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Dedicated custom delete confirmation modal state
+  const [noteToDelete, setNoteToDelete] = useState<SavedRepairNote | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const [titleDraft, setTitleDraft] = useState('');
   const [taskCodeDraft, setTaskCodeDraft] = useState<TaskCategoryCode>('PRN-TS');
   const [noteDraft, setNoteDraft] = useState('');
@@ -41,6 +46,8 @@ export const RepairNotesLibraryView: React.FC = () => {
     'Run diagnostic test and apply configuration fix',
   ]);
   const [newStepInput, setNewStepInput] = useState('');
+
+  const isIntern = currentUser?.role === 'intern';
 
   // Fetch guides from API on initial load
   useEffect(() => {
@@ -60,6 +67,7 @@ export const RepairNotesLibraryView: React.FC = () => {
   });
 
   const startCreateNew = () => {
+    if (isIntern) return;
     setEditingNoteId(null);
     setTitleDraft('');
     setTaskCodeDraft('PRN-TS');
@@ -134,15 +142,15 @@ export const RepairNotesLibraryView: React.FC = () => {
     }
   };
 
-  const handleDeleteNote = async (note: SavedRepairNote) => {
-    if (
-      !window.confirm(
-        `Are you sure you want to delete guide "${note.title}"? Applied ticket checklists will be preserved.`
-      )
-    ) {
-      return;
+  const confirmDeleteNote = async () => {
+    if (!noteToDelete) return;
+    setIsDeleting(true);
+    try {
+      await deleteSavedRepairNote(noteToDelete.id, noteToDelete.revision);
+      setNoteToDelete(null);
+    } finally {
+      setIsDeleting(false);
     }
-    await deleteSavedRepairNote(note.id, note.revision);
   };
 
   return (
@@ -158,18 +166,20 @@ export const RepairNotesLibraryView: React.FC = () => {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={startCreateNew}
-          className="px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-sm transition-colors press-fx self-start"
-        >
-          <Plus className="w-4 h-4 stroke-[2.5]" />
-          <span>New Repair Note &amp; Checklist</span>
-        </button>
+        {!isIntern && (
+          <button
+            type="button"
+            onClick={startCreateNew}
+            className="px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-sm transition-colors press-fx self-start"
+          >
+            <Plus className="w-4 h-4 stroke-[2.5]" />
+            <span>New Repair Note &amp; Checklist</span>
+          </button>
+        )}
       </div>
 
       {/* Create / Edit Saved Repair Note & Checklist Form */}
-      {(isCreating || editingNoteId) && (
+      {(isCreating || editingNoteId) && !isIntern && (
         <form
           onSubmit={handleSaveForm}
           className="bg-white border-2 border-orange-400 rounded-2xl p-5 shadow-md space-y-4"
@@ -424,7 +434,7 @@ export const RepairNotesLibraryView: React.FC = () => {
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleDeleteNote(note)}
+                        onClick={() => setNoteToDelete(note)}
                         className="p-1.5 rounded-lg bg-[#F4F6F9] hover:bg-rose-50 text-zinc-500 hover:text-rose-600 border border-[#ECEEF2] transition-colors press-fx"
                         title="Delete Repair Note"
                       >
@@ -480,7 +490,7 @@ export const RepairNotesLibraryView: React.FC = () => {
                     {note.author}
                   </span>
                   <span className="inline-flex items-center gap-1 font-mono">
-                    <Clock className="w-3 h-3" />
+                    <Clock className="w-3.5 h-3.5" />
                     {new Date(note.updatedAt).toLocaleDateString()}
                   </span>
                 </div>
@@ -499,6 +509,75 @@ export const RepairNotesLibraryView: React.FC = () => {
           <p className="text-xs text-zinc-500">
             Try clearing your search filter or click &ldquo;New Repair Note &amp; Checklist&rdquo; above.
           </p>
+        </div>
+      )}
+
+      {/* Dedicated Custom Delete Confirmation Modal */}
+      {noteToDelete && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto animate-fade-in"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-note-title"
+        >
+          <div
+            className="fixed inset-0"
+            onClick={() => !isDeleting && setNoteToDelete(null)}
+            aria-hidden="true"
+          />
+          <div className="relative z-10 w-full max-w-md bg-white border border-[#ECEEF2] rounded-3xl p-6 shadow-2xl space-y-4 animate-scale-up">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5 stroke-[2.2]" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 id="delete-note-title" className="text-sm font-bold text-ink truncate">
+                  Delete Repair Note?
+                </h3>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  This action cannot be undone.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => !isDeleting && setNoteToDelete(null)}
+                className="p-1.5 rounded-xl hover:bg-zinc-100 text-zinc-400 hover:text-ink"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-[#F8F9FA] border border-[#ECEEF2] text-xs text-zinc-600 space-y-1.5 leading-relaxed">
+              <p>
+                Are you sure you want to permanently delete{' '}
+                <strong className="text-ink font-bold">&ldquo;{noteToDelete.title}&rdquo;</strong>?
+              </p>
+              <p className="text-[11px] text-zinc-500">
+                Any active or resolved tickets that have already copied this troubleshooting checklist will preserve their existing checklist steps.
+              </p>
+            </div>
+
+            <div className="pt-2 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setNoteToDelete(null)}
+                className="px-4 py-2 rounded-xl bg-white border border-[#ECEEF2] text-xs font-semibold text-zinc-600 hover:bg-zinc-100 transition-colors press-fx disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={confirmDeleteNote}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 active:scale-95 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-sm transition-all press-fx disabled:opacity-50"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{isDeleting ? 'Deleting...' : 'Delete Note'}</span>
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

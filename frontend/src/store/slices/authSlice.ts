@@ -39,6 +39,20 @@ export interface AuthSlice {
   logoutToKiosk: () => Promise<void>;
 }
 
+const getJobTitleForRole = (role: StaffRole): string => {
+  switch (role) {
+    case 'admin':
+      return 'IT Administrator';
+    case 'supervisor':
+      return 'IT Operations Supervisor';
+    case 'intern':
+      return 'Junior IT Intern';
+    case 'it':
+    default:
+      return 'IT Support Specialist';
+  }
+};
+
 let isHydratingInFlight: Promise<boolean> | null = null;
 
 export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
@@ -83,7 +97,11 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
               name: data.user.full_name,
               email: data.user.email,
               role: userRole,
+<<<<<<< Updated upstream
               title: getStaffTitle(userRole),
+=======
+              title: getJobTitleForRole(userRole),
+>>>>>>> Stashed changes
               avatar: data.user.full_name
                 .split(' ')
                 .map((n: string) => n[0])
@@ -141,7 +159,11 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
           name: data.user.full_name,
           email: data.user.email,
           role: userRole,
+<<<<<<< Updated upstream
           title: getStaffTitle(userRole),
+=======
+          title: getJobTitleForRole(userRole),
+>>>>>>> Stashed changes
           avatar: data.user.full_name
             .split(' ')
             .map((n: string) => n[0])

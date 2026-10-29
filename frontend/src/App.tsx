@@ -22,7 +22,41 @@ import { TicketVerificationModal } from './components/tickets/TicketVerification
 import { ToastContainer } from './components/common/ToastContainer';
 import { useAppStore } from './store/useAppStore';
 import type { StaffRole, ActiveView } from './store/slices/uiSlice';
+<<<<<<< Updated upstream
 import { resolvePathToView } from './utils/routeUtils';
+=======
+import { resolvePathToView, viewToCanonicalPath } from './utils/routeUtils';
+
+export const ROLE_ALLOWED_VIEWS: Record<StaffRole, ActiveView[]> = {
+  intern: ['overview', 'workbench', 'notes', 'joblogs'],
+  it: ['overview', 'tickets', 'workbench', 'notes', 'joblogs', 'terminals'],
+  supervisor: ['overview', 'analytics', 'reports', 'team', 'joblogs'],
+  admin: [
+    'overview',
+    'tickets',
+    'workbench',
+    'notes',
+    'joblogs',
+    'terminals',
+    'analytics',
+    'reports',
+    'team',
+  ],
+};
+
+const getDefaultHomeForRole = (role: StaffRole): ActiveView => {
+  switch (role) {
+    case 'supervisor':
+      return 'analytics';
+    case 'intern':
+      return 'workbench';
+    case 'admin':
+    case 'it':
+    default:
+      return 'overview';
+  }
+};
+>>>>>>> Stashed changes
 
 export const ROLE_ALLOWED_VIEWS: Record<StaffRole, ActiveView[]> = {
   intern: ['overview', 'workbench', 'notes', 'joblogs'],
@@ -83,6 +117,7 @@ export default function App() {
         if (allowed.includes(route)) {
           setActiveView(route);
         } else {
+<<<<<<< Updated upstream
           const fallback: ActiveView = role === 'analyst' ? 'reports' : 'overview';
           setActiveView(fallback);
           if (typeof window !== 'undefined') {
@@ -91,6 +126,12 @@ export default function App() {
               '',
               `/${fallback === 'overview' ? 'dashboard' : fallback}`
             );
+=======
+          const fallback: ActiveView = getDefaultHomeForRole(role);
+          setActiveView(fallback);
+          if (typeof window !== 'undefined') {
+            window.history.replaceState(null, '', viewToCanonicalPath(fallback));
+>>>>>>> Stashed changes
           }
         }
       }
@@ -152,14 +193,22 @@ export default function App() {
     );
   }
 
+<<<<<<< Updated upstream
   // Enforce strict 4-tier role isolation so unauthorized views redirect cleanly
+=======
+  // Enforce strict 4-tier role isolation so unauthorized views redirect cleanly to default home
+>>>>>>> Stashed changes
   const userRole: StaffRole = currentUser.role ?? 'it';
   const allowedViews = ROLE_ALLOWED_VIEWS[userRole] ?? ['overview'];
   const resolvedView: ActiveView = allowedViews.includes(activeView)
     ? activeView
+<<<<<<< Updated upstream
     : userRole === 'analyst'
     ? 'reports'
     : 'overview';
+=======
+    : getDefaultHomeForRole(userRole);
+>>>>>>> Stashed changes
 
   // Authenticated Staff Workspace: Nexora Categorized Dark Sidebar + Role-Isolated Screens
   return (

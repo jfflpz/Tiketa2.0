@@ -1,4 +1,8 @@
+<<<<<<< Updated upstream
 export type StaffRole = 'intern' | 'it' | 'supervisor' | 'admin' | 'analyst';
+=======
+export type StaffRole = 'intern' | 'it' | 'supervisor' | 'admin';
+>>>>>>> Stashed changes
 export type UserRole = StaffRole;
 
 export interface Company {
