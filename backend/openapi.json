@@ -1,6 +1,250 @@
 {
   "components": {
     "schemas": {
+      "AccountRequestApprovalOut": {
+        "properties": {
+          "temporary_password": {
+            "title": "Temporary Password",
+            "type": "string"
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserOut"
+          }
+        },
+        "required": [
+          "user",
+          "temporary_password"
+        ],
+        "title": "AccountRequestApprovalOut",
+        "type": "object"
+      },
+      "AccountRequestCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "department": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Department"
+          },
+          "email": {
+            "format": "email",
+            "maxLength": 150,
+            "title": "Email",
+            "type": "string"
+          },
+          "full_name": {
+            "maxLength": 150,
+            "minLength": 2,
+            "title": "Full Name",
+            "type": "string"
+          },
+          "location_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Id"
+          },
+          "role": {
+            "enum": [
+              "intern",
+              "it"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "username": {
+            "maxLength": 50,
+            "minLength": 3,
+            "pattern": "^[a-zA-Z0-9_.-]+$",
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "username",
+          "email",
+          "full_name",
+          "role"
+        ],
+        "title": "AccountRequestCreate",
+        "type": "object"
+      },
+      "AccountRequestOut": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "department": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Department"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "full_name": {
+            "title": "Full Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "location_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Id"
+          },
+          "location_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Name"
+          },
+          "rejection_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rejection Reason"
+          },
+          "requested_by_id": {
+            "format": "uuid",
+            "title": "Requested By Id",
+            "type": "string"
+          },
+          "requester_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requester Name"
+          },
+          "reviewed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed At"
+          },
+          "reviewed_by_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed By Id"
+          },
+          "reviewer_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewer Name"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "username",
+          "email",
+          "full_name",
+          "role",
+          "status",
+          "requested_by_id",
+          "created_at"
+        ],
+        "title": "AccountRequestOut",
+        "type": "object"
+      },
+      "AccountRequestRejectInput": {
+        "additionalProperties": false,
+        "properties": {
+          "rejection_reason": {
+            "maxLength": 500,
+            "minLength": 3,
+            "title": "Rejection Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rejection_reason"
+        ],
+        "title": "AccountRequestRejectInput",
+        "type": "object"
+      },
       "AssignInput": {
         "additionalProperties": false,
         "properties": {
@@ -551,6 +795,11 @@
             "title": "Created At",
             "type": "string"
           },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
           "status": {
             "title": "Status",
             "type": "string"
@@ -561,6 +810,7 @@
           }
         },
         "required": [
+          "id",
           "ticket_code",
           "status",
           "created_at"
@@ -1791,10 +2041,10 @@
           }
         },
         "required": [
+          "id",
           "ticket_code",
           "status",
           "created_at",
-          "id",
           "employee_id",
           "creator_id",
           "company_id",
@@ -1952,8 +2202,10 @@
           },
           "role": {
             "enum": [
+              "intern",
               "it",
-              "admin"
+              "admin",
+              "supervisor"
             ],
             "title": "Role",
             "type": "string"
@@ -2007,8 +2259,10 @@
           },
           "role": {
             "enum": [
+              "intern",
               "it",
-              "admin"
+              "admin",
+              "supervisor"
             ],
             "title": "Role",
             "type": "string"
@@ -2073,8 +2327,10 @@
             "anyOf": [
               {
                 "enum": [
+                  "intern",
                   "it",
-                  "admin"
+                  "admin",
+                  "supervisor"
                 ],
                 "type": "string"
               },
@@ -2142,6 +2398,186 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/account-requests": {
+      "get": {
+        "operationId": "list_account_requests_api_v1_account_requests_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AccountRequestOut"
+                  },
+                  "title": "Response List Account Requests Api V1 Account Requests Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Account Requests",
+        "tags": [
+          "Account Requests"
+        ]
+      },
+      "post": {
+        "operationId": "submit_account_request_api_v1_account_requests_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountRequestCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountRequestOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Submit Account Request",
+        "tags": [
+          "Account Requests"
+        ]
+      }
+    },
+    "/api/v1/account-requests/{request_id}/approve": {
+      "post": {
+        "operationId": "approve_account_request_api_v1_account_requests__request_id__approve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Request Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountRequestApprovalOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Approve Account Request",
+        "tags": [
+          "Account Requests"
+        ]
+      }
+    },
+    "/api/v1/account-requests/{request_id}/reject": {
+      "post": {
+        "operationId": "reject_account_request_api_v1_account_requests__request_id__reject_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Request Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountRequestRejectInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountRequestOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Reject Account Request",
+        "tags": [
+          "Account Requests"
+        ]
+      }
+    },
     "/api/v1/admin/employees": {
       "get": {
         "operationId": "employees_api_v1_admin_employees_get",
@@ -3579,7 +4015,7 @@
             "name": "order",
             "required": false,
             "schema": {
-              "default": "asc",
+              "default": "desc",
               "enum": [
                 "asc",
                 "desc"

@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy import and_, func, select
 
-from app.api.deps import DB, Admin, CurrentUser
+from app.api.deps import DB, CurrentUser, SupervisorOrAdmin
 from app.models import Company, Department, Location, MaintenancePlan, Ticket, User
 from app.services.reports import (
     REPORT_COLUMNS,
@@ -138,7 +138,7 @@ async def kpis(
 async def report(
     report_name: REPORTS,
     db: DB,
-    admin: Admin,
+    user: SupervisorOrAdmin,
     date_from: date | None = None,
     date_to: date | None = None,
     company_id: UUID | None = None,

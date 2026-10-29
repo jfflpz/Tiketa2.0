@@ -11,6 +11,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
 from app.api import (
+    account_requests,
     auth,
     checklists,
     directory,
@@ -48,6 +49,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 for router in (
+    account_requests.router,
     auth.router,
     checklists.router,
     directory.router,

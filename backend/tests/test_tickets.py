@@ -88,7 +88,7 @@ async def test_lookup_and_public_intake(client, accounts):
     ).status_code == 422
     response = await client.post("/api/v1/tickets/submit", json=BODY)
     assert response.status_code == 201, response.text
-    assert set(response.json()) == {"ticket_code", "status", "created_at"}
+    assert set(response.json()) == {"ticket_code", "status", "created_at", "id"}
     code = response.json()["ticket_code"]
     assert (await client.get("/api/v1/tickets/track/" + code)).json() == response.json()
     assert (await client.get("/api/v1/tickets/track/missing")).status_code == 404

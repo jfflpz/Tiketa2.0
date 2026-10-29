@@ -50,7 +50,7 @@ async def clean_database(migrations):
     async with engine.begin() as connection:
         await connection.execute(
             text(
-                "TRUNCATE companies, departments, locations, users, task_categories, ticket_counters CASCADE"
+                "TRUNCATE companies, departments, locations, users, task_categories, ticket_counters, account_requests CASCADE"
             )
         )
     await cache.flushdb()
