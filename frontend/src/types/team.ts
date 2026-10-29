@@ -1,4 +1,5 @@
 // @spec UI-TEAM-01: Team, Roles, and Dispatch Models (Matching Reference Screenshot)
+export type SystemRole = 'intern' | 'it' | 'admin' | 'supervisor';
 
 export type StaffRole = 'intern' | 'it' | 'supervisor' | 'admin' | 'analyst';
 
@@ -57,3 +58,22 @@ export interface TopContributor {
   avatar: string;
   medal?: 'gold' | 'silver' | 'bronze';
 }
+
+  export interface AccountRequest {
+    id: string;
+    username: string;
+    email: string;
+    full_name: string;
+    role: 'intern' | 'it';
+    department?: string | null;
+    location_id?: string | null;
+    location_name?: string | null;
+    status: 'pending' | 'approved' | 'rejected';
+    rejection_reason?: string | null;
+    requested_by_id: string;
+    requester_name?: string | null;
+    reviewed_by_id?: string | null;
+    reviewer_name?: string | null;
+    reviewed_at?: string | null;
+    created_at: string;
+  }

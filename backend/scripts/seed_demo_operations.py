@@ -510,6 +510,46 @@ async def seed():
                 session.add(admin_user)
                 await session.flush()
 
+            supervisor_user = await session.scalar(
+                select(User).where(User.username == "supervisor")
+            ) or await session.scalar(
+                select(User).where(User.email == "supervisor@fivestar.com.ph")
+            )
+            if supervisor_user:
+                supervisor_user.password_hash = hash_password("Tiketa2026!Pass")
+                supervisor_user.email = "supervisor@fivestar.com.ph"
+            else:
+                supervisor_user = User(
+                    username="supervisor",
+                    email="supervisor@fivestar.com.ph",
+                    full_name="IT Operations Supervisor",
+                    role="supervisor",
+                    password_hash=hash_password("Tiketa2026!Pass"),
+                    is_active=True,
+                )
+                session.add(supervisor_user)
+                await session.flush()
+
+            intern_user = await session.scalar(
+                select(User).where(User.username == "intern")
+            ) or await session.scalar(
+                select(User).where(User.email == "intern@fivestar.com.ph")
+            )
+            if intern_user:
+                intern_user.password_hash = hash_password("Tiketa2026!Pass")
+                intern_user.email = "intern@fivestar.com.ph"
+            else:
+                intern_user = User(
+                    username="intern",
+                    email="intern@fivestar.com.ph",
+                    full_name="Junior IT Intern",
+                    role="intern",
+                    password_hash=hash_password("Tiketa2026!Pass"),
+                    is_active=True,
+                )
+                session.add(intern_user)
+                await session.flush()
+
             print("--> 4. Seeding Realistic Tickets across States...")
             now = datetime.now(UTC)
             for tdata in DEMO_TICKETS:

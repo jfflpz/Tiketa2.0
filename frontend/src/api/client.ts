@@ -4,6 +4,7 @@ export type { StaffRole };
 import { readableError } from '../utils/errorMessages';
 import type { SupportMode, TicketStatus } from '../types/ticket';
 import { getOrCreateKioskSessionId } from '../utils/session';
+import { AccountRequest } from '@/types/team';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
@@ -660,3 +661,46 @@ export const adminApi = {
         return res.data;
     },
 };
+
+export interface AccountRequestCreateInput {
+    username: string;
+    email: string;
+    full_name: string;
+    role: 'intern' | 'it';
+    location_id?: string | null;
+    department?: string | null;
+}
+
+export interface AccountRequestApprovalResult {
+    user: {
+    id: string;
+    username: string;
+    email: string;
+    full_name: string;
+    role: string;
+    is_active: boolean;
+    };
+    temporary_password: string;
+}
+
+export const accountRequestsApi = {
+    list: async (): Promise<AccountRequest[]> => {
+    const res = await apiClient.get<AccountRequest[]>('/account-requests');
+    return res.data;
+    },
+    create: async (data: AccountRequestCreateInput): Promise<AccountRequest> => {
+    const res = await apiClient.post<AccountRequest>('/account-requests', data);
+    return res.data;
+    },
+    approve: async (id: string): Promise<AccountRequestApprovalResult> => {
+    const res = await apiClient.post<AccountRequestApprovalResult>(`/account-requests/${id}/approve`);
+    return res.data;
+    },
+    reject: async (id: string, reason: string): Promise<AccountRequest> => {
+    const res = await apiClient.post<AccountRequest>(`/account-requests/${id}/reject`, {
+        rejection_reason: reason,
+    });
+    return res.data;
+    },
+};
+
