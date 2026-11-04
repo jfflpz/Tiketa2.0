@@ -40,7 +40,7 @@ export const ExecutiveSummaryKpiCards: React.FC<ExecutiveSummaryKpiCardsProps> =
             </span>
           </div>
           <p className="text-xs font-semibold text-ink-subtle uppercase tracking-wider">
-            Fleet Resolution Rate
+            Overall Resolution Rate
           </p>
           <div className="flex items-baseline gap-2 mt-1">
             <span className="text-2xl font-bold tracking-tight text-ink tabular-nums">

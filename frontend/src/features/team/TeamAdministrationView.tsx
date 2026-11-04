@@ -40,6 +40,8 @@ export const TeamAdministrationView: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<'IT_STAFF' | 'EMPLOYEES' | 'ACTIVITY' | 'APPROVALS'>('IT_STAFF');
   const [employeeSearch, setEmployeeSearch] = useState('');
+  const [employeeCompanyFilter, setEmployeeCompanyFilter] = useState('ALL');
+  const [employeeDeptFilter, setEmployeeDeptFilter] = useState('ALL');
   const [itSearch, setItSearch] = useState('');
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
 
@@ -65,7 +67,25 @@ export const TeamAdministrationView: React.FC = () => {
   const inProgressTicketsCount = tickets.filter((t) => t.status === 'PROG').length;
   const closedTicketsCount = tickets.filter((t) => t.status === 'CLSD' || t.status === 'RESL').length;
 
+  const uniqueCompanies = useMemo(() => {
+    const set = new Set<string>();
+    verifiedEmployeesList.forEach((e) => { if (e.company_name) set.add(e.company_name); });
+    return Array.from(set).sort();
+  }, [verifiedEmployeesList]);
+
+  const uniqueDepartments = useMemo(() => {
+    const set = new Set<string>();
+    verifiedEmployeesList.forEach((e) => { if (e.department_name) set.add(e.department_name); });
+    return Array.from(set).sort();
+  }, [verifiedEmployeesList]);
+
   const filteredEmployees = verifiedEmployeesList.filter((e) => {
+    if (employeeCompanyFilter !== 'ALL' && e.company_name !== employeeCompanyFilter) {
+      return false;
+    }
+    if (employeeDeptFilter !== 'ALL' && e.department_name !== employeeDeptFilter) {
+      return false;
+    }
     const q = employeeSearch.toLowerCase().trim();
     if (!q) return true;
     return (
@@ -270,15 +290,41 @@ export const TeamAdministrationView: React.FC = () => {
         )}
 
         {activeTab === 'EMPLOYEES' && (
-          <div className="relative">
-            <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              type="text"
-              value={employeeSearch}
-              onChange={(e) => setEmployeeSearch(e.target.value)}
-              placeholder="Search employees or ID..."
-              className="pl-8 pr-3 py-1.5 bg-[#F8F9FA] border border-[#ECEEF2] rounded-xl text-xs text-ink focus:outline-none focus:border-orange-400 w-64"
-            />
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={employeeCompanyFilter}
+              onChange={(e) => setEmployeeCompanyFilter(e.target.value)}
+              className="px-2.5 py-1.5 bg-[#F8F9FA] border border-[#ECEEF2] rounded-xl text-xs font-semibold text-ink focus:outline-none focus:border-orange-400"
+              aria-label="Filter by Company"
+            >
+              <option value="ALL">All Companies</option>
+              {uniqueCompanies.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+
+            <select
+              value={employeeDeptFilter}
+              onChange={(e) => setEmployeeDeptFilter(e.target.value)}
+              className="px-2.5 py-1.5 bg-[#F8F9FA] border border-[#ECEEF2] rounded-xl text-xs font-semibold text-ink focus:outline-none focus:border-orange-400"
+              aria-label="Filter by Department"
+            >
+              <option value="ALL">All Departments</option>
+              {uniqueDepartments.map((d) => (
+                <option key={d} value={d}>{d}</option>
+              ))}
+            </select>
+
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={employeeSearch}
+                onChange={(e) => setEmployeeSearch(e.target.value)}
+                placeholder="Search employees or ID..."
+                className="pl-8 pr-3 py-1.5 bg-[#F8F9FA] border border-[#ECEEF2] rounded-xl text-xs text-ink focus:outline-none focus:border-orange-400 w-52 sm:w-60"
+              />
+            </div>
           </div>
         )}
       </div>

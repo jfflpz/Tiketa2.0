@@ -96,7 +96,7 @@ export const VerifiedEmployeeTable: React.FC<VerifiedEmployeeTableProps> = ({
                     <div className="flex items-center justify-end gap-1">
                       <button
                         type="button"
-                        onClick={() => onEditEmployee(emp)}
+                        onClick={(e) => { e.stopPropagation(); onEditEmployee(emp); }}
                         className="p-1.5 rounded-lg text-zinc-400 hover:text-orange-600 hover:bg-orange-50 transition-colors press-fx"
                         title="Edit Profile"
                       >

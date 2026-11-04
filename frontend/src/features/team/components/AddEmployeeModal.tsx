@@ -182,7 +182,7 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
             </div>
 
             <div>
-              <label className="font-semibold text-zinc-700 block mb-1">Company Fleet</label>
+              <label className="font-semibold text-zinc-700 block mb-1">Company</label>
               <select
                 value={companyId}
                 onChange={(e) => setCompanyId(e.target.value)}

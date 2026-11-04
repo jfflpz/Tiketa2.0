@@ -140,7 +140,7 @@ export const ITStaffTable: React.FC<ITStaffTableProps> = ({
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
-                    onClick={() => onEditMember(member)}
+                    onClick={(e) => { e.stopPropagation(); onEditMember(member); }}
                     className="p-1.5 rounded-lg text-zinc-400 hover:text-orange-600 hover:bg-orange-50 transition-colors press-fx"
                     title="Edit Staff Account"
                   >

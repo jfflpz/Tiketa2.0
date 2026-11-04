@@ -1,5 +1,5 @@
 ﻿import React, { useState } from 'react';
-import { UserPlus, X, Eye, EyeOff, AlertCircle, Loader2, ShieldCheck, Wrench } from 'lucide-react';
+import { UserPlus, X, Eye, EyeOff, AlertCircle, Loader2, ShieldCheck, Wrench, GraduationCap } from 'lucide-react';
 import type { TeamRole } from '../../../types/team';
 import { LOCATIONS } from '../../../constants/domain';
 import { useAppStore } from '../../../store/useAppStore';
@@ -13,7 +13,7 @@ export interface CreateITStaffModalProps {
     name: string;
     email: string;
     role: TeamRole;
-    systemRole: 'it' | 'admin';
+    systemRole: 'it' | 'admin' | 'intern';
     department: string;
     primaryLocation: string;
     locationId?: string | null;
@@ -32,7 +32,7 @@ export const CreateITStaffModal: React.FC<CreateITStaffModalProps> = ({
   const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [systemRole, setSystemRole] = useState<'it' | 'admin'>('it');
+  const [systemRole, setSystemRole] = useState<'it' | 'admin' | 'intern'>('it');
   const [role, setRole] = useState<TeamRole>('Field Technician');
   const [locationCode, setLocationCode] = useState('PSY');
   const [department, setDepartment] = useState('Terminal Operations & PMS');
@@ -145,25 +145,46 @@ export const CreateITStaffModal: React.FC<CreateITStaffModalProps> = ({
           {/* RBAC Role Selection */}
           <div>
             <label className="font-semibold text-zinc-700 block mb-1.5">System Access Role (RBAC)</label>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
               <button
                 type="button"
                 onClick={() => {
                   setSystemRole('it');
                   setRole('Field Technician');
                 }}
-                className={`flex items-center gap-2 p-3 rounded-2xl border text-left transition-all ${
+                className={`flex items-center gap-2 p-2.5 rounded-2xl border text-left transition-all ${
                   systemRole === 'it'
                     ? 'border-orange-500 bg-orange-50/50 text-orange-950 font-bold'
                     : 'border-[#ECEEF2] bg-[#F8F9FA] text-zinc-600'
                 }`}
               >
-                <div className={`p-1.5 rounded-xl ${systemRole === 'it' ? 'bg-orange-500 text-white' : 'bg-zinc-200 text-zinc-600'}`}>
+                <div className={`p-1.5 rounded-xl shrink-0 ${systemRole === 'it' ? 'bg-orange-500 text-white' : 'bg-zinc-200 text-zinc-600'}`}>
                   <Wrench className="w-3.5 h-3.5" />
                 </div>
-                <div>
-                  <div className="text-xs">IT Support</div>
-                  <div className="text-[10px] text-zinc-500 font-normal">Triage queue &amp; repairs</div>
+                <div className="min-w-0">
+                  <div className="text-xs font-bold truncate">IT Support</div>
+                  <div className="text-[10px] text-zinc-500 font-normal truncate">Queue &amp; repairs</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setSystemRole('intern');
+                  setRole('IT Intern' as any);
+                }}
+                className={`flex items-center gap-2 p-2.5 rounded-2xl border text-left transition-all ${
+                  systemRole === 'intern'
+                    ? 'border-sky-500 bg-sky-50/50 text-sky-950 font-bold'
+                    : 'border-[#ECEEF2] bg-[#F8F9FA] text-zinc-600'
+                }`}
+              >
+                <div className={`p-1.5 rounded-xl shrink-0 ${systemRole === 'intern' ? 'bg-sky-500 text-white' : 'bg-zinc-200 text-zinc-600'}`}>
+                  <GraduationCap className="w-3.5 h-3.5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-bold truncate">IT Intern</div>
+                  <div className="text-[10px] text-zinc-500 font-normal truncate">Bench &amp; notes</div>
                 </div>
               </button>
 
@@ -173,18 +194,18 @@ export const CreateITStaffModal: React.FC<CreateITStaffModalProps> = ({
                   setSystemRole('admin');
                   setRole('Admin');
                 }}
-                className={`flex items-center gap-2 p-3 rounded-2xl border text-left transition-all ${
+                className={`flex items-center gap-2 p-2.5 rounded-2xl border text-left transition-all ${
                   systemRole === 'admin'
                     ? 'border-emerald-600 bg-emerald-50/50 text-emerald-950 font-bold'
                     : 'border-[#ECEEF2] bg-[#F8F9FA] text-zinc-600'
                 }`}
               >
-                <div className={`p-1.5 rounded-xl ${systemRole === 'admin' ? 'bg-emerald-600 text-white' : 'bg-zinc-200 text-zinc-600'}`}>
+                <div className={`p-1.5 rounded-xl shrink-0 ${systemRole === 'admin' ? 'bg-emerald-600 text-white' : 'bg-zinc-200 text-zinc-600'}`}>
                   <ShieldCheck className="w-3.5 h-3.5" />
                 </div>
-                <div>
-                  <div className="text-xs">Administrator</div>
-                  <div className="text-[10px] text-zinc-500 font-normal">Governance &amp; reports</div>
+                <div className="min-w-0">
+                  <div className="text-xs font-bold truncate">Administrator</div>
+                  <div className="text-[10px] text-zinc-500 font-normal truncate">Governance &amp; reports</div>
                 </div>
               </button>
             </div>

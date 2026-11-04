@@ -141,7 +141,7 @@ export const JobLogDrawerRecordForm: React.FC<JobLogDrawerRecordFormProps> = ({
         </div>
 
         {/* Group 1: Organization & Requestor */}
-        <div className="bg-canvas border border-line rounded-2xl divide-y divide-line overflow-hidden">
+        <div className="bg-canvas border border-line rounded-2xl divide-y divide-line relative z-20 overflow-visible">
           <div className="px-3.5 py-2 bg-zinc-100/70 text-[11px] font-bold text-ink-subtle uppercase tracking-wider">
             1. Terminal &amp; Requestor Info
           </div>

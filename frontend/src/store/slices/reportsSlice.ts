@@ -14,6 +14,7 @@ export interface ReportsSlice {
   selectedYear: number;
   selectedMonth: number;
   setSelectedPeriod: (year: number, month: number) => Promise<void>;
+  setDateRangeApi: (dateFrom: string, dateTo: string) => Promise<void>;
   activeReportId: number;
   setActiveReportId: (id: number) => void;
   activeReportData: any[] | null;
@@ -80,6 +81,28 @@ export const createReportsSlice: AppSliceCreator<ReportsSlice> = (set, get) => {
       await Promise.allSettled([
         get().fetchKPIsApi(),
         get().fetchReportApi(slug),
+        get().fetchTransitLagApi(),
+      ]);
+    },
+
+    setDateRangeApi: async (dateFrom: string, dateTo: string) => {
+      const newRange = { date_from: dateFrom, date_to: dateTo };
+      const newFilters: ReportFilterParams = {
+        ...get().reportFilters,
+        date_from: dateFrom,
+        date_to: dateTo,
+      };
+
+      set({
+        reportFilters: newFilters,
+        reportDateRange: newRange,
+      });
+
+      const rangeReportId = get().activeReportId;
+      const rangeSlug = REPORT_SLUGS[rangeReportId] || 'monthly-sla';
+      await Promise.allSettled([
+        get().fetchKPIsApi(),
+        get().fetchReportApi(rangeSlug),
         get().fetchTransitLagApi(),
       ]);
     },

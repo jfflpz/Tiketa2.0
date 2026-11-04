@@ -205,7 +205,7 @@ export const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
             </div>
           )}
 
-          {/* Employee ID & Company Fleet */}
+          {/* Employee ID & Company */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-ink mb-1">
@@ -228,7 +228,7 @@ export const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
             <div>
               <label className="block text-xs font-semibold text-ink mb-1 flex items-center gap-1">
                 <Building2 className="w-3.5 h-3.5 text-zinc-400" />
-                Company Fleet <span className="text-rose-500">*</span>
+                Company <span className="text-rose-500">*</span>
               </label>
               <select
                 value={companyId}

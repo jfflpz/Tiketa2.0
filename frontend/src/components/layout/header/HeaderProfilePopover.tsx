@@ -1,3 +1,16 @@
+function getCleanRoleTitle(role?: string): string {
+  switch (role) {
+    case 'admin':
+      return 'Administrator';
+    case 'supervisor':
+      return 'Supervisor';
+    case 'intern':
+      return 'IT Intern';
+    case 'it':
+    default:
+      return 'IT Support';
+  }
+}
 // @spec F-02: Header Profile Popover with Deterministic Initials & Self-Photo Profile Modal
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, LogOut, User } from 'lucide-react';
@@ -61,7 +74,7 @@ export const HeaderProfilePopover: React.FC<HeaderProfilePopoverProps> = ({
               {currentUser?.name || 'Staff User'}
             </p>
             <p className="text-[11px] text-zinc-500">
-              {currentUser?.title || 'IT Support'}
+              {getCleanRoleTitle(currentUser?.role)}
             </p>
           </div>
           <ChevronDown className="w-3.5 h-3.5 text-zinc-400 hidden sm:block" />
@@ -85,7 +98,7 @@ export const HeaderProfilePopover: React.FC<HeaderProfilePopoverProps> = ({
                   {currentUser?.email || (username ? `@${username}` : '')}
                 </p>
                 <span className="inline-block mt-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 uppercase tracking-wider">
-                  {currentUser?.role || 'Staff'}
+                  {getCleanRoleTitle(currentUser?.role)}
                 </span>
               </div>
             </div>

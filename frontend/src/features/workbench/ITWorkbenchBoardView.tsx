@@ -57,7 +57,7 @@ export const ITWorkbenchBoardView: React.FC = () => {
   const progTickets = isIntern
     ? tickets.filter(
         (t) =>
-          t.status === 'PROG' &&
+          (t.status === 'PROG' || (t.status as string) === 'PVER' || t.status === 'RESL') &&
           (t.assigned_tech_id === currentUser?.id ||
             t.workedById === currentUser?.id ||
             (Boolean(currentUser?.name) &&
@@ -72,7 +72,7 @@ export const ITWorkbenchBoardView: React.FC = () => {
 
   const isAssignedToIntern =
     !isIntern ||
-    (rawFocusedTicket?.status === 'PROG' &&
+    ((rawFocusedTicket?.status === 'PROG' || (rawFocusedTicket?.status as string) === 'PVER' || rawFocusedTicket?.status === 'RESL') &&
       (rawFocusedTicket?.assigned_tech_id === currentUser?.id ||
         rawFocusedTicket?.workedById === currentUser?.id ||
         (Boolean(currentUser?.name) &&
@@ -451,28 +451,7 @@ export const ITWorkbenchBoardView: React.FC = () => {
           </div>
         </div>
 
-        {/* Quick Ticket Switcher Pills for Tech's Other Active Tickets */}
-        {progTickets.length > 1 && (
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 text-xs">
-            <span className="text-[11px] font-semibold text-zinc-400 shrink-0">
-              Switch Bench:
-            </span>
-            {progTickets.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setActiveWorkbenchTicketId(t.id)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
-                  t.id === focusedTicket.id
-                    ? 'bg-orange-500 text-white font-bold shadow-xs'
-                    : 'bg-[#F4F6F9] text-zinc-600 hover:text-ink hover:bg-zinc-200/70'
-                }`}
-              >
-                {t.ticketCode}
-              </button>
-            ))}
-          </div>
-        )}
+        
       </div>
 
       {/* Main Active Repair Console */}
@@ -673,6 +652,62 @@ export const ITWorkbenchBoardView: React.FC = () => {
           </div>
         </div>
 
+                {/* 3. Original Employee Report & Context */}
+        <div className="bg-[#F4F6F9] border border-[#ECEEF2] rounded-2xl p-4 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
+              #06 Original Employee Report &amp; Context
+            </span>
+            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-white border border-zinc-200 text-zinc-600">
+              {focusedTicket.intakeSource ?? 'PC Kiosk'}
+            </span>
+          </div>
+          <div className="p-3 bg-white border border-zinc-200/80 rounded-xl text-xs text-ink leading-relaxed space-y-1">
+            <div className="font-bold text-ink">
+              {focusedTicket.reportedIssue || focusedTicket.task}
+            </div>
+            <p className="font-medium italic text-zinc-600">
+              &ldquo;{focusedTicket.reportedDetails || focusedTicket.description || 'No description provided by requestor.'}&rdquo;
+            </p>
+          </div>
+          <div className="flex items-center justify-between text-[11px] text-zinc-500 pt-1">
+            <span>Company: <strong className="text-ink">{focusedTicket.company}</strong></span>
+            <span>Logged by: <strong className="text-ink">{focusedTicket.requestor} {focusedTicket.employeeId ? `[${focusedTicket.employeeId}]` : ''}</strong></span>
+          </div>
+        </div>
+
+        {/* 4. Technician Notes & Ongoing Findings */}
+        <div className="bg-white border border-[#ECEEF2] rounded-2xl p-4 space-y-3 shadow-xs">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-1.5 h-3.5 rounded-full bg-orange-500" />
+              <span className="text-xs font-bold uppercase tracking-wider text-zinc-800">
+                Technician Notes &amp; Observations
+              </span>
+            </div>
+            <span className="text-[11px] text-zinc-400 font-medium">
+              Save repair progress or pending reasons
+            </span>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <textarea
+              rows={2}
+              value={diagnosisDraft}
+              onChange={(e) => setDiagnosisDraft(e.target.value)}
+              placeholder="Leave technician notes here once in progress or pending (e.g. Diagnosed thermal print head failure. Waiting for replacement part or customer AnyDesk confirmation)..."
+              className="flex-1 px-3.5 py-2.5 bg-[#F8F9FA] border border-[#ECEEF2] rounded-xl text-xs text-ink focus:outline-none focus:border-orange-500 resize-none leading-relaxed"
+            />
+            <button
+              type="button"
+              disabled={isSavingDiagnosis}
+              onClick={handleSaveDiagnosis}
+              className="px-5 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold inline-flex items-center justify-center gap-1.5 shadow-sm transition-colors press-fx sm:self-end"
+            >
+              <span>{isSavingDiagnosis ? 'Saving...' : 'Save Note'}</span>
+            </button>
+          </div>
+        </div>
+
         {/* SOP Checklist & Saved Repair Guides */}
         <TicketChecklistSection
           ticketId={focusedTicket.id}
@@ -795,58 +830,9 @@ export const ITWorkbenchBoardView: React.FC = () => {
           </form>
         </div>
 
-        {/* 3. Original Employee Report & Context */}
-        <div className="bg-[#F4F6F9] border border-[#ECEEF2] rounded-2xl p-4 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
-              #06 Original Employee Report &amp; Context
-            </span>
-            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-white border border-zinc-200 text-zinc-600">
-              {focusedTicket.intakeSource ?? 'PC Kiosk'}
-            </span>
-          </div>
-          <div className="p-3 bg-white border border-zinc-200/80 rounded-xl text-xs text-ink leading-relaxed space-y-1">
-            <div className="font-bold text-ink">
-              {focusedTicket.reportedIssue || focusedTicket.task}
-            </div>
-            <p className="font-medium italic text-zinc-600">
-              &ldquo;{focusedTicket.reportedDetails || focusedTicket.description || 'No description provided by requestor.'}&rdquo;
-            </p>
-          </div>
-          <div className="flex items-center justify-between text-[11px] text-zinc-500 pt-1">
-            <span>Company: <strong className="text-ink">{focusedTicket.company}</strong></span>
-            <span>Logged by: <strong className="text-ink">{focusedTicket.requestor} {focusedTicket.employeeId ? `[${focusedTicket.employeeId}]` : ''}</strong></span>
-          </div>
-        </div>
 
-        {/* 4. Technician Diagnosis & Exact Problem Record */}
-        <div className="bg-white border border-[#ECEEF2] rounded-2xl p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-700">
-              Technician Diagnosis &amp; Exact Problem Record
-            </span>
-            <span className="text-[11px] text-zinc-400">
-              Persisted in Canonical Ledger
-            </span>
-          </div>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={diagnosisDraft}
-              onChange={(e) => setDiagnosisDraft(e.target.value)}
-              placeholder="e.g. Diagnosed thermal print head failure. Cleaned roller sensor and replaced thermal ribbons."
-              className="flex-1 px-3.5 py-2 bg-[#F8F9FA] border border-[#ECEEF2] rounded-xl text-xs text-ink focus:outline-none focus:border-orange-500"
-            />
-            <button
-              type="button"
-              disabled={isSavingDiagnosis}
-              onClick={handleSaveDiagnosis}
-              className="px-4 py-2 rounded-xl bg-[#111315] hover:bg-orange-500 text-white text-xs font-semibold inline-flex items-center gap-1.5 transition-colors press-fx"
-            >
-              <span>{isSavingDiagnosis ? 'Saving...' : 'Save Diagnosis'}</span>
-            </button>
-          </div>
-        </div>
+
+        
       </div>
     </div>
   );

@@ -78,11 +78,7 @@ export const TopHeader: React.FC = () => {
           onViewQueue={() => setActiveView('tickets')}
         />
 
-        {/* 2. Hub Status Pill matching Nexora Design */}
-        <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#F4F6F9] text-xs font-semibold text-ink">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span>PH • 15 Hubs</span>
-        </div>
+        
 
         {/* 3. Notification Bell (Only for operational triage staff) */}
         {currentUser?.role !== 'supervisor' && (

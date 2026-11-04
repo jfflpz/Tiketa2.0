@@ -201,7 +201,7 @@ export const DiagnosedTaskSelector: React.FC<DiagnosedTaskSelectorProps> = ({
 
       {/* Dropdown Popover */}
       {isOpen && (
-        <div className="absolute left-0 top-full mt-2 w-80 sm:w-96 bg-white border border-[#E4E7EB] rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="absolute right-0 top-full mt-1.5 w-80 sm:w-96 bg-white border border-[#E4E7EB] rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
           {/* Header & Search */}
           <div className="p-3 bg-[#FAFBFD] border-b border-[#ECEEF2]">
             <div className="flex items-center justify-between mb-2">

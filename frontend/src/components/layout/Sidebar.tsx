@@ -110,9 +110,9 @@ export const Sidebar: React.FC = () => {
               <img src="/logo-mark.svg" alt="Tiketa" className="w-8 h-8 object-contain drop-shadow" />
             </div>
           ) : (
-            <div className="flex flex-col min-w-0 py-0.5">
-              <img src="/logo-dark.svg" alt="Tiketa" className="h-8 w-auto object-contain object-left drop-shadow" />
-              <span className="text-[10px] font-mono text-orange-400 uppercase tracking-widest mt-1.5 ml-1">
+            <div className="flex items-center gap-2.5 min-w-0 py-0.5">
+              <img src="/logo-dark.svg" alt="Tiketa" className="h-7 w-auto object-contain object-left drop-shadow shrink-0" />
+              <span className="text-[10px] font-mono font-bold text-orange-400 uppercase tracking-wider px-2 py-0.5 rounded-md bg-orange-500/15 border border-orange-500/30 whitespace-nowrap">
                 {getRoleBadgeLabel(role)}
               </span>
             </div>
@@ -207,7 +207,7 @@ export const Sidebar: React.FC = () => {
 
         {/* ============================================================
             TIER 3: SUPERVISOR NAVIGATION (role === 'supervisor')
-            Executive analytics, 8 standard reports, IT team & fleet logs
+            Executive analytics, 8 standard reports, IT team & ticket logs
            ============================================================ */}
         {isSupervisor && (
           <>
@@ -230,7 +230,7 @@ export const Sidebar: React.FC = () => {
                 </div>
               )}
               {renderNavButton('team', 'IT Team & Accounts', Users, 'text-emerald-400')}
-              {renderNavButton('joblogs', 'Fleet Master Job Logs', FileSpreadsheet, 'text-emerald-400')}
+              {renderNavButton('joblogs', '15-Col Master Sheet', FileSpreadsheet, 'text-emerald-400')}
             </div>
           </>
         )}
@@ -263,7 +263,7 @@ export const Sidebar: React.FC = () => {
               {renderNavButton('joblogs', '15-Col Master Sheet', FileSpreadsheet, 'text-emerald-400')}
             </div>
 
-            {/* ADMIN CATEGORY 3: OPERATIONS & FLEET TRIAGE */}
+            {/* ADMIN CATEGORY 3: OPERATIONS & TICKETS */}
             <div className="space-y-1.5">
               {!sidebarCollapsed && (
                 <div className="px-2.5 text-[10px] font-bold uppercase tracking-widest text-zinc-500">

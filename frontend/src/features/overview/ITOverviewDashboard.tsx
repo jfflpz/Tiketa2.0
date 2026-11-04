@@ -1,4 +1,4 @@
-// @spec UI-OVERVIEW-01: Personal IT Specialist KPI Scorecard & Fleet Operational Health Bento Grid
+// @spec UI-OVERVIEW-01: Personal IT Specialist KPI Scorecard & Operations & Service Health Bento Grid
 import React, { useEffect } from 'react';
 import {
   ResponsiveContainer,
@@ -116,7 +116,7 @@ export const ITOverviewDashboard: React.FC = () => {
             Welcome back, {techName} !
           </h1>
           <p className="text-xs text-zinc-500 mt-0.5">
-            Personal IT Specialist KPI Scorecard, Repair Durations, and Fleet Service Health.
+            Personal IT Specialist KPI Scorecard, Repair Durations, and Terminal Service Health.
           </p>
         </div>
 
@@ -600,33 +600,48 @@ export const ITOverviewDashboard: React.FC = () => {
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-stretch">
           {/* LEFT: Weekly Repair Hours Card */}
           <div className="xl:col-span-3">
-            <div className="bg-white border border-[#ECEEF2] rounded-2xl p-5 shadow-card flex flex-col justify-between h-full space-y-4">
+            <div className="bg-white border border-[#ECEEF2] rounded-2xl p-5 shadow-card flex flex-col justify-between h-full space-y-3.5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="w-1 h-4 rounded-full bg-orange-500" />
                   <h3 className="text-sm font-bold text-ink">My Weekly Repair Hours</h3>
                 </div>
-                <span className="text-[11px] font-semibold text-emerald-600">
-                  38.4 hrs this week
+                <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                  38.4 hrs logged
                 </span>
               </div>
 
-              <div className="flex items-end justify-between gap-2 pt-2">
+              {/* Weekly Target Progress Indicator */}
+              <div className="p-3 rounded-xl bg-[#F8F9FA] border border-[#ECEEF2] space-y-1.5">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-zinc-500 font-medium">Weekly Target Progress</span>
+                  <span className="font-bold text-ink font-mono">96% (38.4 / 40.0h)</span>
+                </div>
+                <div className="w-full h-2 rounded-full bg-zinc-200 overflow-hidden">
+                  <div className="h-full rounded-full bg-gradient-to-r from-orange-400 to-orange-500 transition-all duration-500" style={{ width: '96%' }} />
+                </div>
+              </div>
+
+              {/* Duration Metric & 7-Day Histogram Bars */}
+              <div className="flex items-end justify-between gap-2 pt-1">
                 <div>
                   <span className="text-2xl font-extrabold text-ink tabular-nums">
                     0.42 hrs
                   </span>
-                  <p className="text-[11px] text-zinc-400 mt-0.5">
-                    My Avg. Repair Duration (#11)
+                  <p className="text-[11px] text-zinc-400 mt-0.5 font-medium">
+                    Avg. Repair Duration
                   </p>
+                  <span className="inline-block mt-2 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+                    &le; 45m Target Met
+                  </span>
                 </div>
 
-                <div className="flex items-end gap-2 h-20">
+                <div className="flex items-end gap-2 h-24">
                   {MY_WEEKLY_HOURS_BARS.map((bar, idx) => (
-                    <div key={idx} className="flex flex-col items-center gap-1">
-                      <div className="w-2.5 h-14 rounded-full bg-orange-100 relative overflow-hidden flex items-end">
+                    <div key={idx} className="flex flex-col items-center gap-1.5">
+                      <div className="w-3 h-18 rounded-full bg-orange-100 relative overflow-hidden flex items-end">
                         <div
-                          className="w-full rounded-full bg-orange-500"
+                          className="w-full rounded-full bg-orange-500 transition-all duration-300"
                           style={{ height: `${(bar.logged / bar.target) * 100}%` }}
                         />
                       </div>
