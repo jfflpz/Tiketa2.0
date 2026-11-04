@@ -1,5 +1,12 @@
 # Environment & Secrets
 .env
+.env.production
+!*.example
+.worktrees/
+.validation/
+*.sql.gz
+*.sql.gz.sha256
+.ruff_cache/
 *.env.local
 
 # Python

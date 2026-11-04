@@ -1,20 +1,36 @@
 import uuid
 
-from app.models.base import Base, TimestampMixin
-from sqlalchemy import Boolean, ForeignKey, String
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    ForeignKey,
+    ForeignKeyConstraint,
+    String,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.models.base import Base, TimestampMixin
 
 
 class Employee(Base, TimestampMixin):
     __tablename__ = "employees"
+    __table_args__ = (
+        CheckConstraint(
+            "employee_id ~ '^[0-9]{1,50}$'", name="ck_employees_numeric_id"
+        ),
+        ForeignKeyConstraint(
+            ["location_id", "department_id"],
+            ["location_departments.location_id", "location_departments.department_id"],
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     employee_id: Mapped[str] = mapped_column(
         String(50), unique=True, index=True, nullable=False
-    )  # e.g., FS-1042
+    )  # 1-50 ASCII digits, e.g., 1042
     full_name: Mapped[str] = mapped_column(String(150), nullable=False)
     email: Mapped[str] = mapped_column(
         String(150), unique=True, index=True, nullable=False

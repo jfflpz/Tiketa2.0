@@ -1,9 +1,13 @@
 # Sprint Board & Execution Log
 
+**Current integration execution plan (revised 2026-10-28):** [Shared frontend/backend sprint](INTEGRATION-SPRINT-PLAN.md), [backend assignments](BACKEND-SPRINT-PLAN.md), [frontend assignments](FRONTEND-SPRINT-PLAN.md), and [central endpoint/role map](../03-Contracts/API-INTEGRATION-MAP.md). S0–S5 now include four roles (IT Supervisor replaces IT Analyst), session retention/revoke choice, location preview, matched My Tickets + working Track Code, Tiketa branding, account approvals and automated checks on both-tier PRs and post-merge develop. Existing BF scope remains except explicit amendments in the shared plan. Status: planned; live integration and GitHub enforcement not verified. Historical logs below do not certify the current checkout.
+
 **Project**: Tiketa 2.0  
-**Current Milestone**: Sprint 1 (Foundation & Primitives)  
+**Current Milestone**: Backend sprints 1–5 integration and verification  
 **Specification Baseline**: SRS v2.1.0 (`ARCH/01-Projects/Tiketa/SRS.md`)  
-**Status**: Completed (Sprint 1 Foundation & Database Primitives Verified)
+**Status**: Backend implementation under verification; not merged or deployed. See BACKEND-PROGRESS.md.
+
+**Planned follow-up (2026-10-23)**: [Bug Fixes 1.0 Sprint Plan](BUG-FIXES-1.0-SPRINT-PLAN.md) — one full-scope sprint for two people: [Person 1 — Backend](BUG-FIXES-1.0-BACKEND-PLAN.md) and [Person 2 — Frontend](BUG-FIXES-1.0-FRONTEND-PLAN.md). All BF-01–BF-12 requirements share API handoffs, integration milestones and one completion gate. Sprint dates remain unset. [Requirement backlog](BUG-FIXES-1.0.md). Status: planned, not implemented or verified.
 
 ---
 
@@ -24,7 +28,7 @@
 
 ---
 
-### ✅ Completed: Backend Foundation & Database Primitives
+### Historical baseline: Backend Foundation & Database Primitives
 - **Date**: 2026-10-17
 - **Lead**: Jefferson Lopez
 - **Deliverables Completed**:
@@ -35,7 +39,7 @@
   - `backend/app/models/`: Declarative models for `Company`, `Location`, `Department`, `Employee` (for pure ID auto-lookup), and `User` (2-tier RBAC).
   - `backend/scripts/seed_dictionaries.py`: Seeded 11 corporate transit fleets, 15 terminal hubs, 19 operational departments, and baseline employee `FS-1042`.
   - `backend/app/main.py`: FastAPI entry point with CORS, lifespan table creation, and `/health` endpoint.
-  - **Verification**: `GET /health` responding with HTTP 200 `healthy`; all 3 containers running healthy.
+  - **Historical evidence only**: `/health` returned 200 and development containers ran. This did not verify migrations, complete schema, authentication, reports, or CI; develop CI later failed at Alembic.
 
 ---
 
@@ -48,3 +52,65 @@
 | **Sprint 3** | **Core Ticket Engine & Kiosk UI** | Ticket state machine (`OPEN` $\to$ `PROG` $\to$ `RESL` $\to$ `CLSD`), single-click claiming (`c`), IT fallback quick intake modal (`v`), `/report` 6-button kiosk with Employee ID auto-locking, historical CLI seeder (`DEV-ETL-01`). |
 | **Sprint 4** | **Executive Analytics Engine** | 8 Standardized executive analytics reports, transit lag disaggregation calculations, streaming CSV exports, Recharts interactive visual widgets. |
 | **Sprint 5** | **Production Hardening & Cutover** | Nginx reverse proxy, TLS 1.3, automated daily backup script (`backup_db.sh`), Pasay & Caloocan depot pilot deployment. |
+
+---
+
+## 3. Backend Verification Status (Sprints 1–5 Completed)
+
+- **Verification Date**: 2026-10-17
+- **Branch**: `feat/backend-sprint-completion`
+- **Lead Backend Engineer**: Rafael Emmanuel Codiñera
+- **Reviewer**: Jefferson Lopez (`lopez.jefferson.cabanos1@gmail.com`)
+- **Status**: Implemented & Verified (Ready for Pull Request to `develop`)
+
+### Verification Highlights:
+- **Test Suite**: 25 integration tests passed in 13.95s against disposable PostgreSQL 16 & Redis 7.
+- **Coverage**: **82.31%** (exceeds the 80% CI gate requirement).
+- **Alembic Drift**: `alembic check` clean (0 pending schema upgrades).
+- **Ruff Lint & Format**: 0 errors, 37 files clean.
+- **OpenAPI Schema**: Export verified against code (`python -m scripts.export_openapi --check`).
+- **Backup & Recovery**: Verified against disposable container (`deploy/test_recovery.sh`); backup creation, restore into target database, and non-empty target rejection confirmed.
+- **Historical Importer (DEV-ETL-01)**: 5,000 synthetic rows imported in 0.922s (<1.5s threshold).
+---
+
+## 4. Frontend Refactor & State Verification Status (Sprint 6 Completed ✅)
+
+- **Verification Date**: 2026-10-22
+- **Branch**: `feat/frontend-api-layer`
+- **Lead Frontend Engineer**: Rafael Emmanuel Codiñera
+- **Reviewer**: Jefferson Lopez (`lopez.jefferson.cabanos1@gmail.com`)
+- **Status**: Implemented & Verified (Ready for Pull Request to `develop`)
+
+### Verification Highlights:
+- **Zustand 9-Slice Architecture**: Monolithic `store/useAppStore.ts` decomposed from 1,539L to 44L across 9 domain slices (`ui`, `auth`, `ticketQueue`, `ticketOperations`, `publicIntake`, `notes`, `reports`, `team`, `ticketVerification`).
+- **View Monolith Decomposition**: Factored 8 oversized view components (`EmployeeTicketScreen`, `ExecutiveAnalyticsView`, `StandardizedReportsView`, `TicketListsView`, `JobLogDrawer`, `TopHeader`, `TerminalHubDetailModal`, `TeamWorkbenchView`) into single-responsibility sub-components.
+- **Asynchronous Intake Race Protection**: Added persistent `latestLookupIdRef` sequence counter and `isCancelled` cleanup flag in `useEmployeeIntake.ts`. Keystrokes immediately invalidate verification status, and submission is strictly blocked until confirmed.
+- **Reporting Session Logout Invalidation**: Connected `resetReportsState()` to `logoutToKiosk` in `authSlice.ts`, incrementing independent sequence counters for reports and KPIs to discard late in-flight network promises and reset store reporting data.
+- **Granular Store Subscriptions**: Replaced whole-store destructuring with atomic selectors (`useAppStore((s) => s.foo)`). Repository-wide AST scan confirmed 0 whole-store subscriptions remain.
+- **TypeScript & Build Gates**: `npm run type-check` passes with **0 errors**; `npm run build` completes cleanly.
+
+---
+
+## 5. Sprint 3.0: Backend Responsibilities, Governance & PPTX Export Verification (Completed ✅)
+
+- **Verification Date**: 2026-11-04
+- **Branch**: `sprint/3-backend-pptxport`
+- **Lead Backend & Architecture**: Jefferson Lopez (`lopez.jefferson.cabanos1@gmail.com`)
+- **Lead Frontend Engineer**: Rafael Emmanuel Codiñera
+- **Status**: Implemented, Formatted, and Fully Verified Green (Ready for Pull Request to `develop`)
+
+### Deliverables Completed:
+1. **Backend Responsibilities (B-01 through B-10)**:
+   - Account governance (`account_requests`) with 4-tier RBAC approval/rejection workflows, target user linkage, and last-admin deactivation protection.
+   - Supervisor role authorization for Executive Analytics and Standardized Reports (`/analytics`, `/reports`).
+   - Location departments `is_active` soft-toggle.
+   - Technician profile photo upload and streaming (`/api/v1/users/{id}/photo`).
+   - Reporting window `all_time` parameter support.
+   - Full test suite verified: **101/101 tests passed with 90% coverage**.
+2. **Frontend PPTX Export Enhancements**:
+   - Executive-grade PowerPoint export with corporate **Verdana** typography across all titles and period headers for 8 report types.
+   - Full frontend test suite verified: **115/115 tests passed**.
+3. **Developer Experience & Standardized CI Gates**:
+   - Standardized pre-PR testing guide: [`docs/STANDARDIZED-TESTING.md`](../STANDARDIZED-TESTING.md).
+   - Automated pre-PR verification runner mirroring CI: [`scripts/pre-pr.ps1`](../../scripts/pre-pr.ps1).
+   - One-command new developer bootstrap: [`scripts/setup-local.ps1`](../../scripts/setup-local.ps1) (PowerShell) & [`scripts/setup-local.sh`](../../scripts/setup-local.sh) (Bash).

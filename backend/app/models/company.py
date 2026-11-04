@@ -1,9 +1,10 @@
 import uuid
 
-from app.models.base import Base, TimestampMixin
 from sqlalchemy import Boolean, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.models.base import Base, TimestampMixin
 
 
 class Company(Base, TimestampMixin):
