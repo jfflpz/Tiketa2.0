@@ -35,6 +35,7 @@ export interface AuthSlice {
   openLoginModal: (role?: StaffRole) => void;
   closeLoginModal: () => void;
   loginAsStaff: (role: StaffRole, customName?: string) => void;
+  setCurrentUser: (user: AuthenticatedUser | null) => void;
   logoutToKiosk: (options?: { rememberProfile?: boolean; retainSession?: boolean }) => Promise<void>;
 }
 
@@ -43,6 +44,7 @@ let isHydratingInFlight: Promise<boolean> | null = null;
 export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
   currentUser: null,
   authSessionId: 1,
+  setCurrentUser: (user) => set({ currentUser: user }),
   loginModalRole: null,
   isLogoutModalOpen: false,
   isAuthenticating: false,

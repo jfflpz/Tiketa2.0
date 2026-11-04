@@ -24,6 +24,8 @@ export interface AuthenticatedUser {
   role: StaffRole;
   title: string;
   avatar: string;
+  avatarUrl?: string | null;
+  username?: string;
 }
 
 export interface ToastItem {

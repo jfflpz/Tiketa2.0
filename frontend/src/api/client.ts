@@ -741,3 +741,17 @@ export const accountRequestsApi = {
     },
 };
 
+
+export const usersApi = {
+    uploadSelfPhoto: async (file: File): Promise<{ avatar_url: string }> => {
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await apiClient.post<{ avatar_url: string }>('/users/me/photo', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        return res.data;
+    },
+    removeSelfPhoto: async (): Promise<void> => {
+        await apiClient.delete('/users/me/photo');
+    },
+};
