@@ -16,7 +16,6 @@ MAX_PIXELS = 4096
 
 
 @router.put("/me/photo")
-@router.post("/me/photo", include_in_schema=False)
 async def upload_my_photo(file: UploadFile, db: DB, user: CurrentUser):
     if user.role not in ("it", "admin", "supervisor"):
         raise HTTPException(
@@ -83,6 +82,11 @@ async def upload_my_photo(file: UploadFile, db: DB, user: CurrentUser):
         "avatar_url": f"/api/v1/users/{user.id}/photo?v={ts}",
         "avatar_updated_at": photo_row.updated_at,
     }
+
+
+@router.post("/me/photo", include_in_schema=False)
+async def upload_my_photo_post(file: UploadFile, db: DB, user: CurrentUser):
+    return await upload_my_photo(file=file, db=db, user=user)
 
 
 @router.delete("/me/photo", status_code=204)
