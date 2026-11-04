@@ -4,7 +4,7 @@ import { ExportPptxModal } from '../src/features/reports/components/ExportPptxMo
 import { executePptxExport } from '../src/features/reports/export/exportPptx';
 import { validatePmsDateRange, formatPeriodDisplay } from '../src/features/reports/export/pmsDateValidation';
 import { generateExplanation } from '../src/features/reports/export/explanationGenerator';
-import { validateSlideElementBounds, SLIDE_GEOMETRY } from '../src/features/reports/export/pptxSlideBuilder';
+import { addExecutiveReportSlide, createPresentationInstance, validateSlideElementBounds, SLIDE_GEOMETRY } from '../src/features/reports/export/pptxSlideBuilder';
 import { captureChartImage } from '../src/features/reports/export/chartCapture';
 import { reportsApi } from '../src/api/client';
 import { useAppStore } from '../src/store/useAppStore';
@@ -69,6 +69,21 @@ describe('PPTX Export Suite — Tiketa Executive Standards', () => {
   beforeEach(() => {
     cleanup();
     vi.clearAllMocks();
+  });
+
+  it('uses separate title and period frames with room before the chart', () => {
+    const pres = createPresentationInstance();
+    const slide = addExecutiveReportSlide(pres, {
+      title: 'Monthly SLA', reportingPeriod: 'Oct 2026',
+      chartImageBase64: 'data:image/png;base64,mockPng', explanationMarkdown: '**Total**: 1',
+    });
+    const addText = vi.mocked(slide.addText);
+    expect(addText.mock.calls[0][0]).toBe('Monthly SLA');
+    expect(addText.mock.calls[0][1]).toMatchObject({ fontSize: 36, fontFace: 'Verdana' });
+    expect(addText.mock.calls[1][0]).toBe('Oct 2026');
+    expect(addText.mock.calls[1][1]).toMatchObject({ fontSize: 22, fontFace: 'Verdana' });
+    expect(SLIDE_GEOMETRY.periodY + SLIDE_GEOMETRY.periodH).toBeLessThan(SLIDE_GEOMETRY.chartY);
+    expect(SLIDE_GEOMETRY.explY - (SLIDE_GEOMETRY.chartY + SLIDE_GEOMETRY.chartH)).toBeGreaterThanOrEqual(0.2);
   });
 
   describe('1. PMS Complete-Month Validation', () => {
@@ -413,6 +428,18 @@ describe('PPTX Export Suite — Tiketa Executive Standards', () => {
       await waitFor(() => {
         expect(useAppStore.getState().activeExportController).not.toBeNull();
       });
+    });
+
+    it('allows a supervisor to export empty reports without a false session-expired error', async () => {
+      const onClose = vi.fn();
+      useAppStore.setState({ currentUser: {
+        id: 'supervisor-1', name: 'Supervisor', email: 'supervisor@example.com',
+        role: 'supervisor', title: 'Supervisor', avatar: 'S',
+      } });
+      vi.mocked(reportsApi.getReport).mockResolvedValue({ date_from: '2026-11-01', date_to: '2026-11-03', rows: [] });
+      render(<ExportPptxModal isOpen onClose={onClose} initialReportId={1} initialDateRange={{ dateFrom: '2026-11-01', dateTo: '2026-11-03' }} />);
+      fireEvent.click(screen.getByRole('button', { name: /Generate 1-Slide PPTX/i }));
+      await waitFor(() => expect(onClose).toHaveBeenCalled());
     });
   });
 

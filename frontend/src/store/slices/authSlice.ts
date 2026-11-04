@@ -66,12 +66,20 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
           const currentPath = typeof window !== 'undefined' ? window.location.pathname : '/';
           const requestedRoute = resolvePathToView(currentPath);
 
-          const defaultHome = getDefaultHomeForRole(userRole);
-          let targetView: ActiveView = defaultHome;
+          let targetView: ActiveView = getDefaultHomeForRole(userRole);
           if (requestedRoute !== 'public') {
-            // Guard deep links by allowed views for this role
-            const allowed = ROLE_ALLOWED_VIEWS[userRole] || [];
-            if (allowed.includes(requestedRoute)) {
+            const isExecutiveView =
+              requestedRoute === 'analytics' ||
+              requestedRoute === 'team' ||
+              requestedRoute === 'reports' ||
+              requestedRoute === 'joblogs';
+            if (userRole === 'admin') {
+              targetView = requestedRoute;
+            } else if (userRole === 'supervisor' && isExecutiveView) {
+              targetView = requestedRoute;
+            } else if (userRole === 'it' && !['analytics', 'reports', 'team'].includes(requestedRoute)) {
+              targetView = requestedRoute;
+            } else if (userRole === 'intern' && ['overview', 'workbench', 'notes', 'joblogs'].includes(requestedRoute)) {
               targetView = requestedRoute;
             } else {
               targetView = defaultHome;
@@ -97,7 +105,9 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
             activeView: targetView,
             isHydratingAuth: false,
           });
-          get().fetchQueueApi();
+          if (userRole !== 'supervisor') {
+            get().fetchQueueApi();
+          }
           return true;
         }
       } catch {
@@ -130,9 +140,9 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
         get().setVerifyTicketCode(null);
       }
 
-      // Update URL to role-specific canonical home
+      // Update URL to canonical role path
       if (typeof window !== 'undefined') {
-        window.history.pushState(null, '', canonicalPath);
+        window.history.pushState(null, '', viewToCanonicalPath(targetView));
         window.dispatchEvent(new Event('popstate'));
       }
 

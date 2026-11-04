@@ -84,20 +84,24 @@ export const TopHeader: React.FC = () => {
           <span>PH • 15 Hubs</span>
         </div>
 
-        {/* 3. Notification Bell */}
-        <HeaderNotificationsPopover
-          tickets={tickets}
-          onSelectTicket={setSelectedTicketId}
-          onViewAllInQueue={() => setActiveView('tickets')}
-          onCopyShareLink={handleCopyVerification}
-        />
+        {/* 3. Notification Bell (Only for operational triage staff) */}
+        {currentUser?.role !== 'supervisor' && (
+          <HeaderNotificationsPopover
+            tickets={tickets}
+            onSelectTicket={setSelectedTicketId}
+            onViewAllInQueue={() => setActiveView('tickets')}
+            onCopyShareLink={handleCopyVerification}
+          />
+        )}
 
-        {/* 4. Messages / Dispatches Icon */}
-        <HeaderMessagesPopover
-          tickets={tickets}
-          onSelectTicket={setSelectedTicketId}
-          onClaimAndChat={handleClaimAndChat}
-        />
+        {/* 4. Messages / Dispatches Icon (Only for operational triage staff) */}
+        {currentUser?.role !== 'supervisor' && (
+          <HeaderMessagesPopover
+            tickets={tickets}
+            onSelectTicket={setSelectedTicketId}
+            onClaimAndChat={handleClaimAndChat}
+          />
+        )}
 
         {/* 5. Fullscreen Toggle */}
         <button

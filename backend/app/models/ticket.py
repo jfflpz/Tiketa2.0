@@ -31,6 +31,7 @@ class LocationDepartment(Base):
         ForeignKey("departments.id"), primary_key=True
     )
     is_default: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
 class TaskCategory(Base):

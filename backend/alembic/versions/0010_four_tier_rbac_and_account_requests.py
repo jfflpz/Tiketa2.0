@@ -71,7 +71,14 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    conn = op.get_bind()
+    count = conn.execute(
+        sa.text("SELECT count(*) FROM users WHERE role NOT IN ('it', 'admin')")
+    ).scalar()
+    if (count or 0) > 0:
+        raise RuntimeError(
+            f"Preflight refusal: cannot downgrade while {count} user(s) with new roles (supervisor/intern) exist."
+        )
     op.drop_table("account_requests")
-    op.execute("DELETE FROM users WHERE role NOT IN ('it', 'admin')")
     op.drop_constraint("ck_users_role", "users", type_="check")
     op.create_check_constraint("ck_users_role", "users", "role IN ('it', 'admin')")

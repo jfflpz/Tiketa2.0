@@ -89,3 +89,28 @@
 - **Granular Store Subscriptions**: Replaced whole-store destructuring with atomic selectors (`useAppStore((s) => s.foo)`). Repository-wide AST scan confirmed 0 whole-store subscriptions remain.
 - **TypeScript & Build Gates**: `npm run type-check` passes with **0 errors**; `npm run build` completes cleanly.
 
+---
+
+## 5. Sprint 3.0: Backend Responsibilities, Governance & PPTX Export Verification (Completed ✅)
+
+- **Verification Date**: 2026-11-04
+- **Branch**: `sprint/3-backend-pptxport`
+- **Lead Backend & Architecture**: Jefferson Lopez (`lopez.jefferson.cabanos1@gmail.com`)
+- **Lead Frontend Engineer**: Rafael Emmanuel Codiñera
+- **Status**: Implemented, Formatted, and Fully Verified Green (Ready for Pull Request to `develop`)
+
+### Deliverables Completed:
+1. **Backend Responsibilities (B-01 through B-10)**:
+   - Account governance (`account_requests`) with 4-tier RBAC approval/rejection workflows, target user linkage, and last-admin deactivation protection.
+   - Supervisor role authorization for Executive Analytics and Standardized Reports (`/analytics`, `/reports`).
+   - Location departments `is_active` soft-toggle.
+   - Technician profile photo upload and streaming (`/api/v1/users/{id}/photo`).
+   - Reporting window `all_time` parameter support.
+   - Full test suite verified: **101/101 tests passed with 90% coverage**.
+2. **Frontend PPTX Export Enhancements**:
+   - Executive-grade PowerPoint export with corporate **Verdana** typography across all titles and period headers for 8 report types.
+   - Full frontend test suite verified: **115/115 tests passed**.
+3. **Developer Experience & Standardized CI Gates**:
+   - Standardized pre-PR testing guide: [`docs/STANDARDIZED-TESTING.md`](../STANDARDIZED-TESTING.md).
+   - Automated pre-PR verification runner mirroring CI: [`scripts/pre-pr.ps1`](../../scripts/pre-pr.ps1).
+   - One-command new developer bootstrap: [`scripts/setup-local.ps1`](../../scripts/setup-local.ps1) (PowerShell) & [`scripts/setup-local.sh`](../../scripts/setup-local.sh) (Bash).

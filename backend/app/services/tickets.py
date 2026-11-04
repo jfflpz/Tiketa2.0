@@ -5,7 +5,7 @@ from fastapi import HTTPException
 from sqlalchemy import Integer, cast, func, select
 from sqlalchemy.dialects.postgresql import insert
 
-from app.core.cache import cache
+from app.core.cache import invalidate_queue_version
 from app.core.config import settings
 from app.core.security import decrypt, encrypt, verify_match_token
 from app.models import (
@@ -67,21 +67,18 @@ async def next_code(db, day):
 async def submit(db, body, creator_id=None, session_id=None):
     is_public = creator_id is None
     if is_public:
-        if body.match_token:
-            try:
-                verified_emp_id = verify_match_token(body.match_token, session_id or "")
-            except Exception:
-                raise HTTPException(
-                    403, "Invalid or expired match_token, or session mismatch"
-                )
-            employee = await find_employee(db, verified_emp_id)
-        elif body.employee_id and not session_id:
-            employee = await find_employee(db, body.employee_id)
-        else:
+        if not session_id or not body.match_token:
             raise HTTPException(
                 403,
                 "Valid match_token bound to active session is required for public ticket submission",
             )
+        try:
+            verified_emp_id = verify_match_token(body.match_token, session_id)
+        except Exception:
+            raise HTTPException(
+                403, "Invalid or expired match_token, or session mismatch"
+            )
+        employee = await find_employee(db, verified_emp_id)
     else:
         if not body.employee_id:
             raise HTTPException(422, "employee_id is required")
@@ -135,7 +132,7 @@ async def submit(db, body, creator_id=None, session_id=None):
         if obs and obs.ticket_id is None:
             obs.ticket_id = row.id
     await db.commit()
-    await cache.incr("queue:version")
+    await invalidate_queue_version()
     return row
 
 

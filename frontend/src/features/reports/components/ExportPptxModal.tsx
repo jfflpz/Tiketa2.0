@@ -190,6 +190,7 @@ export const ExportPptxModal: React.FC<ExportPptxModalProps> = ({
   const handleStartExport = async () => {
     if (isExportDisabled) return;
 
+    const startingUser = useAppStore.getState().currentUser;
     const opId = ++activeOpIdRef.current;
     setIsExporting(true);
     const controller = new AbortController();
@@ -210,7 +211,8 @@ export const ExportPptxModal: React.FC<ExportPptxModalProps> = ({
         signal: controller.signal,
         checkSession: () => {
           const user = useAppStore.getState().currentUser;
-          return Boolean(user && user.role === 'admin');
+          return Boolean(startingUser && user && user.id === startingUser.id &&
+            (user.role === 'admin' || user.role === 'supervisor'));
         },
       });
 

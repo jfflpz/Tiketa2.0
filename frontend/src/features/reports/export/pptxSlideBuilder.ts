@@ -11,13 +11,11 @@ export const SLIDE_GEOMETRY = {
   slideWidth: 13.333,
   slideHeight: 7.5,
   titleX: 0.91,
-  titleY: 0.35,
-  titleW: 8.40,
-  titleH: 0.95,
-  periodX: 9.35,
-  periodY: 0.50,
-  periodW: 3.10,
-  periodH: 0.65,
+  titleY: 0.32,
+  titleW: 11.54,
+  titleH: 0.55,
+  periodY: 0.94,
+  periodH: 0.42,
   chartX: 0.91,
   chartY: 1.63,
   chartW: 11.54,
@@ -69,7 +67,7 @@ function parseMarkdownToTextItems(md: string): pptxgen.TextProps[] {
             bold: true,
             fontSize: 18,
             color: '333333',
-            fontFace: 'Arial',
+            fontFace: 'Verdana',
           },
         };
       }
@@ -79,7 +77,7 @@ function parseMarkdownToTextItems(md: string): pptxgen.TextProps[] {
           bold: false,
           fontSize: 18,
           color: '333333',
-          fontFace: 'Arial',
+          fontFace: 'Verdana',
         },
       };
     });
@@ -90,11 +88,10 @@ function parseMarkdownToTextItems(md: string): pptxgen.TextProps[] {
  *
  * DESIGN INVARIANTS:
  * 1. Slide Size: 16:9 widescreen (13.333" x 7.5") via LAYOUT_WIDE.
- * 2. Title & Period: Positioned above chart (Y=0.35-0.50"). Title is 36pt bold Arial #333333 in its own frame;
- *    Reporting Period is 22pt regular Arial #666666 in its own frame.
+ * 2. Title and period: Separate frames above the chart, at 36pt and 22pt.
  * 3. Chart Container: Embedded high-resolution PNG image at X=0.91", Y=1.63", W=11.54", H=3.90" (Aspect ratio ~2.96:1).
  *    NOTE: Chart bars are embedded as pixel-accurate image elements, NOT editable PowerPoint vector shapes.
- * 4. Explanatory Text: Positioned below chart (Y=5.75") at 18pt Arial #333333 with key metrics bolded (>0.2" separation).
+ * 4. Explanatory Text: Positioned below chart (Y=5.75") at 18pt with key metrics bolded.
  * 5. Zero cover or closing slides; zero decorative branding.
  */
 export function addExecutiveReportSlide(
@@ -106,34 +103,28 @@ export function addExecutiveReportSlide(
   // Slide background
   slide.background = { color: 'FFFFFF' };
 
-  // 1. Header Text: Title (bold 36pt Arial #333333) in its own distinct frame
   slide.addText(params.title, {
-    x: SLIDE_GEOMETRY.titleX,
-    y: SLIDE_GEOMETRY.titleY,
-    w: SLIDE_GEOMETRY.titleW,
-    h: SLIDE_GEOMETRY.titleH,
-    valign: 'middle',
-    align: 'left',
-    margin: 0,
-    fontFace: 'Arial',
-    fontSize: 36,
-    bold: true,
-    color: '333333',
-  });
-
-  // 2. Reporting Period: Regular 22pt Arial #666666 in its own distinct frame
+      x: SLIDE_GEOMETRY.titleX,
+      y: SLIDE_GEOMETRY.titleY,
+      w: SLIDE_GEOMETRY.titleW,
+      h: SLIDE_GEOMETRY.titleH,
+      valign: 'bottom',
+      align: 'left',
+      margin: 0,
+      bold: true,
+      fontSize: 36,
+      color: '333333',
+      fontFace: 'Verdana',
+    });
   slide.addText(params.reportingPeriod, {
-    x: SLIDE_GEOMETRY.periodX,
+    x: SLIDE_GEOMETRY.titleX,
     y: SLIDE_GEOMETRY.periodY,
-    w: SLIDE_GEOMETRY.periodW,
+    w: SLIDE_GEOMETRY.titleW,
     h: SLIDE_GEOMETRY.periodH,
-    valign: 'middle',
-    align: 'right',
     margin: 0,
-    fontFace: 'Arial',
     fontSize: 22,
-    bold: false,
-    color: '666666',
+    color: '333333',
+    fontFace: 'Verdana',
   });
 
   // 3. Chart Image Box (X=0.91", Y=1.63", W=11.54", H=3.90")
@@ -170,6 +161,7 @@ export function createPresentationInstance(): pptxgen {
   // In pptxgenjs, LAYOUT_16x9 is 10" x 5.625", while LAYOUT_WIDE is 13.333" x 7.5".
   // Explicitly set LAYOUT_WIDE to match our 13.333" x 7.5" design coordinate space.
   pres.layout = 'LAYOUT_WIDE';
+  pres.theme = { headFontFace: 'Verdana', bodyFontFace: 'Verdana' };
   pres.title = 'Tiketa Executive Operations Reports';
   return pres;
 }

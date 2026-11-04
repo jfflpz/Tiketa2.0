@@ -1,25 +1,60 @@
 import uuid
 from datetime import datetime
+from typing import Literal
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, String, Text
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String, Text, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
 
+RequestableRole = Literal["intern", "it", "supervisor"]
+
 
 class AccountRequest(Base, TimestampMixin):
     __tablename__ = "account_requests"
     __table_args__ = (
-        CheckConstraint("role IN ('intern', 'it')", name="ck_account_requests_role"),
+        CheckConstraint(
+            "role IN ('intern', 'it', 'supervisor')", name="ck_account_requests_role"
+        ),
         CheckConstraint(
             "status IN ('pending', 'approved', 'rejected')",
             name="ck_account_requests_status",
+        ),
+        CheckConstraint(
+            "request_type IN ('create', 'deactivate')",
+            name="ck_account_requests_type",
+        ),
+        Index(
+            "uq_pending_create_username",
+            text("lower(username)"),
+            unique=True,
+            postgresql_where=text("status = 'pending' AND request_type = 'create'"),
+        ),
+        Index(
+            "uq_pending_create_email",
+            text("lower(email)"),
+            unique=True,
+            postgresql_where=text("status = 'pending' AND request_type = 'create'"),
+        ),
+        Index(
+            "uq_pending_deactivate_target",
+            "target_user_id",
+            unique=True,
+            postgresql_where=text("status = 'pending' AND request_type = 'deactivate'"),
         ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    request_type: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="create", server_default="create"
+    )
+    target_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
     )
     username: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     email: Mapped[str] = mapped_column(String(150), nullable=False, index=True)
@@ -57,4 +92,5 @@ class AccountRequest(Base, TimestampMixin):
 
     requester = relationship("User", foreign_keys=[requested_by_id])
     reviewer = relationship("User", foreign_keys=[reviewed_by_id])
+    target_user = relationship("User", foreign_keys=[target_user_id])
     location = relationship("Location", foreign_keys=[location_id])

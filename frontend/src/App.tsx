@@ -87,7 +87,7 @@ export default function App() {
   }, [currentUser, setActiveView]);
 
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser || currentUser.role === 'supervisor') return;
     fetchQueueApi();
 
     const onFocus = () => {

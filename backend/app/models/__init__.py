@@ -21,7 +21,7 @@ from app.models.ticket import (
     TicketCounter,
     TicketTechnician,
 )
-from app.models.user import User
+from app.models.user import User, UserProfilePhoto
 
 __all__ = [
     "AccountRequest",
@@ -44,4 +44,5 @@ __all__ = [
     "TicketCounter",
     "TicketTechnician",
     "User",
+    "UserProfilePhoto",
 ]
