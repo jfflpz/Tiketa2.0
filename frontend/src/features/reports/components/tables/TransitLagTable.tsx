@@ -23,7 +23,7 @@ export const TransitLagTable: React.FC<TransitLagTableProps> = ({ data }) => {
         </thead>
         <tbody className="divide-y divide-line/60">
           {data.map((r) => (
-            <tr key={r.location} className="hover:bg-zinc-50/60 transition-colors">
+            <tr key={JSON.stringify([r.location, r.supportMode])} className="hover:bg-zinc-50/60 transition-colors">
               <td className="py-3 px-3 font-bold text-ink">{r.location}</td>
               <td className="py-3 px-3 font-mono">{r.supportMode}</td>
               <td className="py-3 px-3 font-mono">{r.completedTickets}</td>
