@@ -257,7 +257,7 @@ export const authApi = {
     return res.data;
     },
     refresh: async () => {
-    const res = await apiClient.post('/auth/refresh');
+    const res = await apiClient.post('/auth/refresh', {}, { timeout: 7000 });
     return res.data;
     },
     logout: async () => {

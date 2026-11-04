@@ -99,6 +99,10 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
           });
           get().fetchQueueApi();
           return true;
+        } else {
+          setAccessToken(null);
+          set({ currentUser: null, isHydratingAuth: false });
+          return false;
         }
       } catch {
         setAccessToken(null);
