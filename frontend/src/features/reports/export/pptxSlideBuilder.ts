@@ -11,9 +11,13 @@ export const SLIDE_GEOMETRY = {
   slideWidth: 13.333,
   slideHeight: 7.5,
   titleX: 0.91,
-  titleY: 0.45,
-  titleW: 11.54,
+  titleY: 0.35,
+  titleW: 8.40,
   titleH: 0.95,
+  periodX: 9.35,
+  periodY: 0.50,
+  periodW: 3.10,
+  periodH: 0.65,
   chartX: 0.91,
   chartY: 1.63,
   chartW: 11.54,
@@ -30,11 +34,13 @@ export const SLIDE_GEOMETRY = {
 export function validateSlideElementBounds(): { fits: boolean; maxRight: number; maxBottom: number } {
   const maxRight = Math.max(
     SLIDE_GEOMETRY.titleX + SLIDE_GEOMETRY.titleW,
+    SLIDE_GEOMETRY.periodX + SLIDE_GEOMETRY.periodW,
     SLIDE_GEOMETRY.chartX + SLIDE_GEOMETRY.chartW,
     SLIDE_GEOMETRY.explX + SLIDE_GEOMETRY.explW
   );
   const maxBottom = Math.max(
     SLIDE_GEOMETRY.titleY + SLIDE_GEOMETRY.titleH,
+    SLIDE_GEOMETRY.periodY + SLIDE_GEOMETRY.periodH,
     SLIDE_GEOMETRY.chartY + SLIDE_GEOMETRY.chartH,
     SLIDE_GEOMETRY.explY + SLIDE_GEOMETRY.explH
   );
@@ -49,6 +55,7 @@ export function validateSlideElementBounds(): { fits: boolean; maxRight: number;
 /**
  * Parses markdown bold (**text**) into pptxgenjs TextItem objects
  * so key findings are rendered in bold while the body is regular text.
+ * @spec F-06: Arial throughout native slide text with 18pt commentary.
  */
 function parseMarkdownToTextItems(md: string): pptxgen.TextProps[] {
   const parts = md.split(/(\*\*.*?\*\*)/g);
@@ -60,7 +67,7 @@ function parseMarkdownToTextItems(md: string): pptxgen.TextProps[] {
           text: part.slice(2, -2),
           options: {
             bold: true,
-            fontSize: 16,
+            fontSize: 18,
             color: '333333',
             fontFace: 'Arial',
           },
@@ -70,7 +77,7 @@ function parseMarkdownToTextItems(md: string): pptxgen.TextProps[] {
         text: part,
         options: {
           bold: false,
-          fontSize: 16,
+          fontSize: 18,
           color: '333333',
           fontFace: 'Arial',
         },
@@ -83,10 +90,11 @@ function parseMarkdownToTextItems(md: string): pptxgen.TextProps[] {
  *
  * DESIGN INVARIANTS:
  * 1. Slide Size: 16:9 widescreen (13.333" x 7.5") via LAYOUT_WIDE.
- * 2. Title & Period: Positioned above chart (Y=0.45"). Title is ~44pt bold #333333, Period is ~30pt regular #333333.
+ * 2. Title & Period: Positioned above chart (Y=0.35-0.50"). Title is 36pt bold Arial #333333 in its own frame;
+ *    Reporting Period is 22pt regular Arial #666666 in its own frame.
  * 3. Chart Container: Embedded high-resolution PNG image at X=0.91", Y=1.63", W=11.54", H=3.90" (Aspect ratio ~2.96:1).
  *    NOTE: Chart bars are embedded as pixel-accurate image elements, NOT editable PowerPoint vector shapes.
- * 4. Explanatory Text: Positioned below chart (Y=5.75") at ~16pt #333333 with key metrics bolded.
+ * 4. Explanatory Text: Positioned below chart (Y=5.75") at 18pt Arial #333333 with key metrics bolded (>0.2" separation).
  * 5. Zero cover or closing slides; zero decorative branding.
  */
 export function addExecutiveReportSlide(
@@ -98,40 +106,37 @@ export function addExecutiveReportSlide(
   // Slide background
   slide.background = { color: 'FFFFFF' };
 
-  // 1. Header Text: Title (bold ~44pt #333333) + Reporting Period (regular ~30pt #333333)
-  slide.addText(
-    [
-      {
-        text: params.title + '  ',
-        options: {
-          bold: true,
-          fontSize: 44,
-          color: '333333',
-          fontFace: 'Arial',
-        },
-      },
-      {
-        text: params.reportingPeriod,
-        options: {
-          bold: false,
-          fontSize: 30,
-          color: '333333',
-          fontFace: 'Arial',
-        },
-      },
-    ],
-    {
-      x: SLIDE_GEOMETRY.titleX,
-      y: SLIDE_GEOMETRY.titleY,
-      w: SLIDE_GEOMETRY.titleW,
-      h: SLIDE_GEOMETRY.titleH,
-      valign: 'bottom',
-      align: 'left',
-      margin: 0,
-    }
-  );
+  // 1. Header Text: Title (bold 36pt Arial #333333) in its own distinct frame
+  slide.addText(params.title, {
+    x: SLIDE_GEOMETRY.titleX,
+    y: SLIDE_GEOMETRY.titleY,
+    w: SLIDE_GEOMETRY.titleW,
+    h: SLIDE_GEOMETRY.titleH,
+    valign: 'middle',
+    align: 'left',
+    margin: 0,
+    fontFace: 'Arial',
+    fontSize: 36,
+    bold: true,
+    color: '333333',
+  });
 
-  // 2. Chart Image Box (X=0.91", Y=1.63", W=11.54", H=3.90")
+  // 2. Reporting Period: Regular 22pt Arial #666666 in its own distinct frame
+  slide.addText(params.reportingPeriod, {
+    x: SLIDE_GEOMETRY.periodX,
+    y: SLIDE_GEOMETRY.periodY,
+    w: SLIDE_GEOMETRY.periodW,
+    h: SLIDE_GEOMETRY.periodH,
+    valign: 'middle',
+    align: 'right',
+    margin: 0,
+    fontFace: 'Arial',
+    fontSize: 22,
+    bold: false,
+    color: '666666',
+  });
+
+  // 3. Chart Image Box (X=0.91", Y=1.63", W=11.54", H=3.90")
   // Chart is rendered at exact 2.96:1 native proportion with 1pt border #7F7F7F
   slide.addImage({
     data: params.chartImageBase64,
@@ -141,7 +146,7 @@ export function addExecutiveReportSlide(
     h: SLIDE_GEOMETRY.chartH,
   });
 
-  // 3. Explanatory Text Box (X=0.91", Y=5.75", W=11.54", H=1.30")
+  // 4. Explanatory Text Box (X=0.91", Y=5.75", W=11.54", H=1.30") with at least 0.22" separation
   const textItems = parseMarkdownToTextItems(params.explanationMarkdown);
   slide.addText(textItems, {
     x: SLIDE_GEOMETRY.explX,
@@ -151,7 +156,7 @@ export function addExecutiveReportSlide(
     valign: 'top',
     align: 'left',
     margin: 0,
-    lineSpacingMultiple: 1.25,
+    lineSpacingMultiple: 1.15,
   });
 
   return slide;

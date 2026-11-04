@@ -8,12 +8,15 @@ import {
   Calendar,
   Layers,
   Sparkles,
+  FileText,
 } from 'lucide-react';
 import { REPORT_TABS } from '../types/reportSchemas';
 import { executePptxExport } from '../export/exportPptx';
 import { validatePmsDateRange, formatPeriodDisplay, formatIsoDate, getLastDayOfMonth } from '../export/pmsDateValidation';
 import type { ExportMode, ExportProgress, ReportFilterParams } from '../export/types';
 import { useAppStore } from '../../../store/useAppStore';
+
+export const MAX_COMMENTARY_LENGTH = 380;
 
 export interface ExportPptxModalProps {
   isOpen: boolean;
@@ -36,6 +39,10 @@ export const ExportPptxModal: React.FC<ExportPptxModalProps> = ({
   // Default mode is strictly 'current' (1 slide)
   const [mode, setMode] = useState<ExportMode>('current');
   const [selectedIds, setSelectedIds] = useState<number[]>([initialReportId || 1]);
+
+  // @spec F-06: Editable commentary per report with preflight length checks
+  const [customCommentary, setCustomCommentary] = useState<Record<number, string>>({});
+  const [activeCommentaryTab, setActiveCommentaryTab] = useState<number>(initialReportId || 1);
 
   // Date range state
   const defaultDates = useMemo(() => {
@@ -75,7 +82,9 @@ export const ExportPptxModal: React.FC<ExportPptxModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setMode('current');
-      setSelectedIds([initialReportId || 1]);
+      const startId = initialReportId || 1;
+      setSelectedIds([startId]);
+      setActiveCommentaryTab(startId);
       setDateFrom(defaultDates.dateFrom);
       setDateTo(defaultDates.dateTo);
       setIsExporting(false);
@@ -96,18 +105,26 @@ export const ExportPptxModal: React.FC<ExportPptxModalProps> = ({
   const handleModeChange = (newMode: ExportMode) => {
     setMode(newMode);
     if (newMode === 'current') {
-      setSelectedIds([initialReportId || 1]);
+      const id = initialReportId || 1;
+      setSelectedIds([id]);
+      setActiveCommentaryTab(id);
     } else if (newMode === 'all') {
-      setSelectedIds(REPORT_TABS.map((t) => t.id));
+      const allIds = REPORT_TABS.map((t) => t.id);
+      setSelectedIds(allIds);
+      setActiveCommentaryTab(allIds[0]);
     }
-    // If 'custom', retain previous custom selection or current
   };
 
   const handleToggleReport = (id: number) => {
+    let newSelected: number[];
     if (selectedIds.includes(id)) {
-      setSelectedIds(selectedIds.filter((item) => item !== id));
+      newSelected = selectedIds.filter((item) => item !== id);
     } else {
-      setSelectedIds([...selectedIds, id].sort((a, b) => a - b));
+      newSelected = [...selectedIds, id].sort((a, b) => a - b);
+    }
+    setSelectedIds(newSelected);
+    if (!newSelected.includes(activeCommentaryTab) && newSelected.length > 0) {
+      setActiveCommentaryTab(newSelected[0]);
     }
   };
 
@@ -117,6 +134,24 @@ export const ExportPptxModal: React.FC<ExportPptxModalProps> = ({
     if (!includesPms) return { isValid: true };
     return validatePmsDateRange(dateFrom, dateTo);
   }, [includesPms, dateFrom, dateTo]);
+
+  // Preflight commentary length check across all selected reports
+  const overflowingReport = useMemo(() => {
+    for (const id of selectedIds) {
+      const text = customCommentary[id] || '';
+      if (text.length > MAX_COMMENTARY_LENGTH) {
+        const tab = REPORT_TABS.find((t) => t.id === id);
+        return {
+          id,
+          title: tab?.title || `Report ${id}`,
+          length: text.length,
+        };
+      }
+    }
+    return null;
+  }, [selectedIds, customCommentary]);
+
+  const hasCommentaryOverflow = overflowingReport !== null;
 
   // Actionable handler to apply suggested complete months
   const handleUseCompleteMonths = () => {
@@ -134,7 +169,8 @@ export const ExportPptxModal: React.FC<ExportPptxModalProps> = ({
   const isExportDisabled =
     selectedIds.length === 0 ||
     isExporting ||
-    (includesPms && !pmsValidation.isValid);
+    (includesPms && !pmsValidation.isValid) ||
+    hasCommentaryOverflow;
 
   const slideCount = selectedIds.length;
   const formattedPeriod = formatPeriodDisplay(dateFrom, dateTo);
@@ -165,6 +201,7 @@ export const ExportPptxModal: React.FC<ExportPptxModalProps> = ({
         selectedReportIds: selectedIds,
         dateRange: { dateFrom, dateTo },
         filterParams,
+        customCommentaryByReportId: customCommentary,
         onProgress: (p) => {
           if (activeOpIdRef.current === opId) {
             setProgress(p);
@@ -187,7 +224,6 @@ export const ExportPptxModal: React.FC<ExportPptxModalProps> = ({
       }
     } catch (err: any) {
       if (err.name === 'AbortError' || controller.signal.aborted) {
-        // Handled in cancel or aborted due to logout/restart
         return;
       }
       if (activeOpIdRef.current === opId) {
@@ -208,11 +244,15 @@ export const ExportPptxModal: React.FC<ExportPptxModalProps> = ({
     }
   };
 
+  const activeCommentaryText = customCommentary[activeCommentaryTab] || '';
+  const activeCommentaryLength = activeCommentaryText.length;
+  const activeReportMeta = REPORT_TABS.find((t) => t.id === activeCommentaryTab);
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white rounded-3xl border border-zinc-200 shadow-2xl max-w-xl w-full p-6 space-y-5 text-ink">
+      <div className="bg-white rounded-3xl border border-zinc-200 shadow-2xl max-w-xl w-full p-6 space-y-4 text-ink max-h-[92vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
           <div className="flex items-center gap-2.5">
@@ -293,7 +333,7 @@ export const ExportPptxModal: React.FC<ExportPptxModalProps> = ({
 
         {/* Custom Selection Checkboxes */}
         {mode === 'custom' && (
-          <div className="space-y-1.5 p-3 rounded-2xl bg-zinc-50 border border-zinc-200 max-h-48 overflow-y-auto">
+          <div className="space-y-1.5 p-3 rounded-2xl bg-zinc-50 border border-zinc-200 max-h-40 overflow-y-auto">
             <div className="text-[11px] font-semibold text-zinc-500 uppercase px-1">Choose Reports to Include:</div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
               {REPORT_TABS.map((tab) => {
@@ -320,8 +360,91 @@ export const ExportPptxModal: React.FC<ExportPptxModalProps> = ({
           </div>
         )}
 
+        {/* @spec F-06: Editable Commentary Draft with Preflight Fit Validator */}
+        {selectedIds.length > 0 && (
+          <div className="space-y-2 p-3.5 rounded-2xl bg-zinc-50 border border-zinc-200">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-zinc-600 flex items-center gap-1.5">
+                <FileText className="w-3.5 h-3.5 text-orange-500" />
+                <span>Executive Commentary Draft (Editable)</span>
+              </span>
+              <span
+                className={`text-[11px] font-mono font-bold ${
+                  activeCommentaryLength > MAX_COMMENTARY_LENGTH
+                    ? 'text-rose-600'
+                    : 'text-zinc-500'
+                }`}
+              >
+                {activeCommentaryLength} / {MAX_COMMENTARY_LENGTH} chars
+              </span>
+            </div>
+
+            {selectedIds.length > 1 && (
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                {selectedIds.map((id) => {
+                  const tab = REPORT_TABS.find((t) => t.id === id);
+                  const isCurrent = activeCommentaryTab === id;
+                  const isOverflow = (customCommentary[id] || '').length > MAX_COMMENTARY_LENGTH;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      disabled={isExporting}
+                      onClick={() => setActiveCommentaryTab(id)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
+                        isCurrent
+                          ? 'bg-zinc-900 text-white'
+                          : isOverflow
+                          ? 'bg-rose-100 text-rose-700'
+                          : 'bg-white border border-zinc-200 text-zinc-600 hover:bg-zinc-100'
+                      }`}
+                    >
+                      {tab?.code || `R${id}`}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            <div>
+              <p className="text-[11px] text-zinc-400 mb-1">
+                Editing slide note for: <span className="font-semibold text-zinc-700">{activeReportMeta?.title}</span> (leave blank to use auto-generated analysis)
+              </p>
+              <textarea
+                rows={3}
+                disabled={isExporting}
+                value={activeCommentaryText}
+                onChange={(e) => {
+                  setCustomCommentary({
+                    ...customCommentary,
+                    [activeCommentaryTab]: e.target.value,
+                  });
+                }}
+                placeholder="Enter custom executive commentary with **key metrics** bolded..."
+                className={`w-full p-2.5 rounded-xl text-xs bg-white border transition-colors focus:outline-none ${
+                  activeCommentaryLength > MAX_COMMENTARY_LENGTH
+                    ? 'border-rose-400 focus:border-rose-500 ring-1 ring-rose-200'
+                    : 'border-zinc-300 focus:border-orange-500'
+                }`}
+              />
+            </div>
+
+            {overflowingReport && (
+              <div
+                role="alert"
+                className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2"
+              >
+                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span>
+                  <strong>Capacity Overflow:</strong> Commentary for <em>{overflowingReport.title}</em> exceeds the single-slide budget ({overflowingReport.length} / {MAX_COMMENTARY_LENGTH} chars). Shorten text to avoid layout overlap.
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Reporting Period & Confirmation Banner */}
-        <div className="p-3.5 rounded-2xl bg-zinc-50 border border-zinc-200 space-y-2">
+        <div className="p-3 rounded-2xl bg-zinc-50 border border-zinc-200 space-y-1.5">
           <div className="flex items-center justify-between text-xs">
             <span className="text-zinc-500 flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5 text-zinc-400" />

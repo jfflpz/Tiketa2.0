@@ -20,6 +20,7 @@ export interface ExecuteExportOptions {
   selectedReportIds: number[];
   dateRange: { dateFrom: string; dateTo: string };
   filterParams?: ReportFilterParams;
+  customCommentaryByReportId?: Record<number, string>;
   onProgress?: (progress: ExportProgress) => void;
   signal?: AbortSignal;
   checkSession?: () => boolean;
@@ -63,9 +64,10 @@ function mapReportData(reportId: number, rawRows: any[]): any[] {
  * 3. Strict PMS calendar month validation prior to fetching.
  * 4. Cancellation checking before fetch, during render, and immediately before saving.
  * 5. No decorative cover or closing slides.
+ * 6. Supports custom edited commentary per report with preflight length limits.
  */
 export async function executePptxExport(options: ExecuteExportOptions): Promise<ExportResult> {
-  const { selectedReportIds, dateRange, filterParams = {}, onProgress, signal } = options;
+  const { selectedReportIds, dateRange, filterParams = {}, customCommentaryByReportId, onProgress, signal } = options;
 
   if (!selectedReportIds || selectedReportIds.length === 0) {
     throw new Error('No reports selected for export.');
@@ -140,15 +142,19 @@ export async function executePptxExport(options: ExecuteExportOptions): Promise<
       phase: 'assembling',
     });
 
-    // 3. Generate factual explanation from verified data
+    // 3. Generate factual explanation from verified data or use edited commentary
     const explanationResult = generateExplanation(reportId, mappedRows, dateRange);
+    const customText = customCommentaryByReportId?.[reportId];
+    const explanationMarkdown = customText && customText.trim().length > 0
+      ? customText.trim()
+      : explanationResult.text;
 
     // 4. Construct exact 16:9 slide
     addExecutiveReportSlide(pres, {
       title: meta.title,
       reportingPeriod: formattedPeriod,
       chartImageBase64: chartPngBase64,
-      explanationMarkdown: explanationResult.text,
+      explanationMarkdown,
     });
   }
 
