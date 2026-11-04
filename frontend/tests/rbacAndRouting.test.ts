@@ -66,7 +66,8 @@ describe('Role-Based Access Control (RBAC) Matrix', () => {
 
   it('supervisor role has access to analytics and governance views with zero queue operational views', () => {
     const allowed = ROLE_ALLOWED_VIEWS.supervisor;
-    expect(allowed).toEqual(['overview', 'analytics', 'reports', 'team', 'joblogs']);
+    expect(allowed).toEqual(['analytics', 'reports', 'team', 'joblogs']);
+    expect(allowed).not.toContain('overview');
     expect(allowed).not.toContain('tickets');
     expect(allowed).not.toContain('workbench');
     expect(allowed).not.toContain('terminals');

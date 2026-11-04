@@ -89,7 +89,7 @@ try {
     # 7. Frontend Vitest Suite
     Write-Host ""
     Write-Host "=== [8/8] Frontend Vitest Suite and Build ===" -ForegroundColor Yellow
-    npx vitest run
+    npm test
     if ($LASTEXITCODE -ne 0) {
         Write-Error "Frontend Vitest tests failed."
         exit 1

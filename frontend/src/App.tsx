@@ -22,13 +22,13 @@ import { TicketVerificationModal } from './components/tickets/TicketVerification
 import { ToastContainer } from './components/common/ToastContainer';
 import { useAppStore } from './store/useAppStore';
 import type { StaffRole, ActiveView } from './store/slices/uiSlice';
-import { resolvePathToView, viewToCanonicalPath } from './utils/routeUtils';
+import { resolvePathToView, viewToCanonicalPath, getDefaultHomeForRole } from './utils/routeUtils';
 
 export const ROLE_ALLOWED_VIEWS: Record<StaffRole, ActiveView[]> = {
   intern: ['overview', 'workbench', 'notes', 'joblogs'],
   it: ['overview', 'tickets', 'workbench', 'notes', 'joblogs', 'terminals'],
-  supervisor: ['overview', 'analytics', 'reports', 'team', 'joblogs'],
-  analyst: ['overview', 'analytics', 'reports', 'team', 'joblogs', 'terminals'],
+  supervisor: ['analytics', 'reports', 'team', 'joblogs'],
+  analyst: ['analytics', 'reports', 'team', 'joblogs', 'terminals'],
   admin: [
     'overview',
     'tickets',
@@ -40,20 +40,6 @@ export const ROLE_ALLOWED_VIEWS: Record<StaffRole, ActiveView[]> = {
     'reports',
     'team',
   ],
-};
-
-const getDefaultHomeForRole = (role: StaffRole): ActiveView => {
-  switch (role) {
-    case 'supervisor':
-    case 'analyst':
-      return 'analytics';
-    case 'intern':
-      return 'workbench';
-    case 'admin':
-    case 'it':
-    default:
-      return 'overview';
-  }
 };
 
 export default function App() {
@@ -100,7 +86,7 @@ export default function App() {
   }, [currentUser, setActiveView]);
 
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser || currentUser.role === 'supervisor') return;
     fetchQueueApi();
 
     const onFocus = () => {

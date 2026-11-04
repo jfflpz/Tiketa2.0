@@ -1,7 +1,24 @@
 // @spec BF-02: URL-Aware Employee and Staff Routing Utilities
-import type { ActiveView } from '../store/slices/uiSlice';
+import type { ActiveView, StaffRole } from '../store/slices/uiSlice';
 
 export type AppRoute = ActiveView | 'public';
+
+/**
+ * Returns the designated default home view for a given staff role.
+ */
+export function getDefaultHomeForRole(role: StaffRole): ActiveView {
+  switch (role) {
+    case 'supervisor':
+    case 'analyst':
+      return 'analytics';
+    case 'intern':
+      return 'workbench';
+    case 'admin':
+    case 'it':
+    default:
+      return 'overview';
+  }
+}
 
 /**
  * Resolves a URL pathname to an application view.

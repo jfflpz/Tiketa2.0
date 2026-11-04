@@ -189,6 +189,9 @@ export const createTicketQueueSlice: AppSliceCreator<TicketQueueSlice> = (set, g
   isFetchingQueue: false,
 
   fetchQueueApi: async (): Promise<boolean> => {
+    if (get().currentUser?.role === 'supervisor') {
+      return true;
+    }
     const sessionAtStart = get().authSessionId;
     set({ isFetchingQueue: true });
     try {
