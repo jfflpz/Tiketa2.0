@@ -28,7 +28,6 @@ export const ROLE_ALLOWED_VIEWS: Record<StaffRole, ActiveView[]> = {
   intern: ['overview', 'workbench', 'notes', 'joblogs'],
   it: ['overview', 'tickets', 'workbench', 'notes', 'joblogs', 'terminals'],
   supervisor: ['analytics', 'reports', 'team', 'joblogs'],
-  analyst: ['analytics', 'reports', 'team', 'joblogs', 'terminals'],
   admin: [
     'overview',
     'tickets',
@@ -41,6 +40,8 @@ export const ROLE_ALLOWED_VIEWS: Record<StaffRole, ActiveView[]> = {
     'team',
   ],
 };
+
+// getDefaultHomeForRole imported from routeUtils
 
 export default function App() {
   const currentUser = useAppStore((state) => state.currentUser);

@@ -1,6 +1,6 @@
 // @spec UI-TEAM-01: IT Support Specialist Roster, Employee Directory & Account Governance
 import React, { useState, useEffect, useMemo } from 'react';
-import { UserPlus, Plus, Briefcase, Fingerprint, Clock, Search, RefreshCw, Loader2 } from 'lucide-react';
+import { UserPlus, Plus, Briefcase, Fingerprint, Clock, Search, RefreshCw, Loader2, ShieldCheck } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import type { TeamMember } from '../../types/team';
 import type { EmployeeProfile } from '../../types';
@@ -12,11 +12,13 @@ import { CreateITStaffModal } from './components/CreateITStaffModal';
 import { EditITStaffModal } from './components/EditITStaffModal';
 import { AddEmployeeModal } from './components/AddEmployeeModal';
 import { EditEmployeeModal } from './components/EditEmployeeModal';
+import { PendingApprovalsQueue } from './components/PendingApprovalsQueue';
+import { accountRequestsApi } from '../../api/client';
+import { normalizeApiError } from '../../utils/errorUtils';
 
 export const TeamAdministrationView: React.FC = () => {
   const itTeamMembers = useAppStore((state) => state.itTeamMembers);
   const fetchITMembers = useAppStore((state) => state.fetchITMembers);
-  const createITMemberApi = useAppStore((state) => state.createITMemberApi);
   const updateITMemberApi = useAppStore((state) => state.updateITMemberApi);
   const deactivateITMemberApi = useAppStore((state) => state.deactivateITMemberApi);
 
@@ -36,7 +38,7 @@ export const TeamAdministrationView: React.FC = () => {
   const currentUser = useAppStore((state) => state.currentUser);
   const addToast = useAppStore((state) => state.addToast);
 
-  const [activeTab, setActiveTab] = useState<'IT_STAFF' | 'EMPLOYEES' | 'ACTIVITY'>('IT_STAFF');
+  const [activeTab, setActiveTab] = useState<'IT_STAFF' | 'EMPLOYEES' | 'ACTIVITY' | 'APPROVALS'>('IT_STAFF');
   const [employeeSearch, setEmployeeSearch] = useState('');
   const [itSearch, setItSearch] = useState('');
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
@@ -228,6 +230,19 @@ export const TeamAdministrationView: React.FC = () => {
 
           <button
             type="button"
+            onClick={() => setActiveTab('APPROVALS')}
+            className={`py-2 px-3.5 rounded-xl text-xs font-bold transition-all press-fx flex items-center gap-2 ${
+              activeTab === 'APPROVALS'
+                ? 'bg-zinc-900 text-white shadow-sm'
+                : 'text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100/70'
+            }`}
+          >
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>Proposals &amp; Approvals</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setActiveTab('ACTIVITY')}
             className={`py-2 px-3.5 rounded-xl text-xs font-bold transition-all press-fx flex items-center gap-2 ${
               activeTab === 'ACTIVITY'
@@ -313,6 +328,11 @@ export const TeamAdministrationView: React.FC = () => {
               onOpenQueue={() => setActiveView('tickets')}
             />
           )}
+
+          {/* TAB 4: ACCOUNT PROPOSALS & SUPERVISOR APPROVALS */}
+          {activeTab === 'APPROVALS' && (
+            <PendingApprovalsQueue />
+          )}
         </>
       )}
 
@@ -321,29 +341,32 @@ export const TeamAdministrationView: React.FC = () => {
         isOpen={isAddITModalOpen}
         onClose={() => setAddITModalOpen(false)}
         onSubmit={async (data) => {
-          const success = await createITMemberApi({
-            username: data.username,
-            password: data.password,
-            full_name: data.name,
-            email: data.email,
-            role: data.systemRole,
-          });
-          if (success) {
-            try {
-              localStorage.setItem(
-                `tiketa_staff_meta_${data.username}`,
-                JSON.stringify({
-                  roleTitle: data.role,
-                  department: data.department,
-                  primaryLocation: data.primaryLocation,
-                })
-              );
-              fetchITMembers();
-            } catch (e) {
-              // Ignore storage errors
+          try {
+            await accountRequestsApi.create({
+              username: data.username,
+              email: data.email,
+              full_name: data.name,
+              role: data.systemRole === 'admin' ? 'it' : (data.systemRole as 'intern' | 'it'),
+              department: data.department || undefined,
+              location_id: data.locationId,
+            });
+            addToast(
+              'Proposal Submitted',
+              `Account proposal for @${data.username} submitted. Awaiting supervisor approval.`,
+              'success'
+            );
+            setActiveTab('APPROVALS');
+            return true;
+          } catch (err: any) {
+            if (err?.response?.status === 409) {
+              const conflictMsg = 'A staff member or pending proposal with this username or email already exists.';
+              addToast('Proposal Conflict', conflictMsg, 'warning');
+              throw new Error(conflictMsg);
             }
+            const msg = normalizeApiError(err, 'Failed to submit account proposal');
+            addToast('Submission Failed', msg, 'warning');
+            throw new Error(msg);
           }
-          return success;
         }}
       />
 

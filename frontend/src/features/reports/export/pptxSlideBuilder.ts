@@ -64,7 +64,7 @@ function parseMarkdownToTextItems(md: string): pptxgen.TextProps[] {
             bold: true,
             fontSize: 18,
             color: '333333',
-            fontFace: 'Verdana',
+            fontFace: 'Arial',
           },
         };
       }
@@ -74,7 +74,7 @@ function parseMarkdownToTextItems(md: string): pptxgen.TextProps[] {
           bold: false,
           fontSize: 18,
           color: '333333',
-          fontFace: 'Verdana',
+          fontFace: 'Arial',
         },
       };
     });
@@ -101,18 +101,18 @@ export function addExecutiveReportSlide(
   slide.background = { color: 'FFFFFF' };
 
   slide.addText(params.title, {
-      x: SLIDE_GEOMETRY.titleX,
-      y: SLIDE_GEOMETRY.titleY,
-      w: SLIDE_GEOMETRY.titleW,
-      h: SLIDE_GEOMETRY.titleH,
-      valign: 'bottom',
-      align: 'left',
-      margin: 0,
-      bold: true,
-      fontSize: 36,
-      color: '333333',
-      fontFace: 'Verdana',
-    });
+    x: SLIDE_GEOMETRY.titleX,
+    y: SLIDE_GEOMETRY.titleY,
+    w: SLIDE_GEOMETRY.titleW,
+    h: SLIDE_GEOMETRY.titleH,
+    valign: 'bottom',
+    align: 'left',
+    margin: 0,
+    bold: true,
+    fontSize: 36,
+    color: '333333',
+    fontFace: 'Arial',
+  });
   slide.addText(params.reportingPeriod, {
     x: SLIDE_GEOMETRY.titleX,
     y: SLIDE_GEOMETRY.periodY,
@@ -120,8 +120,9 @@ export function addExecutiveReportSlide(
     h: SLIDE_GEOMETRY.periodH,
     margin: 0,
     fontSize: 22,
+    bold: false,
     color: '333333',
-    fontFace: 'Verdana',
+    fontFace: 'Arial',
   });
 
   // 2. Chart Image Box (X=0.91", Y=1.63", W=11.54", H=3.90")
@@ -158,7 +159,7 @@ export function createPresentationInstance(): pptxgen {
   // In pptxgenjs, LAYOUT_16x9 is 10" x 5.625", while LAYOUT_WIDE is 13.333" x 7.5".
   // Explicitly set LAYOUT_WIDE to match our 13.333" x 7.5" design coordinate space.
   pres.layout = 'LAYOUT_WIDE';
-  pres.theme = { headFontFace: 'Verdana', bodyFontFace: 'Verdana' };
+  pres.theme = { headFontFace: 'Arial', bodyFontFace: 'Arial' };
   pres.title = 'Tiketa Executive Operations Reports';
   return pres;
 }

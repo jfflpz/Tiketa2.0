@@ -16,6 +16,7 @@ import {
   mapChronicRequestorRows,
 } from './utils/reportMappers';
 import { ReportTabSelector } from './components/ReportTabSelector';
+import { ReportPeriodSelector } from './components/ReportPeriodSelector';
 import { ReportChartCard } from './components/ReportChartCard';
 import { MonthlySlaTable } from './components/tables/MonthlySlaTable';
 import { StaffUtilizationTable } from './components/tables/StaffUtilizationTable';
@@ -34,6 +35,7 @@ export const StandardizedReportsView: React.FC = () => {
   const fetchReportApi = useAppStore((state) => state.fetchReportApi);
   const downloadReportCSVApi = useAppStore((state) => state.downloadReportCSVApi);
   const activeReportData = useAppStore((state) => state.activeReportData);
+  const isFetchingReport = useAppStore((state) => state.isFetchingReport);
   const reportDateRange = useAppStore((state) => state.reportDateRange);
   const reportFilters = useAppStore((state) => state.reportFilters);
 
@@ -104,6 +106,9 @@ export const StandardizedReportsView: React.FC = () => {
         </div>
       </div>
 
+      {/* Synchronized Month/Year Period Selector (F-05) */}
+      <ReportPeriodSelector />
+
       {/* 8-Report Selector Tabs Bar */}
       <ReportTabSelector
         activeReportId={activeReportId}
@@ -154,14 +159,33 @@ export const StandardizedReportsView: React.FC = () => {
 
         <BarcodeDivider count={85} />
 
-        {activeReportId === 1 && <MonthlySlaTable data={report1Data} />}
-        {activeReportId === 2 && <StaffUtilizationTable data={report2Data} />}
-        {activeReportId === 3 && <DeptDemandTable data={report3Data} />}
-        {activeReportId === 4 && <AgingBacklogTable data={report4Data} />}
-        {activeReportId === 5 && <TransitLagTable data={report5Data} />}
-        {activeReportId === 6 && <HardwareVulnerabilityTable data={report6Data} />}
-        {activeReportId === 7 && <PmsComplianceTable data={report7Data} />}
-        {activeReportId === 8 && <ChronicRequestorTable data={report8Data} />}
+        {isFetchingReport && (
+          <div className="py-8 text-center text-xs text-ink-subtle font-mono animate-pulse">
+            Loading report records for {activeTabMeta.title}...
+          </div>
+        )}
+
+        {!isFetchingReport && rawRows.length === 0 && (
+          <div className="py-10 text-center space-y-2">
+            <p className="text-xs font-bold text-zinc-500">No records found for this period</p>
+            <p className="text-[11px] text-zinc-400">
+              No ticket data matched the selected month/year filter for {activeTabMeta.title}.
+            </p>
+          </div>
+        )}
+
+        {!isFetchingReport && rawRows.length > 0 && (
+          <>
+            {activeReportId === 1 && <MonthlySlaTable data={report1Data} />}
+            {activeReportId === 2 && <StaffUtilizationTable data={report2Data} />}
+            {activeReportId === 3 && <DeptDemandTable data={report3Data} />}
+            {activeReportId === 4 && <AgingBacklogTable data={report4Data} />}
+            {activeReportId === 5 && <TransitLagTable data={report5Data} />}
+            {activeReportId === 6 && <HardwareVulnerabilityTable data={report6Data} />}
+            {activeReportId === 7 && <PmsComplianceTable data={report7Data} />}
+            {activeReportId === 8 && <ChronicRequestorTable data={report8Data} />}
+          </>
+        )}
       </div>
 
       {/* Shared PPTX Export Configuration Modal */}

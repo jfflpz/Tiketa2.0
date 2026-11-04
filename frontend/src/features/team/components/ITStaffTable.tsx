@@ -1,3 +1,4 @@
+import { StaffAvatar } from '../../../components/common/StaffAvatar';
 import React from 'react';
 import { MapPin, Briefcase, Trash2, ShieldAlert, Pencil } from 'lucide-react';
 import type { TeamMember } from '../../../types/team';
@@ -46,10 +47,11 @@ export const ITStaffTable: React.FC<ITStaffTableProps> = ({
               <div className="space-y-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
-                    <img
-                      src={member.avatar}
-                      alt={member.name}
-                      className="w-11 h-11 rounded-full border border-[#ECEEF2] bg-zinc-50 shrink-0"
+                    <StaffAvatar
+                      name={member.name}
+                      username={member.username}
+                      avatarUrl={member.avatar}
+                      size="lg"
                     />
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">

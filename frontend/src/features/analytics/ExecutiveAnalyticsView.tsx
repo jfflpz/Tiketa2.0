@@ -15,6 +15,7 @@ import {
   mapChronicRequestorRows,
 } from '../reports/utils/reportMappers';
 import { ReportTabSelector } from '../reports/components/ReportTabSelector';
+import { ReportPeriodSelector } from '../reports/components/ReportPeriodSelector';
 import { MonthlySlaTable } from '../reports/components/tables/MonthlySlaTable';
 import { StaffUtilizationTable } from '../reports/components/tables/StaffUtilizationTable';
 import { DeptDemandTable } from '../reports/components/tables/DeptDemandTable';
@@ -33,17 +34,28 @@ export const ExecutiveAnalyticsView: React.FC = () => {
   const setActiveReportId = useAppStore((state) => state.setActiveReportId);
   const kpis = useAppStore((state) => state.kpis);
   const fetchKPIsApi = useAppStore((state) => state.fetchKPIsApi);
+  const fetchReportApi = useAppStore((state) => state.fetchReportApi);
   const downloadReportCSVApi = useAppStore((state) => state.downloadReportCSVApi);
   const activeReportData = useAppStore((state) => state.activeReportData);
+  const isFetchingReport = useAppStore((state) => state.isFetchingReport);
+  const transitLagData = useAppStore((state) => state.transitLagData);
+  const fetchTransitLagApi = useAppStore((state) => state.fetchTransitLagApi);
   const reportDateRange = useAppStore((state) => state.reportDateRange);
   const reportFilters = useAppStore((state) => state.reportFilters);
 
   const [activeReport, setActiveReport] = useState<number>(1);
   const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
 
+  // Initial and reactive fetch of KPIs, active report data, and transit lag
   useEffect(() => {
     fetchKPIsApi();
-  }, [fetchKPIsApi]);
+    fetchTransitLagApi();
+  }, [fetchKPIsApi, fetchTransitLagApi]);
+
+  useEffect(() => {
+    const slug = REPORT_SLUGS[activeReport] || 'monthly-sla';
+    fetchReportApi(slug);
+  }, [activeReport, fetchReportApi]);
 
   const rawRows = activeReportData || [];
 
@@ -55,6 +67,12 @@ export const ExecutiveAnalyticsView: React.FC = () => {
   const report6Data = useMemo(() => mapHardwareVulnerabilityRows(rawRows), [rawRows]);
   const report7Data = useMemo(() => mapPmsComplianceRows(rawRows), [rawRows]);
   const report8Data = useMemo(() => mapChronicRequestorRows(rawRows), [rawRows]);
+
+  // @spec F-05: Dedicated transit lag data for the turnaround widget
+  const turnaroundWidgetData = useMemo(
+    () => mapTransitLagRows(transitLagData || []),
+    [transitLagData]
+  );
 
   const currentTabMeta = REPORT_TABS.find((r) => r.id === activeReport);
 
@@ -94,6 +112,9 @@ export const ExecutiveAnalyticsView: React.FC = () => {
         </div>
       </div>
 
+      {/* Synchronized Month/Year Period Selector (F-05) */}
+      <ReportPeriodSelector />
+
       {/* 4 Executive Summary Cards (FR-DASH-01: Synchronized with the 8 Standard Reports) */}
       <ExecutiveSummaryKpiCards
         kpis={kpis}
@@ -128,10 +149,10 @@ export const ExecutiveAnalyticsView: React.FC = () => {
 
       {/* Visual Recharts Widgets Row (FR-DASH-02..04) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Widget 1: Turnaround Lag vs Active Labor */}
-        <TurnaroundLagChart data={report5Data} />
+        {/* Widget 1: Turnaround Lag vs Active Labor (Dedicated transit lag stream) */}
+        <TurnaroundLagChart data={turnaroundWidgetData} />
 
-        {/* Widget 2: Hourly Peak Demand Histogram */}
+        {/* Widget 2: Hourly Peak Demand Histogram (Dynamic Asia/Manila 06:00-17:00 window) */}
         <HourlyPeakDemandChart />
       </div>
 
@@ -158,14 +179,33 @@ export const ExecutiveAnalyticsView: React.FC = () => {
 
         <BarcodeDivider count={85} />
 
-        {activeReport === 1 && <MonthlySlaTable data={report1Data} />}
-        {activeReport === 2 && <StaffUtilizationTable data={report2Data} />}
-        {activeReport === 3 && <DeptDemandTable data={report3Data} />}
-        {activeReport === 4 && <AgingBacklogTable data={report4Data} />}
-        {activeReport === 5 && <TransitLagTable data={report5Data} />}
-        {activeReport === 6 && <HardwareVulnerabilityTable data={report6Data} />}
-        {activeReport === 7 && <PmsComplianceTable data={report7Data} />}
-        {activeReport === 8 && <ChronicRequestorTable data={report8Data} />}
+        {isFetchingReport && (
+          <div className="py-8 text-center text-xs text-ink-subtle font-mono animate-pulse">
+            Loading report records for {currentTabMeta?.title}...
+          </div>
+        )}
+
+        {!isFetchingReport && rawRows.length === 0 && (
+          <div className="py-10 text-center space-y-2">
+            <p className="text-xs font-bold text-zinc-500">No records found for this period</p>
+            <p className="text-[11px] text-zinc-400">
+              No ticket data matched the selected month/year filter for {currentTabMeta?.title}.
+            </p>
+          </div>
+        )}
+
+        {!isFetchingReport && rawRows.length > 0 && (
+          <>
+            {activeReport === 1 && <MonthlySlaTable data={report1Data} />}
+            {activeReport === 2 && <StaffUtilizationTable data={report2Data} />}
+            {activeReport === 3 && <DeptDemandTable data={report3Data} />}
+            {activeReport === 4 && <AgingBacklogTable data={report4Data} />}
+            {activeReport === 5 && <TransitLagTable data={report5Data} />}
+            {activeReport === 6 && <HardwareVulnerabilityTable data={report6Data} />}
+            {activeReport === 7 && <PmsComplianceTable data={report7Data} />}
+            {activeReport === 8 && <ChronicRequestorTable data={report8Data} />}
+          </>
+        )}
       </div>
 
       {/* Shared PPTX Export Configuration Modal (Defaults to local activeReport) */}

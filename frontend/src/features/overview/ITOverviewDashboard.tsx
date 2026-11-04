@@ -233,9 +233,9 @@ export const ITOverviewDashboard: React.FC = () => {
                     <div
                       key={t.id}
                       onClick={() => setSelectedTicketId(t.id)}
-                      className="flex items-center justify-between gap-2 cursor-pointer group hover:bg-zinc-50/80 p-1.5 -mx-1.5 rounded-xl transition-colors"
+                      className="flex items-center justify-between gap-2.5 cursor-pointer group hover:bg-zinc-50/80 p-1.5 -mx-1.5 rounded-xl transition-colors"
                     >
-                      <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
                         <div
                           className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-mono font-bold shrink-0 ${
                             badgeColors[i % badgeColors.length]
@@ -243,16 +243,23 @@ export const ITOverviewDashboard: React.FC = () => {
                         >
                           {t.locationCode}
                         </div>
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold text-ink truncate group-hover:text-orange-600 transition-colors">
-                            {t.ticketCode} • {t.task}
-                          </p>
-                          <p className="text-[11px] text-zinc-400 truncate">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="font-mono text-[10px] font-bold px-1.5 py-0.2 rounded bg-zinc-900 text-white shrink-0 whitespace-nowrap">
+                              {t.ticketCode}
+                            </span>
+                            <p className="text-xs font-bold text-ink truncate group-hover:text-orange-600 transition-colors">
+                              {t.task}
+                            </p>
+                          </div>
+                          <p className="text-[11px] text-zinc-400 truncate mt-0.5">
                             {t.location} • {t.requestor}
                           </p>
                         </div>
                       </div>
-                      <StatusBadge status={t.status} size="sm" />
+                      <div className="shrink-0">
+                        <StatusBadge status={t.status} size="sm" />
+                      </div>
                     </div>
                   );
                 }

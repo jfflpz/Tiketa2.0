@@ -287,7 +287,7 @@ export const ITWorkbenchBoardView: React.FC = () => {
                   <div className="space-y-3">
                     {/* Card Top: Code, Mode, Priority */}
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-zinc-900 text-white group-hover:bg-orange-600 transition-colors">
+                      <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-zinc-900 text-white group-hover:bg-orange-600 transition-colors shrink-0 whitespace-nowrap">
                         {ticket.ticketCode}
                       </span>
                       <div className="flex items-center gap-1.5">
@@ -385,7 +385,7 @@ export const ITWorkbenchBoardView: React.FC = () => {
                 >
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="font-mono text-xs font-bold px-1.5 py-0.5 rounded bg-zinc-900 text-white">
+                      <span className="font-mono text-xs font-bold px-1.5 py-0.5 rounded bg-zinc-900 text-white shrink-0 whitespace-nowrap">
                         {ticket.ticketCode}
                       </span>
                       <span

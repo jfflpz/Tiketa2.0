@@ -27,13 +27,12 @@ export const Sidebar: React.FC = () => {
   const isSupervisor = role === 'supervisor';
   const isIntern = role === 'intern';
   const isIT = role === 'it';
-  const isAnalyst = role === 'analyst';
 
   // Badge count for active tickets
   const activeTicketsCount = tickets.filter((t) => t.status !== 'CLSD').length;
 
   const handleBrandClick = () => {
-    if (isAdmin || isSupervisor || isAnalyst) {
+    if (isAdmin || isSupervisor) {
       setActiveView('analytics');
     } else if (isIntern) {
       setActiveView('workbench');
@@ -48,8 +47,6 @@ export const Sidebar: React.FC = () => {
         return 'ADMIN';
       case 'supervisor':
         return 'SUPERVISOR';
-      case 'analyst':
-        return 'ANALYST';
       case 'intern':
         return 'INTERN';
       case 'it':
@@ -211,10 +208,10 @@ export const Sidebar: React.FC = () => {
         )}
 
         {/* ============================================================
-            TIER 3: SUPERVISOR & ANALYST NAVIGATION (role === 'supervisor' | 'analyst')
+            TIER 3: SUPERVISOR NAVIGATION (role === 'supervisor')
             Executive analytics, 8 standard reports, IT team & fleet logs
            ============================================================ */}
-        {(isSupervisor || isAnalyst) && (
+        {isSupervisor && (
           <>
             {/* CATEGORY 1: OPERATIONAL ANALYTICS */}
             <div className="space-y-1.5">
