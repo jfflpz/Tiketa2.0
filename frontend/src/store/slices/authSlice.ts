@@ -11,8 +11,6 @@ const getStaffTitle = (role: StaffRole): string => {
       return 'IT Administrator';
     case 'supervisor':
       return 'IT Helpdesk Supervisor';
-    case 'analyst':
-      return 'IT Systems Analyst';
     case 'intern':
       return 'IT Intern';
     case 'it':

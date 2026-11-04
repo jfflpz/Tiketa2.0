@@ -1,7 +1,7 @@
 // @spec UI-TEAM-01: Team, Roles, and Dispatch Models (Matching Reference Screenshot)
 export type SystemRole = 'intern' | 'it' | 'admin' | 'supervisor';
 
-export type StaffRole = 'intern' | 'it' | 'supervisor' | 'admin' | 'analyst';
+export type StaffRole = 'intern' | 'it' | 'supervisor' | 'admin';
 
 export type TeamMemberStatus = 'active' | 'away' | 'offline' | 'pending';
 

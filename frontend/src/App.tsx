@@ -28,7 +28,6 @@ export const ROLE_ALLOWED_VIEWS: Record<StaffRole, ActiveView[]> = {
   intern: ['overview', 'workbench', 'notes', 'joblogs'],
   it: ['overview', 'tickets', 'workbench', 'notes', 'joblogs', 'terminals'],
   supervisor: ['overview', 'analytics', 'reports', 'team', 'joblogs'],
-  analyst: ['overview', 'analytics', 'reports', 'team', 'joblogs', 'terminals'],
   admin: [
     'overview',
     'tickets',
@@ -45,12 +44,12 @@ export const ROLE_ALLOWED_VIEWS: Record<StaffRole, ActiveView[]> = {
 const getDefaultHomeForRole = (role: StaffRole): ActiveView => {
   switch (role) {
     case 'supervisor':
-    case 'analyst':
       return 'analytics';
     case 'intern':
       return 'workbench';
-    case 'admin':
     case 'it':
+      return 'tickets';
+    case 'admin':
     default:
       return 'overview';
   }
