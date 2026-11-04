@@ -1,5 +1,5 @@
 import io
-import uuid
+
 import pytest
 from httpx import AsyncClient
 from PIL import Image

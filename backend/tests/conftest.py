@@ -1,3 +1,4 @@
+import asyncio
 import os
 from pathlib import Path
 
@@ -8,6 +9,8 @@ from alembic import command
 from alembic.config import Config
 from sqlalchemy import text
 from sqlalchemy.engine import make_url
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.pool import NullPool
 
 # No SQLite fallback and no implicit use of a developer .env database.
 url = os.environ.get("TIKETA_TEST_DATABASE_URL", "")
@@ -34,9 +37,6 @@ from app.db.session import AsyncSessionLocal, engine  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models import User  # noqa: E402
 from scripts.seed_dictionaries import seed  # noqa: E402
-import asyncio
-from sqlalchemy.ext.asyncio import create_async_engine
-from sqlalchemy.pool import NullPool
 
 
 @pytest.fixture(scope="session", autouse=True)

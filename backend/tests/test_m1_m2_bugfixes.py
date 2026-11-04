@@ -1,10 +1,9 @@
-from app.core.security import issue_match_token
 import re
 
 import pytest
 from sqlalchemy import select
 
-from app.core.security import decrypt
+from app.core.security import decrypt, issue_match_token
 from app.db.session import AsyncSessionLocal
 from app.models import Employee, Ticket, TicketTechnician, User
 

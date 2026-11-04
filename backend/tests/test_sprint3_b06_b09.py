@@ -1,9 +1,8 @@
-from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
+
 import pandas as pd
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import select
 
 from app.core.config import settings
 from app.db.session import AsyncSessionLocal
