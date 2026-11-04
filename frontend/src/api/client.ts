@@ -411,12 +411,26 @@ export const ticketsApi = {
     },
     getQueue: async (params?: {
     status?: string;
+    technician_id?: string;
     offset?: number;
     limit?: number;
     location_id?: string;
     order?: 'asc' | 'desc';
     }) => {
     const res = await apiClient.get<StaffTicketResponse[]>('/tickets', { params });
+    return res.data;
+    },
+    getHistory: async (params?: {
+    technician_id?: string;
+    location_id?: string;
+    status?: string;
+    offset?: number;
+    limit?: number;
+    order?: 'asc' | 'desc';
+    }) => {
+    const res = await apiClient.get<StaffTicketResponse[]>('/tickets', {
+        params: { status: 'ALL', ...params },
+    });
     return res.data;
     },
     getTicket: async (ticketId: string): Promise<StaffTicketResponse> => {

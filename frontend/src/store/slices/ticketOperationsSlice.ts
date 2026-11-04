@@ -315,32 +315,37 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
       }
 
       if (Array.isArray(comments)) {
-        const serverMessages: TicketChatMessage[] = comments.map((c) => ({
-          id: c.id,
-          senderRole: c.is_internal ? 'it' : (c.sender_role || 'it'),
-          senderName: c.sender_name || (c.is_internal ? '🔒 Internal IT Note' : 'IT Support'),
-          message: c.body,
-          isInternal: Boolean(c.is_internal),
-          timestamp: c.created_at
-            ? new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            : '',
-        }));
+        // @spec F-07: Map canonical author_name / author_role / is_internal / created_at; employee messages must not be presented as IT replies
+        const serverMessages: TicketChatMessage[] = comments.map((c) => {
+          const isInternal = Boolean(c.is_internal);
+          const authorRole = c.author_role || c.sender_role;
+          const isEmployee = authorRole === 'employee';
+          const role: 'it' | 'employee' = isInternal ? 'it' : (isEmployee ? 'employee' : 'it');
+          const name = c.author_name || c.sender_name || (isInternal ? '🔒 Internal IT Note' : (isEmployee ? 'Employee' : 'IT Support'));
+          return {
+            id: c.id,
+            senderRole: role,
+            senderName: name,
+            message: c.body,
+            isInternal,
+            timestamp: c.created_at
+              ? new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              : '',
+          };
+        });
 
         set((state) =>
           updateTicketInState(state, ticketId, (t) => {
             const currentMsgs = t.messages ?? [];
             const serverIdSet = new Set(serverMessages.map((m) => m.id));
-            // Keep pending or local optimistic messages that are not yet in server comments
+            // @spec F-07: Merge by server UUID; keep successful local sends until acknowledged by a server ID.
+            // Do not deduplicate distinct messages solely because their text matches.
             const pendingOrLocal = currentMsgs.filter(
-              (m) => m.id.startsWith('temp-msg-') || !serverIdSet.has(m.id)
-            );
-            // Deduplicate: avoid duplicating messages whose exact text is already in server comments
-            const remainingLocal = pendingOrLocal.filter(
-              (p) => !serverMessages.some((s) => s.message === p.message && s.isInternal === p.isInternal)
+              (m) => m.id.startsWith('temp-msg-') && !serverIdSet.has(m.id)
             );
             return {
               ...t,
-              messages: [...serverMessages, ...remainingLocal],
+              messages: [...serverMessages, ...pendingOrLocal],
             };
           })
         );
