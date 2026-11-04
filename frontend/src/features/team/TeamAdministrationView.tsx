@@ -42,6 +42,8 @@ export const TeamAdministrationView: React.FC = () => {
   const [employeeSearch, setEmployeeSearch] = useState('');
   const [employeeCompanyFilter, setEmployeeCompanyFilter] = useState('ALL');
   const [employeeDeptFilter, setEmployeeDeptFilter] = useState('ALL');
+  const [employeeLocationFilter, setEmployeeLocationFilter] = useState('ALL');
+  const [employeeStatusFilter, setEmployeeStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
   const [itSearch, setItSearch] = useState('');
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
 
@@ -79,11 +81,42 @@ export const TeamAdministrationView: React.FC = () => {
     return Array.from(set).sort();
   }, [verifiedEmployeesList]);
 
+  const uniqueLocations = useMemo(() => {
+    const set = new Set<string>();
+    verifiedEmployeesList.forEach((e) => { if (e.location_name) set.add(e.location_name); });
+    return Array.from(set).sort();
+  }, [verifiedEmployeesList]);
+
+  const hasActiveEmployeeFilters = Boolean(
+    employeeSearch.trim() ||
+    employeeCompanyFilter !== 'ALL' ||
+    employeeDeptFilter !== 'ALL' ||
+    employeeLocationFilter !== 'ALL' ||
+    employeeStatusFilter !== 'ALL'
+  );
+
+  const handleResetEmployeeFilters = () => {
+    setEmployeeSearch('');
+    setEmployeeCompanyFilter('ALL');
+    setEmployeeDeptFilter('ALL');
+    setEmployeeLocationFilter('ALL');
+    setEmployeeStatusFilter('ALL');
+  };
+
   const filteredEmployees = verifiedEmployeesList.filter((e) => {
     if (employeeCompanyFilter !== 'ALL' && e.company_name !== employeeCompanyFilter) {
       return false;
     }
     if (employeeDeptFilter !== 'ALL' && e.department_name !== employeeDeptFilter) {
+      return false;
+    }
+    if (employeeLocationFilter !== 'ALL' && e.location_name !== employeeLocationFilter) {
+      return false;
+    }
+    if (employeeStatusFilter === 'ACTIVE' && e.is_active === false) {
+      return false;
+    }
+    if (employeeStatusFilter === 'INACTIVE' && e.is_active !== false) {
       return false;
     }
     const q = employeeSearch.toLowerCase().trim();
@@ -332,8 +365,15 @@ export const TeamAdministrationView: React.FC = () => {
               onCompanyFilterChange={setEmployeeCompanyFilter}
               departmentFilter={employeeDeptFilter}
               onDepartmentFilterChange={setEmployeeDeptFilter}
+              locationFilter={employeeLocationFilter}
+              onLocationFilterChange={setEmployeeLocationFilter}
+              statusFilter={employeeStatusFilter}
+              onStatusFilterChange={setEmployeeStatusFilter}
               companiesList={uniqueCompanies}
               departmentsList={uniqueDepartments}
+              locationsList={uniqueLocations}
+              hasActiveFilters={hasActiveEmployeeFilters}
+              onResetFilters={handleResetEmployeeFilters}
             />
           )}
 

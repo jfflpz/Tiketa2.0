@@ -38,12 +38,7 @@ const MY_PERSONAL_MONTHLY_OUTPUT = [
   { month: 'Dec', resolved: 21, remote: 14, onsite: 7 },
 ];
 
-const MY_MODE_DONUT_DATA = [
-  { name: 'My Remote (AnyDesk)', value: 18, color: '#F97316' },
-  { name: 'My On-Site Repairs', value: 11, color: '#FB923C' },
-  { name: 'Terminal Maintenance', value: 6, color: '#FDBA74' },
-  { name: 'Saved SOP Guides', value: 5, color: '#E4E4E7' },
-];
+
 
 const MY_WEEKLY_HOURS_BARS = [
   { day: 'S', target: 6, logged: 5.2 },
@@ -83,27 +78,76 @@ export const ITOverviewDashboard: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Personal KPI calculations for the logged-in IT Specialist
-  const myTickets = tickets.filter(
-    (t) =>
-      t.workedBy?.toLowerCase().includes(techFirstName.toLowerCase()) ||
-      t.workedBy === techName
-  );
+  // Personal KPI calculations for the logged-in IT Specialist (Strict UUID matching first)
+  const myTickets = React.useMemo(() => {
+    return tickets.filter(
+      (t) =>
+        (currentUser?.id && (t.assigned_tech_id === currentUser.id || t.workedById === currentUser.id)) ||
+        (techName && t.workedBy === techName) ||
+        (techFirstName && t.workedBy?.toLowerCase().includes(techFirstName.toLowerCase()))
+    );
+  }, [tickets, currentUser?.id, techName, techFirstName]);
+
   const myActiveRepairs = myTickets.filter((t) => t.status === 'PROG');
-  const myResolvedCount =
-    myTickets.filter((t) => t.status === 'RESL' || t.status === 'CLSD').length + 16;
+  // F-05: Real completed counts from authorized history, zero hardcoded +16 offset
+  const myResolvedCount = myTickets.filter((t) => t.status === 'RESL' || t.status === 'CLSD').length;
   const openPoolCount = tickets.filter((t) => t.status === 'OPEN').length;
 
-  // Option C: Intuitive Ticket Resolution Rate (Simple completed vs total ratio)
+  // Real duration calculations from closed/resolved tickets
+  const resolvedWithDuration = myTickets.filter(
+    (t) => (t.status === 'RESL' || t.status === 'CLSD') && typeof t.duration === 'number' && t.duration > 0
+  );
+  const avgDurationHrs = resolvedWithDuration.length > 0
+    ? resolvedWithDuration.reduce((acc, t) => acc + (t.duration || 0), 0) / resolvedWithDuration.length
+    : null;
+  const avgDurationDisplay = avgDurationHrs !== null ? `${avgDurationHrs.toFixed(2)} hrs` : '0.00 hrs';
+  const avgDurationMinutes = avgDurationHrs !== null ? `${Math.round(avgDurationHrs * 60)} mins` : '0 mins';
+
+  // Dynamic Mode breakdown from actual authorized tickets
+  const modeCounts = React.useMemo(() => {
+    let remote = 0;
+    let onsite = 0;
+    let other = 0;
+    myTickets.forEach((t) => {
+      const m = t.mode?.toLowerCase() || '';
+      if (m.includes('rem') || m.includes('remote') || m.includes('anydesk')) {
+        remote++;
+      } else if (m.includes('site') || m.includes('on-site') || m.includes('onsite')) {
+        onsite++;
+      } else {
+        other++;
+      }
+    });
+    return { remote, onsite, other, total: myTickets.length };
+  }, [myTickets]);
+
+  const dynamicModeDonutData = React.useMemo(() => {
+    if (modeCounts.total === 0) {
+      return [{ name: 'No Ticket Data', value: 1, color: '#E4E4E7' }];
+    }
+    const data = [];
+    if (modeCounts.remote > 0) {
+      data.push({ name: 'Remote (AnyDesk)', value: modeCounts.remote, color: '#F97316' });
+    }
+    if (modeCounts.onsite > 0) {
+      data.push({ name: 'On-Site Repairs', value: modeCounts.onsite, color: '#FB923C' });
+    }
+    if (modeCounts.other > 0) {
+      data.push({ name: 'General Support', value: modeCounts.other, color: '#FDBA74' });
+    }
+    return data;
+  }, [modeCounts]);
+
+  // Real Ticket Resolution Rate without fake 40/36 fallbacks or empty 100%
   const totalFleetFromTickets = tickets.length;
   const completedFleetFromTickets = tickets.filter(
     (t) => t.status === 'RESL' || t.status === 'CLSD'
   ).length;
 
-  const totalCount = kpis?.total_tickets ?? (totalFleetFromTickets > 0 ? totalFleetFromTickets : 40);
-  const completedCount = kpis?.completed ?? (totalFleetFromTickets > 0 ? completedFleetFromTickets : 36);
+  const totalCount = kpis?.total_tickets ?? totalFleetFromTickets;
+  const completedCount = kpis?.completed ?? completedFleetFromTickets;
   const resolutionPercentage =
-    totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 100;
+    totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
   const strokeOffset =
     2 * Math.PI * 32 * (1 - Math.min(Math.max(resolutionPercentage, 0), 100) / 100);
 
@@ -418,7 +462,7 @@ export const ITOverviewDashboard: React.FC = () => {
                       My Avg. Repair Speed
                     </p>
                     <h3 className="text-2xl font-extrabold text-ink mt-1 tabular-nums">
-                      25 mins
+                      {avgDurationMinutes}
                     </h3>
                   </div>
                   <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200/60 flex items-center justify-center shrink-0">
@@ -546,13 +590,13 @@ export const ITOverviewDashboard: React.FC = () => {
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={MY_MODE_DONUT_DATA}
+                      data={dynamicModeDonutData}
                       innerRadius={52}
                       outerRadius={72}
                       paddingAngle={4}
                       dataKey="value"
                     >
-                      {MY_MODE_DONUT_DATA.map((entry, index) => (
+                      {dynamicModeDonutData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
@@ -569,7 +613,7 @@ export const ITOverviewDashboard: React.FC = () => {
                 </ResponsiveContainer>
                 <div className="absolute flex flex-col items-center justify-center pointer-events-none">
                   <span className="text-xl font-extrabold text-ink tabular-nums">
-                    35
+                    {modeCounts.total}
                   </span>
                   <span className="text-[10px] text-zinc-400">Total Logged</span>
                 </div>
@@ -577,7 +621,7 @@ export const ITOverviewDashboard: React.FC = () => {
 
               {/* Donut Legend */}
               <div className="space-y-2 pt-1 border-t border-[#ECEEF2]">
-                {MY_MODE_DONUT_DATA.map((item, idx) => (
+                {dynamicModeDonutData.map((item, idx) => (
                   <div key={idx} className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2">
                       <span
@@ -587,7 +631,7 @@ export const ITOverviewDashboard: React.FC = () => {
                       <span className="text-zinc-600 font-medium">{item.name}</span>
                     </div>
                     <span className="font-bold text-ink tabular-nums">
-                      {item.value} ({Math.round((item.value / 40) * 100)}%)
+                      {item.value} ({modeCounts.total > 0 ? Math.round((item.value / modeCounts.total) * 100) : 0}%)
                     </span>
                   </div>
                 ))}
@@ -615,7 +659,7 @@ export const ITOverviewDashboard: React.FC = () => {
               <div className="flex items-end justify-between gap-3 pt-1">
                 <div className="space-y-1">
                   <span className="text-3xl font-extrabold text-ink tabular-nums block">
-                    0.42 hrs
+                    {avgDurationDisplay}
                   </span>
                   <p className="text-[11px] text-zinc-400 font-medium">
                     Avg. Repair Duration (#11)
