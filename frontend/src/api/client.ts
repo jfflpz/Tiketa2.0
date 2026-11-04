@@ -274,6 +274,8 @@ export interface ServerDictionaryItem {
   id: string;
   code: string;
   name: string;
+  address?: string;
+  is_active?: boolean;
 }
 
 export interface ServerDictionaries {
@@ -622,6 +624,8 @@ export interface DictionaryItem {
     id: string;
     code: string;
     name: string;
+    address?: string;
+    is_active?: boolean;
 }
 
 export interface DictionariesResponse {
@@ -695,6 +699,45 @@ export const adminApi = {
     },
     getDictionaries: async (): Promise<DictionariesResponse> => {
         const res = await apiClient.get<DictionariesResponse>('/dictionaries');
+        return res.data;
+    },
+    createLocation: async (payload: {
+        code: string;
+        name: string;
+        address?: string;
+    }): Promise<ServerDictionaryItem> => {
+        const res = await apiClient.post<ServerDictionaryItem>('/admin/locations', payload);
+        return res.data;
+    },
+    updateLocation: async (
+        id: string,
+        payload: { name?: string; address?: string; is_active?: boolean }
+    ): Promise<ServerDictionaryItem> => {
+        const res = await apiClient.patch<ServerDictionaryItem>(`/admin/locations/${id}`, payload);
+        return res.data;
+    },
+    createDepartment: async (payload: {
+        code: string;
+        name: string;
+    }): Promise<ServerDictionaryItem> => {
+        const res = await apiClient.post<ServerDictionaryItem>('/admin/departments', payload);
+        return res.data;
+    },
+    updateDepartment: async (
+        id: string,
+        payload: { name?: string; is_active?: boolean }
+    ): Promise<ServerDictionaryItem> => {
+        const res = await apiClient.patch<ServerDictionaryItem>(`/admin/departments/${id}`, payload);
+        return res.data;
+    },
+    createLocationDepartment: async (payload: {
+        location_id: string;
+        department_id: string;
+    }): Promise<{ location_id: string; department_id: string }> => {
+        const res = await apiClient.post<{ location_id: string; department_id: string }>(
+            '/admin/location-departments',
+            payload
+        );
         return res.data;
     },
 };

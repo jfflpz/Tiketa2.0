@@ -148,7 +148,11 @@ export const KioskIntakeForm: React.FC<KioskIntakeFormProps> = ({
             </h3>
           </div>
           <span className="text-[11px] text-ink-subtle">
-            Terminal: {activeHubName}
+            {isMatched && employeeProfile ? (
+            <strong className="text-emerald-700">Official Station: {employeeProfile.location}</strong>
+          ) : (
+            `Terminal: ${activeHubName}`
+          )}
           </span>
         </div>
 
@@ -289,6 +293,20 @@ export const KioskIntakeForm: React.FC<KioskIntakeFormProps> = ({
                 </span>
                 <strong className="text-ink block truncate">{employeeProfile.department}</strong>
               </div>
+            </div>
+
+            {/* Confirmed Official Intake Station */}
+            <div className="p-3 bg-white border border-emerald-300 rounded-xl flex items-center justify-between gap-3 shadow-xs">
+              <div className="flex items-center gap-2 text-xs text-emerald-950">
+                <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span className="font-bold">Confirmed Official Station:</span>
+                <span className="font-mono font-bold text-xs px-2 py-0.5 rounded bg-emerald-100 text-emerald-900 border border-emerald-300">
+                  {employeeProfile.location}
+                </span>
+              </div>
+              <span className="text-[10px] font-semibold text-emerald-700 hidden sm:inline">
+                Strictly bound to personnel record
+              </span>
             </div>
 
             <p className="text-[11px] text-emerald-800/80 leading-normal">

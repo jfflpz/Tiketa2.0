@@ -163,7 +163,7 @@ describe('kiosk employee record matching and intake', () => {
     await screen.findByText('Employee details matched.');
     expect(screen.getByText('Maria Santos')).toBeTruthy();
     expect(screen.getByText('Pangasinan Five Star Bus Co.')).toBeTruthy();
-    expect(screen.getByText('Pasay Terminal')).toBeTruthy();
+    expect(screen.getAllByText('Pasay Terminal')[0]).toBeTruthy();
 
     // Submit button should now be unlocked
     const submitBtn = screen.getByRole('button', { name: /Submit Help Request/i });

@@ -9,13 +9,16 @@ import {
   AlertCircle,
   Flame,
   AlertTriangle,
+  Settings2,
 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { TerminalHubDetailModal } from './TerminalHubDetailModal';
+import { TerminalAdminConfigModal } from './components/TerminalAdminConfigModal';
 import { locationApi, type HubSummaryOut } from '../../api/client';
 
 export const TerminalHubsView: React.FC = () => {
+  const currentUser = useAppStore((state) => state.currentUser);
   const tickets = useAppStore((state) => state.tickets);
   const setSelectedTicketId = useAppStore((state) => state.setSelectedTicketId);
   const fetchQueueApi = useAppStore((state) => state.fetchQueueApi);
@@ -29,6 +32,7 @@ export const TerminalHubsView: React.FC = () => {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [hubSearch, setHubSearch] = useState('');
   const [selectedHubCode, setSelectedHubCode] = useState<string | null>(null);
+  const [isAdminConfigOpen, setIsAdminConfigOpen] = useState(false);
 
   // Link selectedHub dynamically to the latest hubs data
   const selectedHub = hubs.find((h) => h.code === selectedHubCode) ?? null;
@@ -141,6 +145,19 @@ export const TerminalHubsView: React.FC = () => {
             <span className="text-[11px] text-zinc-400 hidden md:inline">
               Updated {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
+          )}
+
+          {/* Admin Station Administration Button */}
+          {currentUser?.role === 'admin' && (
+            <button
+              type="button"
+              onClick={() => setIsAdminConfigOpen(true)}
+              className="py-2 px-3 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-sm transition-colors press-fx"
+              title="Configure Terminal Hubs & Departments"
+            >
+              <Settings2 className="w-3.5 h-3.5" />
+              <span>Station Administration</span>
+            </button>
           )}
 
           {/* Refresh Button */}
@@ -393,6 +410,13 @@ export const TerminalHubsView: React.FC = () => {
           })}
         </div>
       )}
+
+      {/* Terminal Admin Configuration Modal */}
+      <TerminalAdminConfigModal
+        isOpen={isAdminConfigOpen}
+        onClose={() => setIsAdminConfigOpen(false)}
+        onRefreshHubs={() => fetchHubs(true)}
+      />
 
       {/* Terminal Hub Details Modal */}
       {selectedHub && (
