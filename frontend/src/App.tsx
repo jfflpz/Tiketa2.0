@@ -111,8 +111,8 @@ export default function App() {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-[#F4F6F9]">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-zinc-900 text-white flex items-center justify-center shadow-lg animate-pulse">
-            <span className="text-orange-500 font-bold text-lg font-mono">T</span>
+          <div className="w-12 h-12 rounded-2xl flex items-center justify-center animate-pulse">
+            <img src="/logo-mark.png" alt="Tiketa" className="w-12 h-12 object-contain" />
           </div>
           <div className="flex items-center gap-2 text-xs font-semibold text-zinc-500">
             <div className="w-2 h-2 rounded-full bg-orange-500 animate-ping" />

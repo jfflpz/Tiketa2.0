@@ -44,6 +44,7 @@ export const isPublicEndpoint = (url?: string): boolean => {
     return (
         url.startsWith('/tickets/submit') ||
         url.startsWith('/tickets/track') ||
+        url.startsWith('/tickets/my-tickets') ||
         url.startsWith('/tickets/public') ||
         url.startsWith('/employees/lookup') ||
         url.startsWith('/employees/match') ||
