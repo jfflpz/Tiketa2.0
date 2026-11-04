@@ -32,13 +32,11 @@ export const SLIDE_GEOMETRY = {
 export function validateSlideElementBounds(): { fits: boolean; maxRight: number; maxBottom: number } {
   const maxRight = Math.max(
     SLIDE_GEOMETRY.titleX + SLIDE_GEOMETRY.titleW,
-    SLIDE_GEOMETRY.periodX + SLIDE_GEOMETRY.periodW,
     SLIDE_GEOMETRY.chartX + SLIDE_GEOMETRY.chartW,
     SLIDE_GEOMETRY.explX + SLIDE_GEOMETRY.explW
   );
   const maxBottom = Math.max(
     SLIDE_GEOMETRY.titleY + SLIDE_GEOMETRY.titleH,
-    SLIDE_GEOMETRY.periodY + SLIDE_GEOMETRY.periodH,
     SLIDE_GEOMETRY.chartY + SLIDE_GEOMETRY.chartH,
     SLIDE_GEOMETRY.explY + SLIDE_GEOMETRY.explH
   );
@@ -53,7 +51,6 @@ export function validateSlideElementBounds(): { fits: boolean; maxRight: number;
 /**
  * Parses markdown bold (**text**) into pptxgenjs TextItem objects
  * so key findings are rendered in bold while the body is regular text.
- * @spec F-06: Arial throughout native slide text with 18pt commentary.
  */
 function parseMarkdownToTextItems(md: string): pptxgen.TextProps[] {
   const parts = md.split(/(\*\*.*?\*\*)/g);
@@ -67,7 +64,7 @@ function parseMarkdownToTextItems(md: string): pptxgen.TextProps[] {
             bold: true,
             fontSize: 18,
             color: '333333',
-            fontFace: 'Verdana',
+            fontFace: 'Arial',
           },
         };
       }
@@ -77,7 +74,7 @@ function parseMarkdownToTextItems(md: string): pptxgen.TextProps[] {
           bold: false,
           fontSize: 18,
           color: '333333',
-          fontFace: 'Verdana',
+          fontFace: 'Arial',
         },
       };
     });
@@ -104,18 +101,18 @@ export function addExecutiveReportSlide(
   slide.background = { color: 'FFFFFF' };
 
   slide.addText(params.title, {
-      x: SLIDE_GEOMETRY.titleX,
-      y: SLIDE_GEOMETRY.titleY,
-      w: SLIDE_GEOMETRY.titleW,
-      h: SLIDE_GEOMETRY.titleH,
-      valign: 'bottom',
-      align: 'left',
-      margin: 0,
-      bold: true,
-      fontSize: 36,
-      color: '333333',
-      fontFace: 'Verdana',
-    });
+    x: SLIDE_GEOMETRY.titleX,
+    y: SLIDE_GEOMETRY.titleY,
+    w: SLIDE_GEOMETRY.titleW,
+    h: SLIDE_GEOMETRY.titleH,
+    valign: 'bottom',
+    align: 'left',
+    margin: 0,
+    bold: true,
+    fontSize: 36,
+    color: '333333',
+    fontFace: 'Arial',
+  });
   slide.addText(params.reportingPeriod, {
     x: SLIDE_GEOMETRY.titleX,
     y: SLIDE_GEOMETRY.periodY,
@@ -123,11 +120,12 @@ export function addExecutiveReportSlide(
     h: SLIDE_GEOMETRY.periodH,
     margin: 0,
     fontSize: 22,
+    bold: false,
     color: '333333',
-    fontFace: 'Verdana',
+    fontFace: 'Arial',
   });
 
-  // 3. Chart Image Box (X=0.91", Y=1.63", W=11.54", H=3.90")
+  // 2. Chart Image Box (X=0.91", Y=1.63", W=11.54", H=3.90")
   // Chart is rendered at exact 2.96:1 native proportion with 1pt border #7F7F7F
   slide.addImage({
     data: params.chartImageBase64,
@@ -137,7 +135,7 @@ export function addExecutiveReportSlide(
     h: SLIDE_GEOMETRY.chartH,
   });
 
-  // 4. Explanatory Text Box (X=0.91", Y=5.75", W=11.54", H=1.30") with at least 0.22" separation
+  // 3. Explanatory Text Box (X=0.91", Y=5.75", W=11.54", H=1.30")
   const textItems = parseMarkdownToTextItems(params.explanationMarkdown);
   slide.addText(textItems, {
     x: SLIDE_GEOMETRY.explX,
@@ -147,7 +145,7 @@ export function addExecutiveReportSlide(
     valign: 'top',
     align: 'left',
     margin: 0,
-    lineSpacingMultiple: 1.15,
+    lineSpacingMultiple: 1.25,
   });
 
   return slide;
@@ -161,7 +159,7 @@ export function createPresentationInstance(): pptxgen {
   // In pptxgenjs, LAYOUT_16x9 is 10" x 5.625", while LAYOUT_WIDE is 13.333" x 7.5".
   // Explicitly set LAYOUT_WIDE to match our 13.333" x 7.5" design coordinate space.
   pres.layout = 'LAYOUT_WIDE';
-  pres.theme = { headFontFace: 'Verdana', bodyFontFace: 'Verdana' };
+  pres.theme = { headFontFace: 'Arial', bodyFontFace: 'Arial' };
   pres.title = 'Tiketa Executive Operations Reports';
   return pres;
 }

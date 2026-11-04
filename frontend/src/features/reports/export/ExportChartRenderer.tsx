@@ -140,16 +140,16 @@ export const ExportChartRenderer: React.FC<ExportChartRendererProps> = ({ report
       {reportId === 1 && (
         <div style={{ width: '100%', height: '100%' }}>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data as MonthlySlaRow[]} margin={{ top: 35, right: 30, left: 20, bottom: 85 }}>
+            <BarChart data={data as MonthlySlaRow[]} margin={{ top: 35, right: 30, left: 20, bottom: 30 }}>
               <CartesianGrid stroke={COLOR_GRID} vertical={false} />
               <XAxis dataKey="month" height={100} tick={<WrappedTick />} interval={0} stroke={COLOR_TEXT} />
               <YAxis tick={{ fill: COLOR_TEXT, fontSize: 18 }} stroke={COLOR_TEXT} />
               <Legend verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: 12, fontSize: '18px' }} />
               <Bar dataKey="totalRequests" name="Total Requests" fill={COLOR_BLUE} radius={[0, 0, 0, 0]} isAnimationActive={false}>
-                <LabelList dataKey="totalRequests" position="top" fill={COLOR_TEXT} fontSize={22} />
+                <LabelList dataKey="totalRequests" position="top" fill={COLOR_TEXT} fontSize={18} />
               </Bar>
               <Bar dataKey="completed" name="Completed Tickets" fill={COLOR_ORANGE} radius={[0, 0, 0, 0]} isAnimationActive={false}>
-                <LabelList dataKey="completed" position="top" fill={COLOR_TEXT} fontSize={22} />
+                <LabelList dataKey="completed" position="top" fill={COLOR_TEXT} fontSize={18} />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
@@ -465,18 +465,18 @@ export const ExportChartRenderer: React.FC<ExportChartRendererProps> = ({ report
           .slice(0, 10)
           .map((r) => ({
             ...r,
-            ticketLabel: `${r.location} • ${r.taskDescription.slice(0, 18)}`,
+            ticketLabel: `${r.location} • ${r.taskDescription.slice(0, 14)}`,
           }));
         return (
           <div style={{ width: '100%', height: '100%' }}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={top10} margin={{ top: 35, right: 30, left: 20, bottom: 85 }}>
+              <BarChart data={top10} margin={{ top: 35, right: 30, left: 20, bottom: 30 }}>
                 <CartesianGrid stroke={COLOR_GRID} vertical={false} />
                 <XAxis dataKey="ticketLabel" height={100} tick={<WrappedTick />} interval={0} />
                 <YAxis tick={{ fill: COLOR_TEXT, fontSize: 18 }} stroke={COLOR_TEXT} label={{ value: 'Days Stagnant', angle: -90, position: 'insideLeft', fill: COLOR_TEXT, fontSize: 18 }} />
                 <Legend verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: 12, fontSize: '18px' }} />
                 <Bar dataKey="daysOpen" name="Dwell Time (>48h SLA Days)" fill={COLOR_ORANGE} radius={[0, 0, 0, 0]} isAnimationActive={false}>
-                  <LabelList dataKey="daysOpen" position="top" fill={COLOR_TEXT} fontSize={22} />
+                  <LabelList dataKey="daysOpen" position="top" fill={COLOR_TEXT} fontSize={18} />
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
@@ -496,16 +496,16 @@ export const ExportChartRenderer: React.FC<ExportChartRendererProps> = ({ report
         return (
           <div style={{ width: '100%', height: '100%' }}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={sortedData} margin={{ top: 35, right: 30, left: 20, bottom: 85 }}>
+              <BarChart data={sortedData} margin={{ top: 35, right: 30, left: 20, bottom: 30 }}>
                 <CartesianGrid stroke={COLOR_GRID} vertical={false} />
                 <XAxis dataKey="modeLabel" height={100} tick={<WrappedTick />} interval={0} stroke={COLOR_TEXT} />
                 <YAxis tick={{ fill: COLOR_TEXT, fontSize: 18 }} stroke={COLOR_TEXT} label={{ value: 'Elapsed Days', angle: -90, position: 'insideLeft', fill: COLOR_TEXT, fontSize: 18 }} />
                 <Legend verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: 12, fontSize: '18px' }} />
                 <Bar dataKey="meanTurnaroundDays" name="Mean Total Turnaround Days" fill={COLOR_BLUE} radius={[0, 0, 0, 0]} isAnimationActive={false}>
-                  <LabelList dataKey="meanTurnaroundDays" position="top" fill={COLOR_TEXT} fontSize={22} />
+                  <LabelList dataKey="meanTurnaroundDays" position="top" fill={COLOR_TEXT} fontSize={18} />
                 </Bar>
                 <Bar dataKey="meanTransitLagDays" name="Mean Courier Transit Lag Days" fill={COLOR_ORANGE} radius={[0, 0, 0, 0]} isAnimationActive={false}>
-                  <LabelList dataKey="meanTransitLagDays" position="top" fill={COLOR_TEXT} fontSize={22} />
+                  <LabelList dataKey="meanTransitLagDays" position="top" fill={COLOR_TEXT} fontSize={18} />
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
@@ -525,33 +525,33 @@ export const ExportChartRenderer: React.FC<ExportChartRendererProps> = ({ report
         return (
           <div style={{ display: 'flex', width: '100%', height: '100%', gap: '24px' }}>
             <div style={{ flex: 1, height: '100%' }}>
-              <div style={{ fontSize: '22px', fontWeight: 'bold', color: COLOR_TEXT, textAlign: 'center', marginBottom: 6 }}>
+              <div style={{ fontSize: '20px', fontWeight: 'bold', color: COLOR_TEXT, textAlign: 'center', marginBottom: 6 }}>
                 Hardware Breakdown Incidents Logged
               </div>
-              <ResponsiveContainer width="100%" height="86%">
-                <BarChart data={top10} margin={{ top: 30, right: 15, left: 10, bottom: 80 }}>
+              <ResponsiveContainer width="100%" height="88%">
+                <BarChart data={top10} margin={{ top: 30, right: 15, left: 10, bottom: 25 }}>
                   <CartesianGrid stroke={COLOR_GRID} vertical={false} />
-                  <XAxis dataKey="vulnLabel" tick={<DualPanelWrappedTick />} height={80} interval={0} stroke={COLOR_TEXT} />
-                  <YAxis tick={{ fill: COLOR_TEXT, fontSize: 20 }} stroke={COLOR_TEXT} />
-                  <Legend verticalAlign="bottom" align="center" wrapperStyle={{ fontSize: '20px' }} />
+                  <XAxis dataKey="vulnLabel" tick={<WrappedTick />} interval={0} stroke={COLOR_TEXT} />
+                  <YAxis tick={{ fill: COLOR_TEXT, fontSize: 17 }} stroke={COLOR_TEXT} />
+                  <Legend verticalAlign="bottom" align="center" wrapperStyle={{ fontSize: '17px' }} />
                   <Bar dataKey="incidentsLogged" name="Incidents Logged" fill={COLOR_BLUE} radius={[0, 0, 0, 0]} isAnimationActive={false}>
-                    <LabelList dataKey="incidentsLogged" position="top" fill={COLOR_TEXT} fontSize={18} />
+                    <LabelList dataKey="incidentsLogged" position="top" fill={COLOR_TEXT} fontSize={16} />
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
             <div style={{ flex: 1, height: '100%' }}>
-              <div style={{ fontSize: '22px', fontWeight: 'bold', color: COLOR_TEXT, textAlign: 'center', marginBottom: 6 }}>
+              <div style={{ fontSize: '20px', fontWeight: 'bold', color: COLOR_TEXT, textAlign: 'center', marginBottom: 6 }}>
                 Severity Risk Score (Max 10.0)
               </div>
-              <ResponsiveContainer width="100%" height="86%">
-                <BarChart data={top10} margin={{ top: 30, right: 15, left: 10, bottom: 80 }}>
+              <ResponsiveContainer width="100%" height="88%">
+                <BarChart data={top10} margin={{ top: 30, right: 15, left: 10, bottom: 25 }}>
                   <CartesianGrid stroke={COLOR_GRID} vertical={false} />
-                  <XAxis dataKey="vulnLabel" tick={<DualPanelWrappedTick />} height={80} interval={0} stroke={COLOR_TEXT} />
-                  <YAxis domain={[0, 10]} tick={{ fill: COLOR_TEXT, fontSize: 20 }} stroke={COLOR_TEXT} />
-                  <Legend verticalAlign="bottom" align="center" wrapperStyle={{ fontSize: '20px' }} />
+                  <XAxis dataKey="vulnLabel" tick={<WrappedTick />} interval={0} stroke={COLOR_TEXT} />
+                  <YAxis domain={[0, 10]} tick={{ fill: COLOR_TEXT, fontSize: 17 }} stroke={COLOR_TEXT} />
+                  <Legend verticalAlign="bottom" align="center" wrapperStyle={{ fontSize: '17px' }} />
                   <Bar dataKey="severityRiskScore" name="Severity Risk (/10)" fill={COLOR_ORANGE} radius={[0, 0, 0, 0]} isAnimationActive={false}>
-                    <LabelList dataKey="severityRiskScore" position="top" fill={COLOR_TEXT} fontSize={18} />
+                    <LabelList dataKey="severityRiskScore" position="top" fill={COLOR_TEXT} fontSize={16} />
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
@@ -572,16 +572,16 @@ export const ExportChartRenderer: React.FC<ExportChartRendererProps> = ({ report
         return (
           <div style={{ width: '100%', height: '100%' }}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={top10} margin={{ top: 35, right: 30, left: 20, bottom: 85 }}>
+              <BarChart data={top10} margin={{ top: 35, right: 30, left: 20, bottom: 30 }}>
                 <CartesianGrid stroke={COLOR_GRID} vertical={false} />
-                <XAxis dataKey="pmsLabel" tick={<WrappedTick />} height={85} interval={0} stroke={COLOR_TEXT} />
-                <YAxis tick={{ fill: COLOR_TEXT, fontSize: 22 }} stroke={COLOR_TEXT} label={{ value: 'Service Count', angle: -90, position: 'insideLeft', fill: COLOR_TEXT, fontSize: 20 }} />
-                <Legend verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: 16, fontSize: '22px' }} />
+                <XAxis dataKey="pmsLabel" tick={<WrappedTick />} interval={0} stroke={COLOR_TEXT} />
+                <YAxis tick={{ fill: COLOR_TEXT, fontSize: 18 }} stroke={COLOR_TEXT} label={{ value: 'Service Count', angle: -90, position: 'insideLeft', fill: COLOR_TEXT, fontSize: 18 }} />
+                <Legend verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: 12, fontSize: '18px' }} />
                 <Bar dataKey="expectedServices" name="Expected Services" fill={COLOR_BLUE} radius={[0, 0, 0, 0]} isAnimationActive={false}>
-                  <LabelList dataKey="expectedServices" position="top" fill={COLOR_TEXT} fontSize={22} />
+                  <LabelList dataKey="expectedServices" position="top" fill={COLOR_TEXT} fontSize={18} />
                 </Bar>
                 <Bar dataKey="pmsConducted" name="Services Conducted" fill={COLOR_ORANGE} radius={[0, 0, 0, 0]} isAnimationActive={false}>
-                  <LabelList dataKey="pmsConducted" position="top" fill={COLOR_TEXT} fontSize={22} />
+                  <LabelList dataKey="pmsConducted" position="top" fill={COLOR_TEXT} fontSize={18} />
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
@@ -601,13 +601,13 @@ export const ExportChartRenderer: React.FC<ExportChartRendererProps> = ({ report
         return (
           <div style={{ width: '100%', height: '100%' }}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={top10} margin={{ top: 35, right: 30, left: 20, bottom: 85 }}>
+              <BarChart data={top10} margin={{ top: 35, right: 30, left: 20, bottom: 30 }}>
                 <CartesianGrid stroke={COLOR_GRID} vertical={false} />
-                <XAxis dataKey="staffLabel" tick={<WrappedTick />} height={85} interval={0} stroke={COLOR_TEXT} />
-                <YAxis tick={{ fill: COLOR_TEXT, fontSize: 22 }} stroke={COLOR_TEXT} label={{ value: 'Repeat Tickets (Count - 1)', angle: -90, position: 'insideLeft', fill: COLOR_TEXT, fontSize: 20 }} />
-                <Legend verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: 16, fontSize: '22px' }} />
+                <XAxis dataKey="staffLabel" tick={<WrappedTick />} interval={0} stroke={COLOR_TEXT} />
+                <YAxis tick={{ fill: COLOR_TEXT, fontSize: 18 }} stroke={COLOR_TEXT} label={{ value: 'Repeat Tickets (Count - 1)', angle: -90, position: 'insideLeft', fill: COLOR_TEXT, fontSize: 18 }} />
+                <Legend verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: 12, fontSize: '18px' }} />
                 <Bar dataKey="repeatIncidents" name="Repeat Incidents (Count - 1)" fill={COLOR_ORANGE} radius={[0, 0, 0, 0]} isAnimationActive={false}>
-                  <LabelList dataKey="repeatIncidents" position="top" fill={COLOR_TEXT} fontSize={22} />
+                  <LabelList dataKey="repeatIncidents" position="top" fill={COLOR_TEXT} fontSize={18} />
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
@@ -617,3 +617,4 @@ export const ExportChartRenderer: React.FC<ExportChartRendererProps> = ({ report
     </div>
   );
 };
+

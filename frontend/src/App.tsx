@@ -27,7 +27,7 @@ import { resolvePathToView, viewToCanonicalPath, getDefaultHomeForRole } from '.
 export const ROLE_ALLOWED_VIEWS: Record<StaffRole, ActiveView[]> = {
   intern: ['overview', 'workbench', 'notes', 'joblogs'],
   it: ['overview', 'tickets', 'workbench', 'notes', 'joblogs', 'terminals'],
-  supervisor: ['overview', 'analytics', 'reports', 'team', 'joblogs'],
+  supervisor: ['analytics', 'reports', 'team', 'joblogs'],
   admin: [
     'overview',
     'tickets',
