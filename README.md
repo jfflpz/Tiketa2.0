@@ -138,6 +138,29 @@ Tiketa/
 
 ---
 
+### ⚡ Quick Start: One-Command Local Setup (Recommended)
+
+If you have Docker Desktop and Node.js installed, run the bootstrap script from the repository root:
+
+**Windows (PowerShell):**
+`powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\setup-local.ps1
+`
+
+**macOS / Linux (Bash):**
+`ash
+chmod +x scripts/setup-local.sh
+./scripts/setup-local.sh
+`
+
+Once completed, start the frontend development server:
+`powershell
+cd frontend
+npm run dev
+`
+
+---
+
 ### Option A: Run Full Stack via Docker Compose
 
 1. **Clone the repository**:
@@ -211,6 +234,16 @@ Tiketa/
 ---
 
 ## 🧪 Testing & Verification
+
+> [!TIP]
+> **Complete CI Pre-PR Guide**: See [docs/STANDARDIZED-TESTING.md](docs/STANDARDIZED-TESTING.md) for full matrix details.
+
+### One-Command Pre-PR Verification
+Run all CI checks locally before committing or opening a PR:
+`powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\pre-pr.ps1
+`
+
 
 ### Frontend Verification
 ```powershell

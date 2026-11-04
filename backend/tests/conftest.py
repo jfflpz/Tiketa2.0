@@ -1,3 +1,4 @@
+import asyncio
 import os
 from pathlib import Path
 
@@ -8,6 +9,8 @@ from alembic import command
 from alembic.config import Config
 from sqlalchemy import text
 from sqlalchemy.engine import make_url
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.pool import NullPool
 
 # No SQLite fallback and no implicit use of a developer .env database.
 url = os.environ.get("TIKETA_TEST_DATABASE_URL", "")
@@ -40,6 +43,15 @@ from scripts.seed_dictionaries import seed  # noqa: E402
 def migrations():
     config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
     command.upgrade(config, "head")
+
+    async def _clean_for_downgrade():
+        clean_engine = create_async_engine(url, poolclass=NullPool)
+        async with clean_engine.begin() as conn:
+            await conn.execute(text("TRUNCATE users, account_requests CASCADE"))
+        await clean_engine.dispose()
+
+    asyncio.run(_clean_for_downgrade())
+
     command.downgrade(config, "base")
     command.upgrade(config, "head")
     command.check(config)

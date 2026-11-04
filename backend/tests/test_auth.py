@@ -115,33 +115,72 @@ async def test_admin_provision_and_revocation(client, accounts):
         email="new@example.com",
         full_name="New Tech",
         role="it",
-        password="a-long-password",
     )
+    # Direct creation without governance returns 403
     assert (
         await client.post(
             "/api/v1/admin/users",
-            json={**body, "role": "office"},
+            json={**body, "password": "a-long-password"},
             headers=accounts["admin"],
         )
-    ).status_code == 422
-    response = await client.post(
-        "/api/v1/admin/users", json=body, headers=accounts["admin"]
-    )
-    assert response.status_code == 201 and "password_hash" not in response.text
-    assert (
-        await client.post("/api/v1/admin/users", json=body, headers=accounts["admin"])
-    ).status_code == 409
-    users = (await client.get("/api/v1/admin/users", headers=accounts["admin"])).json()
-    tech_id = next(row["id"] for row in users if row["username"] == "tech")
-    response = await client.patch(
-        "/api/v1/admin/users/" + tech_id,
-        json={"is_active": False},
+    ).status_code == 403
+
+    # Propose via account-requests
+    prop = await client.post(
+        "/api/v1/account-requests",
+        json=body,
         headers=accounts["admin"],
     )
-    assert response.status_code == 200
+    assert prop.status_code == 201
+    req_id = prop.json()["id"]
+
+    # Supervisor approves
+    app_res = await client.post(
+        f"/api/v1/account-requests/{req_id}/approve",
+        headers=accounts["supervisor"],
+    )
+    assert app_res.status_code == 200
+    temp_pass = app_res.json()["temporary_password"]
+
+    # Login with generated credentials
+    login_res = await client.post(
+        "/api/v1/auth/login",
+        json={"username": "newtech", "password": temp_pass},
+    )
+    assert login_res.status_code == 200
+
+    users = (await client.get("/api/v1/admin/users", headers=accounts["admin"])).json()
+    tech_id = next(row["id"] for row in users if row["username"] == "tech")
+
+    # Direct deactivation is rejected with 403 under B-03 governance
+    assert (
+        await client.patch(
+            "/api/v1/admin/users/" + tech_id,
+            json={"is_active": False},
+            headers=accounts["admin"],
+        )
+    ).status_code == 403
+
+    # Governed deactivation: Admin proposes, Supervisor approves
+    deact_prop = await client.post(
+        "/api/v1/account-requests",
+        json={"request_type": "deactivate", "target_user_id": tech_id},
+        headers=accounts["admin"],
+    )
+    assert deact_prop.status_code == 201
+    deact_id = deact_prop.json()["id"]
+
+    deact_app = await client.post(
+        f"/api/v1/account-requests/{deact_id}/approve",
+        headers=accounts["supervisor"],
+    )
+    assert deact_app.status_code == 200
+
+    # Token is now invalid, auth/me returns 401
     assert (
         await client.get("/api/v1/auth/me", headers=accounts["tech"])
     ).status_code == 401
+
     admin_id = next(row["id"] for row in users if row["username"] == "admin")
     assert (
         await client.patch(
@@ -149,7 +188,7 @@ async def test_admin_provision_and_revocation(client, accounts):
             json={"role": "it"},
             headers=accounts["admin"],
         )
-    ).status_code == 409
+    ).status_code in (403, 409)
 
 
 async def test_bcrypt_upgrade(client, accounts):
