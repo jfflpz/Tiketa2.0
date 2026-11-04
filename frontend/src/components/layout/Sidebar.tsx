@@ -105,13 +105,14 @@ export const Sidebar: React.FC = () => {
           onClick={handleBrandClick}
           className="flex items-center gap-3 px-2 pt-1 cursor-pointer group"
         >
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0">
-            <img src="/logo-mark.png" alt="Tiketa Mark" className="w-7 h-7 object-contain" />
-          </div>
-          {!sidebarCollapsed && (
-            <div className="flex flex-col min-w-0">
-              <img src="/logo-dark.png" alt="Tiketa" className="h-6 w-auto object-contain object-left" />
-              <span className="text-[10px] font-mono text-orange-400 uppercase tracking-widest mt-1">
+          {sidebarCollapsed ? (
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 hover:scale-105 transition-transform">
+              <img src="/logo-mark.svg" alt="Tiketa" className="w-8 h-8 object-contain drop-shadow" />
+            </div>
+          ) : (
+            <div className="flex flex-col min-w-0 py-0.5">
+              <img src="/logo-dark.svg" alt="Tiketa" className="h-8 w-auto object-contain object-left drop-shadow" />
+              <span className="text-[10px] font-mono text-orange-400 uppercase tracking-widest mt-1.5 ml-1">
                 {getRoleBadgeLabel(role)}
               </span>
             </div>
