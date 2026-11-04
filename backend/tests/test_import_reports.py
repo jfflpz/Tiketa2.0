@@ -271,6 +271,7 @@ async def test_reports_endpoints_filters_and_authorization(client, accounts, tmp
     ).json()
     assert report["rows"][0]["expected_services"] == 10
 
+
 async def test_reports_all_time_and_long_custom_range(client, accounts, tmp_path):
     path = tmp_path / "period_logs.csv"
     pd.DataFrame(
@@ -303,9 +304,7 @@ async def test_reports_all_time_and_long_custom_range(client, accounts, tmp_path
         assert response.status_code == 200
         assert response.json()["total_tickets"] == 2
 
-    response = await client.get(
-        base + "/monthly-sla?all_time=true", headers=headers
-    )
+    response = await client.get(base + "/monthly-sla?all_time=true", headers=headers)
     assert response.status_code == 200
     assert response.json()["all_time"] is True
     assert response.json()["date_from"] == "2020-01-15"

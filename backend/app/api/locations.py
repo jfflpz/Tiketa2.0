@@ -72,7 +72,11 @@ async def hub_summaries(
     user: CurrentUser,
 ):
     """Accurate, server-aggregated operational summaries for all terminal hubs."""
-    locations = (await db.scalars(select(Location).where(Location.is_active.is_(True)).order_by(Location.code))).all()
+    locations = (
+        await db.scalars(
+            select(Location).where(Location.is_active.is_(True)).order_by(Location.code)
+        )
+    ).all()
     if not locations:
         return []
 
@@ -179,7 +183,11 @@ async def hub_summaries(
             Department.name,
         )
         .join(Department, LocationDepartment.department_id == Department.id)
-        .where(LocationDepartment.location_id.in_(loc_ids), LocationDepartment.is_active.is_(True), Department.is_active.is_(True))
+        .where(
+            LocationDepartment.location_id.in_(loc_ids),
+            LocationDepartment.is_active.is_(True),
+            Department.is_active.is_(True),
+        )
         .order_by(Department.code)
     )
     depts_rows = (await db.execute(depts_query)).all()
@@ -253,6 +261,7 @@ async def hub_summaries(
 
     return summaries
 
+
 @router.post("", status_code=201, response_model=LocationOut)
 async def create_location(body: LocationCreate, db: DB, admin: Admin):
     clean_code = body.code.strip().upper()
@@ -281,7 +290,9 @@ async def create_location(body: LocationCreate, db: DB, admin: Admin):
 
 
 @router.patch("/{location_id}", response_model=LocationOut)
-async def update_location(location_id: UUID, body: LocationUpdate, db: DB, admin: Admin):
+async def update_location(
+    location_id: UUID, body: LocationUpdate, db: DB, admin: Admin
+):
     loc = await db.get(Location, location_id, with_for_update=True)
     if not loc:
         raise HTTPException(404, "Location not found")
@@ -321,16 +332,22 @@ async def update_location(location_id: UUID, body: LocationUpdate, db: DB, admin
             .where(Employee.location_id == location_id, Employee.is_active.is_(True))
         )
         if (emp_count or 0) > 0:
-            raise HTTPException(409, "Cannot deactivate location with active assigned employees")
+            raise HTTPException(
+                409, "Cannot deactivate location with active assigned employees"
+            )
 
         # Check active tickets
         ticket_count = await db.scalar(
             select(func.count())
             .select_from(Ticket)
-            .where(Ticket.location_id == location_id, Ticket.status.in_(["OPEN", "PROG"]))
+            .where(
+                Ticket.location_id == location_id, Ticket.status.in_(["OPEN", "PROG"])
+            )
         )
         if (ticket_count or 0) > 0:
-            raise HTTPException(409, "Cannot deactivate location with active tickets in progress")
+            raise HTTPException(
+                409, "Cannot deactivate location with active tickets in progress"
+            )
 
         loc.is_active = False
     elif body.is_active is True:

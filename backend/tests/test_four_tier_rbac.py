@@ -44,7 +44,9 @@ async def test_account_request_lifecycle(client: AsyncClient, accounts):
         "department": "Depot Repair Operations",
     }
     assert (
-        await client.post("/api/v1/account-requests", json=req_payload, headers=tech_headers)
+        await client.post(
+            "/api/v1/account-requests", json=req_payload, headers=tech_headers
+        )
     ).status_code == 403
 
     # 2. Admin proposes account creation
@@ -59,7 +61,9 @@ async def test_account_request_lifecycle(client: AsyncClient, accounts):
 
     # 3. Admin cannot self-approve (403)
     assert (
-        await client.post(f"/api/v1/account-requests/{req_id}/approve", headers=admin_headers)
+        await client.post(
+            f"/api/v1/account-requests/{req_id}/approve", headers=admin_headers
+        )
     ).status_code == 403
 
     # 4. Supervisor approves -> receives temporary password

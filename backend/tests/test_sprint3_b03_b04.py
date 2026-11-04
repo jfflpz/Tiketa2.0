@@ -72,7 +72,9 @@ async def test_admin_proposal_and_supervisor_decision(client: AsyncClient, accou
 
 
 @pytest.mark.asyncio
-async def test_direct_user_creation_and_deactivation_bypass_blocked(client: AsyncClient, accounts):
+async def test_direct_user_creation_and_deactivation_bypass_blocked(
+    client: AsyncClient, accounts
+):
     """B-03: Direct user creation and role changes via /admin/users are blocked."""
     res_direct = await client.post(
         "/api/v1/admin/users",

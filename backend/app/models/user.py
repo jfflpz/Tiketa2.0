@@ -47,6 +47,7 @@ class User(Base, TimestampMixin):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     token_version: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
 
+
 class UserProfilePhoto(Base):
     __tablename__ = "user_profile_photos"
 

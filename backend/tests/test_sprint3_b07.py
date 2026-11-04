@@ -10,7 +10,9 @@ from app.models import Ticket, TicketComment, User
 
 
 @pytest.mark.asyncio
-async def test_bounded_conversation_retrieval_and_ordering(client: AsyncClient, accounts):
+async def test_bounded_conversation_retrieval_and_ordering(
+    client: AsyncClient, accounts
+):
     """B-07: order=asc|desc, stable tie-breaking, message 101+, internal note pre-filtering, and access gates."""
     # 1. Fetch active employee and create a ticket
     emp_res = await client.get("/api/v1/admin/employees", headers=accounts["admin"])
@@ -38,15 +40,17 @@ async def test_bounded_conversation_retrieval_and_ordering(client: AsyncClient, 
 
         comments_to_add = []
         for i in range(105):
-            is_internal = (i % 5 == 0)  # 21 internal notes, 84 public comments
+            is_internal = i % 5 == 0  # 21 internal notes, 84 public comments
             # Tie timestamp every 10 messages
             msg_time = base_time + timedelta(seconds=i)
             c = TicketComment(
                 ticket_id=t.id,
                 user_id=tech_user.id if is_internal or (i % 2 == 0) else None,
-                body_enc=encrypt(f"Message {i+1} content"),
+                body_enc=encrypt(f"Message {i + 1} content"),
                 is_internal=is_internal,
-                author_name="Tech Staff" if (is_internal or i % 2 == 0) else emp["full_name"],
+                author_name="Tech Staff"
+                if (is_internal or i % 2 == 0)
+                else emp["full_name"],
                 author_role="it" if (is_internal or i % 2 == 0) else "employee",
                 created_at=msg_time,
             )

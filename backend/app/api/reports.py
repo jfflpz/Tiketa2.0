@@ -46,9 +46,7 @@ async def report_window(db, date_from, date_to, all_time, pms=False):
         return window(date_from, date_to)
 
     if date_from is not None or date_to is not None:
-        raise HTTPException(
-            422, "Use either all_time=true or custom dates, not both"
-        )
+        raise HTTPException(422, "Use either all_time=true or custom dates, not both")
 
     today = local(now()).date()
     field = Ticket.date_finished if pms else Ticket.date_started
@@ -57,11 +55,7 @@ async def report_window(db, date_from, date_to, all_time, pms=False):
         query = query.where(Ticket.task_code.in_(["PC-PMS", "PRN-PMS"]))
 
     first_ticket, last_ticket = (await db.execute(query)).one()
-    dates = [
-        value
-        for value in (first_ticket, last_ticket)
-        if value is not None
-    ]
+    dates = [value for value in (first_ticket, last_ticket) if value is not None]
 
     if pms:
         first_plan, last_plan = (
@@ -72,15 +66,12 @@ async def report_window(db, date_from, date_to, all_time, pms=False):
                 )
             )
         ).one()
-        dates.extend(
-            value
-            for value in (first_plan, last_plan)
-            if value is not None
-        )
+        dates.extend(value for value in (first_plan, last_plan) if value is not None)
 
     start = min(dates) if dates else today.replace(day=1)
     end = max(dates) if dates else today
     return start, end
+
 
 async def load_rows(db, start, end, company_id, location_id, department_id, pms=False):
     query = (
@@ -177,6 +168,7 @@ async def kpis(
         sla_compliance_pct=percentage(row.on_time, row.completed + row.overdue),
     )
 
+
 @router.get("/hourly-demand")
 async def hourly_demand(
     db: DB,
@@ -191,12 +183,9 @@ async def hourly_demand(
     """Publish hourly repair start demand across 24 ordered bins in Asia/Manila."""
     start, end = await report_window(db, date_from, date_to, all_time)
 
-    query = (
-        select(Ticket.started_at)
-        .where(
-            Ticket.date_started.between(start, end),
-            Ticket.started_at.is_not(None),
-        )
+    query = select(Ticket.started_at).where(
+        Ticket.date_started.between(start, end),
+        Ticket.started_at.is_not(None),
     )
     for column, value in (
         (Ticket.company_id, company_id),
@@ -221,11 +210,9 @@ async def hourly_demand(
         "date_to": end,
         "timezone": settings.BUSINESS_TIMEZONE,
         "source_field": "started_at",
-        "rows": [
-            {"hour": f"{h:02d}:00", "tickets": hour_counts[h]}
-            for h in range(24)
-        ],
+        "rows": [{"hour": f"{h:02d}:00", "tickets": hour_counts[h]} for h in range(24)],
     }
+
 
 @router.get("/{report_name}")
 async def report(
@@ -246,9 +233,7 @@ async def report(
 
         today = local(now()).date()
         date_to = today.replace(day=calendar.monthrange(today.year, today.month)[1])
-    start, end = await report_window(
-        db, date_from, date_to, all_time, pms=is_pms
-    )
+    start, end = await report_window(db, date_from, date_to, all_time, pms=is_pms)
     rows = await load_rows(
         db, start, end, company_id, location_id, department_id, is_pms
     )

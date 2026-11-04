@@ -17,7 +17,9 @@ async def validate_scope(db: AsyncSession, location_id, department_id, company_i
                 raise HTTPException(422, f"Inactive or unknown {model.__tablename__}")
     loc_dept = await db.get(LocationDepartment, (location_id, department_id))
     if not loc_dept or not loc_dept.is_active:
-        raise HTTPException(422, "Department is not assigned or inactive at this location")
+        raise HTTPException(
+            422, "Department is not assigned or inactive at this location"
+        )
 
 
 async def find_employee(db: AsyncSession, query: str):

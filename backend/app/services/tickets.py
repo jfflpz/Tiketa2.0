@@ -73,7 +73,7 @@ async def submit(db, body, creator_id=None, session_id=None):
                 "Valid match_token bound to active session is required for public ticket submission",
             )
         try:
-            verified_emp_id = verify_match_token(body.match_token,session_id)
+            verified_emp_id = verify_match_token(body.match_token, session_id)
         except Exception:
             raise HTTPException(
                 403, "Invalid or expired match_token, or session mismatch"

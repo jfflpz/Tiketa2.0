@@ -17,11 +17,15 @@ async def test_hourly_demand_authorization_and_24_bins(client: AsyncClient, acco
     res_unauth = await client.get("/api/v1/reports/hourly-demand")
     assert res_unauth.status_code == 401
 
-    res_tech = await client.get("/api/v1/reports/hourly-demand", headers=accounts["tech"])
+    res_tech = await client.get(
+        "/api/v1/reports/hourly-demand", headers=accounts["tech"]
+    )
     assert res_tech.status_code == 403
 
     # 2. Supervisor and Admin are allowed
-    res_sup = await client.get("/api/v1/reports/hourly-demand", headers=accounts["supervisor"])
+    res_sup = await client.get(
+        "/api/v1/reports/hourly-demand", headers=accounts["supervisor"]
+    )
     assert res_sup.status_code == 200
     data = res_sup.json()
 

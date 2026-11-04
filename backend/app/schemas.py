@@ -379,12 +379,16 @@ class TicketChecklistOut(BaseModel):
     updated_at: datetime | None = None
     steps: list[TicketChecklistStepOut] = []
 
+
 RequestableRole = Literal["intern", "it", "supervisor"]
+
 
 class AccountRequestCreate(Input):
     request_type: Literal["create", "deactivate"] = "create"
     target_user_id: UUID | None = None
-    username: str | None = Field(default=None, min_length=3, max_length=50, pattern=r"^[a-zA-Z0-9_.-]+$")
+    username: str | None = Field(
+        default=None, min_length=3, max_length=50, pattern=r"^[a-zA-Z0-9_.-]+$"
+    )
     email: EmailStr | None = Field(default=None, max_length=150)
     full_name: str | None = Field(default=None, min_length=2, max_length=150)
     role: RequestableRole | None = None
@@ -394,8 +398,15 @@ class AccountRequestCreate(Input):
     @model_validator(mode="after")
     def validate_type_fields(self):
         if self.request_type == "create":
-            if not self.username or not self.email or not self.full_name or not self.role:
-                raise ValueError("username, email, full_name, and role are required for create requests")
+            if (
+                not self.username
+                or not self.email
+                or not self.full_name
+                or not self.role
+            ):
+                raise ValueError(
+                    "username, email, full_name, and role are required for create requests"
+                )
         elif self.request_type == "deactivate":
             if not self.target_user_id:
                 raise ValueError("target_user_id is required for deactivate requests")
@@ -432,6 +443,7 @@ class AccountRequestApprovalOut(BaseModel):
     user: UserOut
     temporary_password: str | None = None
 
+
 class LocationCreate(Input):
     code: str = Field(min_length=1, max_length=20, pattern=r"^[A-Z0-9_-]+$")
     name: str = Field(min_length=1, max_length=100)
@@ -440,7 +452,9 @@ class LocationCreate(Input):
 
 
 class LocationUpdate(Input):
-    code: str | None = Field(default=None, min_length=1, max_length=20, pattern=r"^[A-Z0-9_-]+$")
+    code: str | None = Field(
+        default=None, min_length=1, max_length=20, pattern=r"^[A-Z0-9_-]+$"
+    )
     name: str | None = Field(default=None, min_length=1, max_length=100)
     address: str | None = Field(default=None, max_length=255)
     is_active: bool | None = None
@@ -461,7 +475,9 @@ class DepartmentCreate(Input):
 
 
 class DepartmentUpdate(Input):
-    code: str | None = Field(default=None, min_length=1, max_length=20, pattern=r"^[A-Z0-9_-]+$")
+    code: str | None = Field(
+        default=None, min_length=1, max_length=20, pattern=r"^[A-Z0-9_-]+$"
+    )
     name: str | None = Field(default=None, min_length=1, max_length=100)
     is_active: bool | None = None
 

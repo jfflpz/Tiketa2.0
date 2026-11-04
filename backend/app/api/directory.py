@@ -119,7 +119,9 @@ async def dictionaries(
     include_inactive: bool = Query(False),
 ):
     if include_inactive and user.role != "admin":
-        raise HTTPException(403, "Only administrators can view inactive dictionary records")
+        raise HTTPException(
+            403, "Only administrators can view inactive dictionary records"
+        )
 
     result = {}
     for key, model in (
@@ -233,14 +235,18 @@ async def update_user(user_id: UUID, body: UserUpdate, db: DB, admin: Admin):
     # Audit Finding 15 & B-03 Governance
     if body.role is not None and body.role != user.role:
         raise HTTPException(
-            403, "Direct role changes are disabled. Role changes require governed account proposals."
+            403,
+            "Direct role changes are disabled. Role changes require governed account proposals.",
         )
     if body.is_active is False:
         raise HTTPException(
-            403, "Direct deactivation is disabled. Submit a deactivation request via /account-requests."
+            403,
+            "Direct deactivation is disabled. Submit a deactivation request via /account-requests.",
         )
 
-    for key, value in body.model_dump(exclude_none=True, exclude={"password", "role", "is_active"}).items():
+    for key, value in body.model_dump(
+        exclude_none=True, exclude={"password", "role", "is_active"}
+    ).items():
         setattr(user, key, value)
     if body.password:
         user.password_hash = await run_in_threadpool(hash_password, body.password)
@@ -327,6 +333,7 @@ async def update_plan(plan_id: UUID, body: PlanInput, db: DB, admin: Admin):
     await db.commit()
     return {"id": plan.id, **body.model_dump()}
 
+
 @router.post("/departments", status_code=201, response_model=DepartmentOut)
 async def create_department(body: DepartmentCreate, db: DB, admin: Admin):
     clean_code = body.code.strip().upper()
@@ -353,7 +360,9 @@ async def create_department(body: DepartmentCreate, db: DB, admin: Admin):
 
 
 @router.patch("/departments/{department_id}", response_model=DepartmentOut)
-async def update_department(department_id: UUID, body: DepartmentUpdate, db: DB, admin: Admin):
+async def update_department(
+    department_id: UUID, body: DepartmentUpdate, db: DB, admin: Admin
+):
     dept = await db.get(Department, department_id, with_for_update=True)
     if not dept:
         raise HTTPException(404, "Department not found")
@@ -386,18 +395,27 @@ async def update_department(department_id: UUID, body: DepartmentUpdate, db: DB,
         emp_count = await db.scalar(
             select(func.count())
             .select_from(Employee)
-            .where(Employee.department_id == department_id, Employee.is_active.is_(True))
+            .where(
+                Employee.department_id == department_id, Employee.is_active.is_(True)
+            )
         )
         if (emp_count or 0) > 0:
-            raise HTTPException(409, "Cannot deactivate department with active assigned employees")
+            raise HTTPException(
+                409, "Cannot deactivate department with active assigned employees"
+            )
 
         ticket_count = await db.scalar(
             select(func.count())
             .select_from(Ticket)
-            .where(Ticket.department_id == department_id, Ticket.status.in_(["OPEN", "PROG"]))
+            .where(
+                Ticket.department_id == department_id,
+                Ticket.status.in_(["OPEN", "PROG"]),
+            )
         )
         if (ticket_count or 0) > 0:
-            raise HTTPException(409, "Cannot deactivate department with active tickets in progress")
+            raise HTTPException(
+                409, "Cannot deactivate department with active tickets in progress"
+            )
 
         dept.is_active = False
     elif body.is_active is True:
@@ -436,7 +454,9 @@ async def update_location_department(
             )
         )
         if (emp_count or 0) > 0:
-            raise HTTPException(409, "Cannot deactivate link with active assigned employees")
+            raise HTTPException(
+                409, "Cannot deactivate link with active assigned employees"
+            )
 
         ticket_count = await db.scalar(
             select(func.count())
@@ -448,7 +468,9 @@ async def update_location_department(
             )
         )
         if (ticket_count or 0) > 0:
-            raise HTTPException(409, "Cannot deactivate link with active tickets in progress")
+            raise HTTPException(
+                409, "Cannot deactivate link with active tickets in progress"
+            )
 
         loc_dept.is_active = False
     elif body.is_active is True:

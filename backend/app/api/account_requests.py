@@ -36,7 +36,9 @@ async def submit_account_request(body: AccountRequestCreate, db: DB, admin: Admi
             )
         )
         if existing_user:
-            raise HTTPException(409, "A user with this username or email already exists")
+            raise HTTPException(
+                409, "A user with this username or email already exists"
+            )
 
         # Check existing pending create request
         pending_req = await db.scalar(
@@ -48,7 +50,10 @@ async def submit_account_request(body: AccountRequestCreate, db: DB, admin: Admi
             )
         )
         if pending_req:
-            raise HTTPException(409, "A pending creation request with this username or email already exists")
+            raise HTTPException(
+                409,
+                "A pending creation request with this username or email already exists",
+            )
 
         loc = None
         if body.location_id:
@@ -97,13 +102,19 @@ async def submit_account_request(body: AccountRequestCreate, db: DB, admin: Admi
         # Protect last active Admin and last active Supervisor
         if target.role == "admin":
             admin_count = await db.scalar(
-                select(func.count()).select_from(User).where(User.role == "admin", User.is_active.is_(True))
+                select(func.count())
+                .select_from(User)
+                .where(User.role == "admin", User.is_active.is_(True))
             )
             if (admin_count or 0) <= 1:
-                raise HTTPException(409, "Cannot deactivate the last active administrator")
+                raise HTTPException(
+                    409, "Cannot deactivate the last active administrator"
+                )
         elif target.role == "supervisor":
             sup_count = await db.scalar(
-                select(func.count()).select_from(User).where(User.role == "supervisor", User.is_active.is_(True))
+                select(func.count())
+                .select_from(User)
+                .where(User.role == "supervisor", User.is_active.is_(True))
             )
             if (sup_count or 0) <= 1:
                 raise HTTPException(409, "Cannot deactivate the last active supervisor")
@@ -117,7 +128,9 @@ async def submit_account_request(body: AccountRequestCreate, db: DB, admin: Admi
             )
         )
         if pending_deact:
-            raise HTTPException(409, "A pending deactivation request for this user already exists")
+            raise HTTPException(
+                409, "A pending deactivation request for this user already exists"
+            )
 
         loc = await db.get(Location, target.location_id) if target.location_id else None
 
@@ -163,7 +176,9 @@ async def list_account_requests(
     limit: int = Query(50, ge=1, le=100),
 ):
     if user.role not in ("admin", "supervisor"):
-        raise HTTPException(403, "Insufficient role permissions to view account requests")
+        raise HTTPException(
+            403, "Insufficient role permissions to view account requests"
+        )
 
     query = select(AccountRequest).order_by(AccountRequest.created_at.desc())
     if status and status in ("pending", "approved", "rejected"):
@@ -178,12 +193,16 @@ async def list_account_requests(
 
     users_map = {}
     if req_ids | rev_ids:
-        u_list = (await db.scalars(select(User).where(User.id.in_(req_ids | rev_ids)))).all()
+        u_list = (
+            await db.scalars(select(User).where(User.id.in_(req_ids | rev_ids)))
+        ).all()
         users_map = {u.id: u.full_name for u in u_list}
 
     locs_map = {}
     if loc_ids:
-        l_list = (await db.scalars(select(Location).where(Location.id.in_(loc_ids)))).all()
+        l_list = (
+            await db.scalars(select(Location).where(Location.id.in_(loc_ids)))
+        ).all()
         locs_map = {loc.id: loc.name for loc in l_list}
 
     return [
@@ -268,13 +287,19 @@ async def approve_account_request(request_id: UUID, db: DB, user: CurrentUser):
         # Protect last active Admin and Supervisor
         if target.role == "admin":
             admin_count = await db.scalar(
-                select(func.count()).select_from(User).where(User.role == "admin", User.is_active.is_(True))
+                select(func.count())
+                .select_from(User)
+                .where(User.role == "admin", User.is_active.is_(True))
             )
             if (admin_count or 0) <= 1:
-                raise HTTPException(409, "Cannot deactivate the last active administrator")
+                raise HTTPException(
+                    409, "Cannot deactivate the last active administrator"
+                )
         elif target.role == "supervisor":
             sup_count = await db.scalar(
-                select(func.count()).select_from(User).where(User.role == "supervisor", User.is_active.is_(True))
+                select(func.count())
+                .select_from(User)
+                .where(User.role == "supervisor", User.is_active.is_(True))
             )
             if (sup_count or 0) <= 1:
                 raise HTTPException(409, "Cannot deactivate the last active supervisor")

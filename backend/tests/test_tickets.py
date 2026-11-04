@@ -75,9 +75,7 @@ async def test_lookup_and_public_intake(client, accounts):
     headers = {"X-Kiosk-Session-ID": session_id}
 
     # Public submit without token is 403
-    assert (
-        await client.post("/api/v1/tickets/submit", json=BODY)
-    ).status_code == 403
+    assert (await client.post("/api/v1/tickets/submit", json=BODY)).status_code == 403
 
     # With match token, validation rules apply
     assert (
@@ -123,6 +121,7 @@ async def test_lookup_and_public_intake(client, accounts):
             headers=headers,
         )
     ).status_code == 404
+
 
 async def test_atomic_claiming_and_codes(client, accounts):
     responses = await asyncio.gather(

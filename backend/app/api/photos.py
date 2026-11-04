@@ -18,7 +18,9 @@ MAX_PIXELS = 4096
 @router.put("/me/photo")
 async def upload_my_photo(file: UploadFile, db: DB, user: CurrentUser):
     if user.role not in ("it", "admin", "supervisor"):
-        raise HTTPException(403, "Role is not authorized to maintain a custom profile photo")
+        raise HTTPException(
+            403, "Role is not authorized to maintain a custom profile photo"
+        )
 
     content = await file.read(MAX_PHOTO_BYTES + 1)
     if not content:
@@ -44,7 +46,9 @@ async def upload_my_photo(file: UploadFile, db: DB, user: CurrentUser):
 
     width, height = img.size
     if width > MAX_PIXELS or height > MAX_PIXELS:
-        raise HTTPException(422, f"Image dimensions must not exceed {MAX_PIXELS}px per side")
+        raise HTTPException(
+            422, f"Image dimensions must not exceed {MAX_PIXELS}px per side"
+        )
 
     # Strip metadata and normalize orientation
     img = ImageOps.exif_transpose(img)

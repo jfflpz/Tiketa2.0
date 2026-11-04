@@ -109,13 +109,12 @@ async def get_requester_identity(
 
     return None, None
 
+
 def enforce_ticket_read_scope(ticket: Ticket, user: User) -> None:
     """Enforce read scope: Admin/Supervisor/IT have fleet/cross
     access; Intern is assigned-only."""
     if user.role == "intern" and ticket.assigned_tech_id != user.id:
-        raise HTTPException(
-            403, "Interns may only access their assigned tickets"
-        )
+        raise HTTPException(403, "Interns may only access their assigned tickets")
 
 
 def enforce_ticket_mutation_scope(ticket: Ticket, user: User) -> None:
@@ -126,9 +125,7 @@ def enforce_ticket_mutation_scope(ticket: Ticket, user: User) -> None:
             403, "Supervisor role does not have operational mutation permissions"
         )
     if user.role == "intern" and ticket.assigned_tech_id != user.id:
-        raise HTTPException(
-            403, "Interns may only mutate their assigned tickets"
-        )
+        raise HTTPException(403, "Interns may only mutate their assigned tickets")
 
 
 @router.post("/submit", status_code=201, response_model=PublicTicket)
@@ -252,7 +249,7 @@ async def verify_access(
     verified_closure_hash = None
 
     if staff_user:
-        if staff_user.role == "intern" and ticket.assigned_tech_id !=staff_user.id:
+        if staff_user.role == "intern" and ticket.assigned_tech_id != staff_user.id:
             raise HTTPException(403, "Interns may only access their assigned tickets")
         is_authorized = True
         can_close = False
@@ -422,6 +419,7 @@ async def queue(
     await cache.set(key, encrypt(payload), ex=5)
     return Response(payload, media_type="application/json")
 
+
 @router.get("/history", response_model=list[TicketOut])
 async def ticket_history(
     db: DB,
@@ -443,7 +441,9 @@ async def ticket_history(
     effective_tech_id = technician_id
     if user.role in ("intern", "it"):
         if technician_id is not None and technician_id != user.id:
-            raise HTTPException(403, "Staff in this role can only access their own job history")
+            raise HTTPException(
+                403, "Staff in this role can only access their own job history"
+            )
         effective_tech_id = user.id
 
     query = select(Ticket)
@@ -451,7 +451,7 @@ async def ticket_history(
         query = query.where(Ticket.status == status)
 
     if effective_tech_id:
-        query = query.where(Ticket.assigned_tech_id ==effective_tech_id)
+        query = query.where(Ticket.assigned_tech_id == effective_tech_id)
 
     if location_id:
         query = query.where(Ticket.location_id == location_id)
@@ -469,7 +469,9 @@ async def ticket_history(
 
     emp_map = {}
     if emp_ids:
-        emps = (await db.scalars(select(Employee).where(Employee.id.in_(emp_ids)))).all()
+        emps = (
+            await db.scalars(select(Employee).where(Employee.id.in_(emp_ids)))
+        ).all()
         emp_map = {e.id: e.employee_id for e in emps}
 
     tech_map = {}
@@ -484,6 +486,7 @@ async def ticket_history(
             v["technician_name"] = tech_map[t.assigned_tech_id]
         rows.append(v)
     return rows
+
 
 @router.get("/{ticket_id}", response_model=TicketOut)
 async def detail(ticket_id: UUID, db: DB, user: CurrentUser):
@@ -628,15 +631,19 @@ async def assign_ticket(
 
 
 @router.patch("/{ticket_id}/status", response_model=TicketOut)
-async def status_ticket(ticket_id: UUID, body: StatusInput, db: DB,user: CurrentUser):
+async def status_ticket(ticket_id: UUID, body: StatusInput, db: DB, user: CurrentUser):
     row = await get_ticket(db, ticket_id, lock=True)
     if user.role == "supervisor":
-        raise HTTPException(403, "Supervisor role does not have operational mutation permissions")
+        raise HTTPException(
+            403, "Supervisor role does not have operational mutation permissions"
+        )
 
     closure_url: str | None = None
     if row.status == "OPEN" and body.status == "PROG":
         if user.role in ("intern", "supervisor"):
-            raise HTTPException(403, f"Role '{user.role}' cannot claim tickets directly from the queue")
+            raise HTTPException(
+                403, f"Role '{user.role}' cannot claim tickets directly from the queue"
+            )
         await claim(db, row, user)
         row.mode = body.mode or row.mode
 
@@ -1086,7 +1093,11 @@ async def comments(
     if not staff_user and not emp_claims:
         raise HTTPException(401, "Authentication required to view comments")
 
-    if staff_user and staff_user.role == "intern" and ticket.assigned_tech_id != staff_user.id:
+    if (
+        staff_user
+        and staff_user.role == "intern"
+        and ticket.assigned_tech_id != staff_user.id
+    ):
         raise HTTPException(
             403, "Interns may only view comments on their assigned tickets"
         )
@@ -1156,8 +1167,7 @@ async def comments(
 
 
 @router.post("/{ticket_id}/attachments", status_code=201)
-async def upload(ticket_id: UUID, file: UploadFile, db: DB, user:
-CurrentUser):
+async def upload(ticket_id: UUID, file: UploadFile, db: DB, user: CurrentUser):
     row = await get_ticket(db, ticket_id, lock=True)
     enforce_ticket_mutation_scope(row, user)
     content = await file.read(settings.MAX_ATTACHMENT_BYTES + 1)
@@ -1212,8 +1222,7 @@ async def attachments(ticket_id: UUID, db: DB, user: CurrentUser):
 
 
 @router.get("/{ticket_id}/attachments/{attachment_id}")
-async def download(ticket_id: UUID, attachment_id: UUID, db: DB, user:
-CurrentUser):
+async def download(ticket_id: UUID, attachment_id: UUID, db: DB, user: CurrentUser):
     item = await db.get(TicketAttachment, attachment_id)
     if not item or item.ticket_id != ticket_id:
         raise HTTPException(404, "Attachment not found")

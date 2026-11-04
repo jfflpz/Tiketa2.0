@@ -5,7 +5,9 @@ from httpx import AsyncClient
 
 
 @pytest.mark.asyncio
-async def test_location_and_department_admin_configuration(client: AsyncClient, accounts):
+async def test_location_and_department_admin_configuration(
+    client: AsyncClient, accounts
+):
     """B-05: Admin can create and update locations, departments, and their link."""
     # 1. Non-admin cannot create location (403)
     res_unauth = await client.post(
@@ -19,7 +21,11 @@ async def test_location_and_department_admin_configuration(client: AsyncClient, 
     code_loc = f"LOC_{uuid.uuid4().hex[:6].upper()}"
     res_loc = await client.post(
         "/api/v1/locations",
-        json={"code": code_loc, "name": f"Terminal {code_loc}", "address": "Terminal St."},
+        json={
+            "code": code_loc,
+            "name": f"Terminal {code_loc}",
+            "address": "Terminal St.",
+        },
         headers=accounts["admin"],
     )
     assert res_loc.status_code == 201
@@ -70,7 +76,9 @@ async def test_location_and_department_admin_configuration(client: AsyncClient, 
 
 
 @pytest.mark.asyncio
-async def test_dictionaries_active_filtering_and_include_inactive(client: AsyncClient, accounts):
+async def test_dictionaries_active_filtering_and_include_inactive(
+    client: AsyncClient, accounts
+):
     """B-05: Dictionaries return only active choices; include_inactive requires Admin."""
     # 1. Tech requests include_inactive=true -> 403 Forbidden
     res_forbidden = await client.get(
@@ -96,7 +104,9 @@ async def test_dictionaries_active_filtering_and_include_inactive(client: AsyncC
 
 
 @pytest.mark.asyncio
-async def test_unsafe_deactivation_blocked_by_in_use_records(client: AsyncClient, accounts):
+async def test_unsafe_deactivation_blocked_by_in_use_records(
+    client: AsyncClient, accounts
+):
     """B-05: Deactivating location/department with active employees or active tickets returns 409."""
     # 1. Fetch existing active employee
     emp_res = await client.get("/api/v1/admin/employees", headers=accounts["admin"])
