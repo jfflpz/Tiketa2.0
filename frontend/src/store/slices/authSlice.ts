@@ -2,7 +2,8 @@
 import type { AppSliceCreator } from '../types';
 import type { AuthenticatedUser, StaffRole, ActiveView } from './uiSlice';
 import { authApi, setAccessToken } from '../../api/client';
-import { resolvePathToView } from '../../utils/routeUtils';
+import { resolvePathToView, getDefaultHomeForRole, viewToCanonicalPath } from '../../utils/routeUtils';
+import { ROLE_ALLOWED_VIEWS } from '../../App';
 import { normalizeApiError } from '../../utils/errorUtils';
 
 const getStaffTitle = (role: StaffRole): string => {
@@ -34,7 +35,7 @@ export interface AuthSlice {
   openLoginModal: (role?: StaffRole) => void;
   closeLoginModal: () => void;
   loginAsStaff: (role: StaffRole, customName?: string) => void;
-  logoutToKiosk: (options?: { retainSession?: boolean }) => Promise<void>;
+  logoutToKiosk: (options?: { rememberProfile?: boolean; retainSession?: boolean }) => Promise<void>;
 }
 
 let isHydratingInFlight: Promise<boolean> | null = null;
@@ -63,15 +64,15 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
           const currentPath = typeof window !== 'undefined' ? window.location.pathname : '/';
           const requestedRoute = resolvePathToView(currentPath);
 
-          let targetView: ActiveView = 'overview';
+          const defaultHome = getDefaultHomeForRole(userRole);
+          let targetView: ActiveView = defaultHome;
           if (requestedRoute !== 'public') {
-            // Respect deep link if permitted by role
-            const isAdminView =
-              requestedRoute === 'analytics' ||
-              requestedRoute === 'team' ||
-              requestedRoute === 'reports';
-            if (!isAdminView || userRole === 'admin') {
+            // Guard deep links by allowed views for this role
+            const allowed = ROLE_ALLOWED_VIEWS[userRole] || [];
+            if (allowed.includes(requestedRoute)) {
               targetView = requestedRoute;
+            } else {
+              targetView = defaultHome;
             }
           }
 
@@ -117,18 +118,19 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
 
       const userRole: StaffRole = (data.user.role as StaffRole) || 'it';
 
-      // BF-02: Explicit login for either staff role always lands on /dashboard (overview view)
-      const targetView: ActiveView = 'overview';
+      // F-01: Explicit login lands on canonical home for role
+      const targetView: ActiveView = getDefaultHomeForRole(userRole);
+      const canonicalPath = viewToCanonicalPath(targetView);
       localStorage.setItem('tiketa_active_view', targetView);
 
-      // BF-02: Clear verification override without consuming an employee closure confirmation
+      // Clear verification override without consuming an employee closure confirmation
       if (get().verifyTicketCode) {
         get().setVerifyTicketCode(null);
       }
 
-      // Update URL to canonical /dashboard
+      // Update URL to role-specific canonical home
       if (typeof window !== 'undefined') {
-        window.history.pushState(null, '', '/dashboard');
+        window.history.pushState(null, '', canonicalPath);
         window.dispatchEvent(new Event('popstate'));
       }
 
@@ -178,35 +180,31 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
   },
 
   logoutToKiosk: async (options) => {
-    if (options?.retainSession) {
-      if (typeof window !== 'undefined') {
-        window.history.pushState(null, '', '/report');
-        window.dispatchEvent(new Event('popstate'));
+    const userToRemember = get().currentUser;
+    const shouldRemember = options?.rememberProfile ?? false;
+
+    // F-01: Both exit choices revoke the staff session, clear sensitive domain state, stop polling and return to /report
+    localStorage.removeItem('tiketa_active_view');
+    if (shouldRemember && userToRemember) {
+      try {
+        const consentedCard = {
+          name: userToRemember.name,
+          username: userToRemember.email.split('@')[0],
+          role: userToRemember.role,
+        };
+        localStorage.setItem('tiketa_remembered_profile', JSON.stringify(consentedCard));
+      } catch {
+        // quota exceeded or private mode
       }
-      set({
-        selectedTicketId: null,
-        inspectedTicket: null,
-        isInspectingTicket: false,
-        inspectTicketError: null,
-        activeWorkbenchTicketId: null,
-        workbenchTicket: null,
-        isWorkbenchLoading: false,
-        workbenchError: null,
-        isQuickIntakeOpen: false,
-      });
-      get().addToast(
-        'Returned to Employee Ticket Screen',
-        'Staff session kept on device for quick return',
-        'info'
-      );
-      return;
+    } else {
+      localStorage.removeItem('tiketa_remembered_profile');
     }
 
-    localStorage.removeItem('tiketa_active_view');
+    let revokeSucceeded = true;
     try {
       await authApi.logout();
     } catch {
-      // Ignore network errors so local state is always cleanly wiped
+      revokeSucceeded = false;
     } finally {
       setAccessToken(null);
       if (typeof window !== 'undefined') {
@@ -227,12 +225,24 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
         isWorkbenchLoading: false,
         workbenchError: null,
         isQuickIntakeOpen: false,
+        tickets: [],
       });
-      get().addToast(
-        'Returned to Employee Ticket Screen',
-        'Staff session signed out cleanly',
-        'info'
-      );
+
+      if (!revokeSucceeded) {
+        get().addToast(
+          'Sign-out completed with warning',
+          'Local session cleared. Server revocation failed (network/unreachable).',
+          'warning'
+        );
+      } else {
+        get().addToast(
+          'Returned to Employee Ticket Screen',
+          shouldRemember
+            ? 'Profile remembered on this device (password required to sign in)'
+            : 'Staff session signed out cleanly',
+          'info'
+        );
+      }
     }
   },
 });

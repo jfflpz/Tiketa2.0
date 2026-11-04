@@ -9,11 +9,11 @@ export const LogoutConfirmationModal: React.FC = () => {
   const logoutToKiosk = useAppStore((state) => state.logoutToKiosk);
   const currentUser = useAppStore((state) => state.currentUser);
 
-  const [retainSession, setRetainSession] = useState(false);
+  const [rememberProfile, setRememberProfile] = useState(false);
 
   useEffect(() => {
     if (isLogoutModalOpen) {
-      setRetainSession(false);
+      setRememberProfile(false);
     }
   }, [isLogoutModalOpen]);
 
@@ -31,7 +31,7 @@ export const LogoutConfirmationModal: React.FC = () => {
 
   const handleConfirmLogout = () => {
     closeLogoutModal();
-    logoutToKiosk({ retainSession });
+    logoutToKiosk({ rememberProfile });
   };
 
   return (
@@ -86,14 +86,14 @@ export const LogoutConfirmationModal: React.FC = () => {
           <label className="flex items-start gap-2.5 p-3 rounded-2xl bg-[#F8F9FA] border border-[#ECEEF2] cursor-pointer select-none hover:bg-zinc-100/60 transition-colors">
             <input
               type="checkbox"
-              checked={retainSession}
-              onChange={(e) => setRetainSession(e.target.checked)}
+              checked={rememberProfile}
+              onChange={(e) => setRememberProfile(e.target.checked)}
               className="mt-0.5 w-4 h-4 rounded border-[#ECEEF2] text-orange-600 focus:ring-0 cursor-pointer accent-orange-600"
             />
             <div className="text-xs">
-              <span className="font-semibold text-ink block">Keep my staff session on this device</span>
+              <span className="font-semibold text-ink block">Remember my profile on this device</span>
               <span className="text-[11px] text-zinc-500">
-                Preserves authentication tokens for quick 1-click return to workspace from the employee kiosk.
+                Saves your name and role for convenient 1-click account selection. You will still need to enter your password to sign in.
               </span>
             </div>
           </label>

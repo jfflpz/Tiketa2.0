@@ -22,7 +22,7 @@ import { TicketVerificationModal } from './components/tickets/TicketVerification
 import { ToastContainer } from './components/common/ToastContainer';
 import { useAppStore } from './store/useAppStore';
 import type { StaffRole, ActiveView } from './store/slices/uiSlice';
-import { resolvePathToView, viewToCanonicalPath } from './utils/routeUtils';
+import { resolvePathToView, viewToCanonicalPath, getDefaultHomeForRole } from './utils/routeUtils';
 
 export const ROLE_ALLOWED_VIEWS: Record<StaffRole, ActiveView[]> = {
   intern: ['overview', 'workbench', 'notes', 'joblogs'],
@@ -41,19 +41,7 @@ export const ROLE_ALLOWED_VIEWS: Record<StaffRole, ActiveView[]> = {
   ],
 };
 
-const getDefaultHomeForRole = (role: StaffRole): ActiveView => {
-  switch (role) {
-    case 'supervisor':
-      return 'analytics';
-    case 'intern':
-      return 'workbench';
-    case 'it':
-      return 'tickets';
-    case 'admin':
-    default:
-      return 'overview';
-  }
-};
+// getDefaultHomeForRole imported from routeUtils
 
 export default function App() {
   const currentUser = useAppStore((state) => state.currentUser);
