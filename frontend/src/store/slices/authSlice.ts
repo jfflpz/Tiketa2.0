@@ -2,7 +2,7 @@
 import type { AppSliceCreator } from '../types';
 import type { AuthenticatedUser, StaffRole, ActiveView } from './uiSlice';
 import { authApi, setAccessToken } from '../../api/client';
-import { resolvePathToView } from '../../utils/routeUtils';
+import { resolvePathToView, viewToCanonicalPath, getDefaultHomeForRole } from '../../utils/routeUtils';
 import { normalizeApiError } from '../../utils/errorUtils';
 
 const getStaffTitle = (role: StaffRole): string => {
@@ -65,14 +65,20 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
           const currentPath = typeof window !== 'undefined' ? window.location.pathname : '/';
           const requestedRoute = resolvePathToView(currentPath);
 
-          let targetView: ActiveView = 'overview';
+          let targetView: ActiveView = getDefaultHomeForRole(userRole);
           if (requestedRoute !== 'public') {
-            // Respect deep link if permitted by role
-            const isAdminView =
+            const isExecutiveView =
               requestedRoute === 'analytics' ||
               requestedRoute === 'team' ||
-              requestedRoute === 'reports';
-            if (!isAdminView || userRole === 'admin') {
+              requestedRoute === 'reports' ||
+              requestedRoute === 'joblogs';
+            if (userRole === 'admin') {
+              targetView = requestedRoute;
+            } else if (userRole === 'supervisor' && isExecutiveView) {
+              targetView = requestedRoute;
+            } else if (userRole === 'it' && !['analytics', 'reports', 'team'].includes(requestedRoute)) {
+              targetView = requestedRoute;
+            } else if (userRole === 'intern' && ['overview', 'workbench', 'notes', 'joblogs'].includes(requestedRoute)) {
               targetView = requestedRoute;
             }
           }
@@ -96,7 +102,9 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
             activeView: targetView,
             isHydratingAuth: false,
           });
-          get().fetchQueueApi();
+          if (userRole !== 'supervisor') {
+            get().fetchQueueApi();
+          }
           return true;
         }
       } catch {
@@ -119,8 +127,8 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
 
       const userRole: StaffRole = (data.user.role as StaffRole) || 'it';
 
-      // BF-02: Explicit login for either staff role always lands on /dashboard (overview view)
-      const targetView: ActiveView = 'overview';
+      // 4-Tier RBAC landing: route to designated default home for role
+      const targetView: ActiveView = getDefaultHomeForRole(userRole);
       localStorage.setItem('tiketa_active_view', targetView);
 
       // BF-02: Clear verification override without consuming an employee closure confirmation
@@ -128,9 +136,9 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
         get().setVerifyTicketCode(null);
       }
 
-      // Update URL to canonical /dashboard
+      // Update URL to canonical role path
       if (typeof window !== 'undefined') {
-        window.history.pushState(null, '', '/dashboard');
+        window.history.pushState(null, '', viewToCanonicalPath(targetView));
         window.dispatchEvent(new Event('popstate'));
       }
 

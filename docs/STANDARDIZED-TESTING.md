@@ -14,7 +14,7 @@ This guide documents the exact quality gates enforced by GitHub Actions CI workf
 | **Backend Test & Coverage** | `docker compose exec -e TIKETA_TEST_DATABASE_URL=... -e TIKETA_TEST_REDIS_URL=... backend pytest -q --cov=app --cov=scripts --cov-report=term-missing --cov-fail-under=80` | Runs tests, verifies $\ge 80\%$ coverage threshold |
 | **OpenAPI Drift Check** | `docker compose exec backend python -m scripts.export_openapi --check` | Prevents API route changes without committing `openapi.json` |
 | **TypeScript Gate (Frontend)** | `npm run type-check` (in `frontend/`) | Strict TypeScript compiler check without emitting files |
-| **Frontend Unit Tests** | `npx vitest run` (in `frontend/`) | Validates all React components, stores, and export utilities |
+| **Frontend Unit Tests** | `npm test` (in `frontend/`) | Validates all React components, stores, and export utilities |
 | **Production Vite Build** | `npm run build` (in `frontend/`) | Verifies production minification and asset bundling |
 | **Security Audit (Optional)** | `docker compose exec backend pip-audit -r requirements.txt`<br>`npm audit --audit-level=critical` | Checks dependencies for known CVEs |
 
@@ -51,7 +51,7 @@ From the `frontend/` directory (`cd frontend`):
 npm run type-check
 
 # 2. Component & Unit tests
-npx vitest run
+npm test
 
 # 3. Vite production bundle compilation
 npm run build
