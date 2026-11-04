@@ -1,3 +1,4 @@
+from app.core.security import issue_match_token
 import re
 
 import pytest
@@ -28,7 +29,7 @@ async def test_numeric_employee_id_validation(client, accounts):
         )
     ).status_code == 200
 
-    # Public submit rejects prefixed or non-digit employee ID
+    # Public submit without token is rejected with 403
     assert (
         await client.post(
             "/api/v1/tickets/submit",
@@ -40,8 +41,7 @@ async def test_numeric_employee_id_validation(client, accounts):
         )
     ).status_code == 422
 
-    # Public submit accepts numeric employee ID with leading zero
-    # First create employee with leading zero
+    # Public submit with session & match token accepts numeric employee ID with leading zero
     async with AsyncSessionLocal() as db:
         user_emp = await db.scalar(
             select(Employee).where(Employee.employee_id == "1042")
@@ -58,26 +58,36 @@ async def test_numeric_employee_id_validation(client, accounts):
         )
         await db.commit()
 
+    session_id = "test-session-numeric-leading-0"
+    match_token = issue_match_token("0042", session_id)
     res = await client.post(
         "/api/v1/tickets/submit",
         json={
             "employee_id": "0042",
+            "match_token": match_token,
             "task_code": "PRN-TS",
             "description": "Printer is not working at all for 0042",
         },
+        headers={"X-Kiosk-Session-ID": session_id},
     )
     assert res.status_code == 201, res.text
 
 
 async def test_public_reported_issue_code_and_mismatch_rejection(client):
+    session_id = "test-session-public-issue"
+    match_token = issue_match_token("1042", session_id)
+    headers = {"X-Kiosk-Session-ID": session_id}
+
     # Valid public kiosk category PRN-TS
     res = await client.post(
         "/api/v1/tickets/submit",
         json={
             "employee_id": "1042",
+            "match_token": match_token,
             "task_code": "PRN-TS",
             "description": "Thermal printer is offline at ticket booth",
         },
+        headers=headers,
     )
     assert res.status_code == 201
     code = res.json()["ticket_code"]
@@ -91,9 +101,11 @@ async def test_public_reported_issue_code_and_mismatch_rejection(client):
         "/api/v1/tickets/submit",
         json={
             "employee_id": "1042",
-            "task_code": "PC-SETUP",  # Registered task category but NOT a public kiosk button
-            "description": "Setup request from public kiosk endpoint",
+            "match_token": match_token,
+            "task_code": "INVALID-CODE",
+            "description": "Invalid task code",
         },
+        headers=headers,
     )
     assert res_bad.status_code == 422
 
@@ -102,10 +114,12 @@ async def test_public_reported_issue_code_and_mismatch_rejection(client):
         "/api/v1/tickets/submit",
         json={
             "employee_id": "1042",
+            "match_token": match_token,
             "task_code": "PRN-TS",
             "reported_issue_code": "NET-CFG",
             "description": "Mismatched issue and task classification",
         },
+        headers=headers,
     )
     assert res_mismatch.status_code == 422
 
@@ -219,14 +233,15 @@ async def test_status_endpoint_classification_permission(client, accounts):
 
 
 async def test_admin_authoritative_dispatch(client, accounts):
-    # Submit ticket
+    # Staff creates ticket via quick-intake
     res = await client.post(
-        "/api/v1/tickets/submit",
+        "/api/v1/tickets/quick-intake",
         json={
             "employee_id": "1042",
             "task_code": "NET-CFG",
             "description": "Wi-Fi router offline at dispatch area",
         },
+        headers=accounts["tech"],
     )
     assert res.status_code == 201
     code = res.json()["ticket_code"]

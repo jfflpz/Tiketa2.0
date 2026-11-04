@@ -46,6 +46,8 @@ class UserOut(BaseModel):
     is_active: bool
     closed_repairs: int = 0
     active_bench: int = 0
+    avatar_url: str | None = None
+    avatar_updated_at: datetime | None = None
 
 
 class TokenOut(BaseModel):
@@ -377,14 +379,27 @@ class TicketChecklistOut(BaseModel):
     updated_at: datetime | None = None
     steps: list[TicketChecklistStepOut] = []
 
+RequestableRole = Literal["intern", "it", "supervisor"]
 
 class AccountRequestCreate(Input):
-    username: str = Field(min_length=3, max_length=50, pattern=r"^[a-zA-Z0-9_.-]+$")
-    email: EmailStr = Field(max_length=150)
-    full_name: str = Field(min_length=2, max_length=150)
-    role: RequestableRole
+    request_type: Literal["create", "deactivate"] = "create"
+    target_user_id: UUID | None = None
+    username: str | None = Field(default=None, min_length=3, max_length=50, pattern=r"^[a-zA-Z0-9_.-]+$")
+    email: EmailStr | None = Field(default=None, max_length=150)
+    full_name: str | None = Field(default=None, min_length=2, max_length=150)
+    role: RequestableRole | None = None
     location_id: UUID | None = None
     department: str | None = Field(default=None, max_length=100)
+
+    @model_validator(mode="after")
+    def validate_type_fields(self):
+        if self.request_type == "create":
+            if not self.username or not self.email or not self.full_name or not self.role:
+                raise ValueError("username, email, full_name, and role are required for create requests")
+        elif self.request_type == "deactivate":
+            if not self.target_user_id:
+                raise ValueError("target_user_id is required for deactivate requests")
+        return self
 
 
 class AccountRequestRejectInput(Input):
@@ -393,6 +408,8 @@ class AccountRequestRejectInput(Input):
 
 class AccountRequestOut(BaseModel):
     id: UUID
+    request_type: Literal["create", "deactivate"] = "create"
+    target_user_id: UUID | None = None
     username: str
     email: str
     full_name: str
@@ -411,5 +428,58 @@ class AccountRequestOut(BaseModel):
 
 
 class AccountRequestApprovalOut(BaseModel):
+    request_type: Literal["create", "deactivate"] = "create"
     user: UserOut
-    temporary_password: str
+    temporary_password: str | None = None
+
+class LocationCreate(Input):
+    code: str = Field(min_length=1, max_length=20, pattern=r"^[A-Z0-9_-]+$")
+    name: str = Field(min_length=1, max_length=100)
+    address: str | None = Field(default=None, max_length=255)
+    is_active: bool = True
+
+
+class LocationUpdate(Input):
+    code: str | None = Field(default=None, min_length=1, max_length=20, pattern=r"^[A-Z0-9_-]+$")
+    name: str | None = Field(default=None, min_length=1, max_length=100)
+    address: str | None = Field(default=None, max_length=255)
+    is_active: bool | None = None
+
+
+class LocationOut(BaseModel):
+    id: UUID
+    code: str
+    name: str
+    address: str | None = None
+    is_active: bool
+
+
+class DepartmentCreate(Input):
+    code: str = Field(min_length=1, max_length=20, pattern=r"^[A-Z0-9_-]+$")
+    name: str = Field(min_length=1, max_length=100)
+    is_active: bool = True
+
+
+class DepartmentUpdate(Input):
+    code: str | None = Field(default=None, min_length=1, max_length=20, pattern=r"^[A-Z0-9_-]+$")
+    name: str | None = Field(default=None, min_length=1, max_length=100)
+    is_active: bool | None = None
+
+
+class DepartmentOut(BaseModel):
+    id: UUID
+    code: str
+    name: str
+    is_active: bool
+
+
+class LocationDepartmentUpdate(Input):
+    is_active: bool | None = None
+    is_default: bool | None = None
+
+
+class LocationDepartmentOut(BaseModel):
+    location_id: UUID
+    department_id: UUID
+    is_default: bool
+    is_active: bool

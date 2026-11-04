@@ -11,9 +11,11 @@ export const SLIDE_GEOMETRY = {
   slideWidth: 13.333,
   slideHeight: 7.5,
   titleX: 0.91,
-  titleY: 0.45,
+  titleY: 0.32,
   titleW: 11.54,
-  titleH: 0.95,
+  titleH: 0.55,
+  periodY: 0.94,
+  periodH: 0.42,
   chartX: 0.91,
   chartY: 1.63,
   chartW: 11.54,
@@ -60,9 +62,9 @@ function parseMarkdownToTextItems(md: string): pptxgen.TextProps[] {
           text: part.slice(2, -2),
           options: {
             bold: true,
-            fontSize: 16,
+            fontSize: 18,
             color: '333333',
-            fontFace: 'Arial',
+            fontFace: 'Verdana',
           },
         };
       }
@@ -70,9 +72,9 @@ function parseMarkdownToTextItems(md: string): pptxgen.TextProps[] {
         text: part,
         options: {
           bold: false,
-          fontSize: 16,
+          fontSize: 18,
           color: '333333',
-          fontFace: 'Arial',
+          fontFace: 'Verdana',
         },
       };
     });
@@ -83,10 +85,10 @@ function parseMarkdownToTextItems(md: string): pptxgen.TextProps[] {
  *
  * DESIGN INVARIANTS:
  * 1. Slide Size: 16:9 widescreen (13.333" x 7.5") via LAYOUT_WIDE.
- * 2. Title & Period: Positioned above chart (Y=0.45"). Title is ~44pt bold #333333, Period is ~30pt regular #333333.
+ * 2. Title and period: Separate frames above the chart, at 36pt and 22pt.
  * 3. Chart Container: Embedded high-resolution PNG image at X=0.91", Y=1.63", W=11.54", H=3.90" (Aspect ratio ~2.96:1).
  *    NOTE: Chart bars are embedded as pixel-accurate image elements, NOT editable PowerPoint vector shapes.
- * 4. Explanatory Text: Positioned below chart (Y=5.75") at ~16pt #333333 with key metrics bolded.
+ * 4. Explanatory Text: Positioned below chart (Y=5.75") at 18pt with key metrics bolded.
  * 5. Zero cover or closing slides; zero decorative branding.
  */
 export function addExecutiveReportSlide(
@@ -98,29 +100,7 @@ export function addExecutiveReportSlide(
   // Slide background
   slide.background = { color: 'FFFFFF' };
 
-  // 1. Header Text: Title (bold ~44pt #333333) + Reporting Period (regular ~30pt #333333)
-  slide.addText(
-    [
-      {
-        text: params.title + '  ',
-        options: {
-          bold: true,
-          fontSize: 44,
-          color: '333333',
-          fontFace: 'Arial',
-        },
-      },
-      {
-        text: params.reportingPeriod,
-        options: {
-          bold: false,
-          fontSize: 30,
-          color: '333333',
-          fontFace: 'Arial',
-        },
-      },
-    ],
-    {
+  slide.addText(params.title, {
       x: SLIDE_GEOMETRY.titleX,
       y: SLIDE_GEOMETRY.titleY,
       w: SLIDE_GEOMETRY.titleW,
@@ -128,8 +108,21 @@ export function addExecutiveReportSlide(
       valign: 'bottom',
       align: 'left',
       margin: 0,
-    }
-  );
+      bold: true,
+      fontSize: 36,
+      color: '333333',
+      fontFace: 'Verdana',
+    });
+  slide.addText(params.reportingPeriod, {
+    x: SLIDE_GEOMETRY.titleX,
+    y: SLIDE_GEOMETRY.periodY,
+    w: SLIDE_GEOMETRY.titleW,
+    h: SLIDE_GEOMETRY.periodH,
+    margin: 0,
+    fontSize: 22,
+    color: '333333',
+    fontFace: 'Verdana',
+  });
 
   // 2. Chart Image Box (X=0.91", Y=1.63", W=11.54", H=3.90")
   // Chart is rendered at exact 2.96:1 native proportion with 1pt border #7F7F7F
@@ -165,6 +158,7 @@ export function createPresentationInstance(): pptxgen {
   // In pptxgenjs, LAYOUT_16x9 is 10" x 5.625", while LAYOUT_WIDE is 13.333" x 7.5".
   // Explicitly set LAYOUT_WIDE to match our 13.333" x 7.5" design coordinate space.
   pres.layout = 'LAYOUT_WIDE';
+  pres.theme = { headFontFace: 'Verdana', bodyFontFace: 'Verdana' };
   pres.title = 'Tiketa Executive Operations Reports';
   return pres;
 }

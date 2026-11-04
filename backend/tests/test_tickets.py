@@ -10,7 +10,7 @@ import pytest
 from sqlalchemy import select
 
 from app.core.config import settings
-from app.core.security import decrypt
+from app.core.security import decrypt, issue_match_token
 from app.db.session import AsyncSessionLocal
 from app.models import Employee, Ticket, TicketAttachment
 from app.services.tickets import now
@@ -70,23 +70,36 @@ async def test_lookup_and_public_intake(client, accounts):
     assert (
         await client.get("/api/v1/employees/lookup?q=FS-1042", headers=accounts["tech"])
     ).status_code == 422
-    assert await client.post(
-        "/api/v1/tickets/submit", json={**BODY, "company_id": str(uuid4())}
+    session_id = "test-session-public-lookup"
+    match_token = issue_match_token("1042", session_id)
+    headers = {"X-Kiosk-Session-ID": session_id}
+
+    # Public submit without token is 403
+    assert (
+        await client.post("/api/v1/tickets/submit", json=BODY)
+    ).status_code == 403
+
+    # With match token, validation rules apply
+    assert (
+        await client.post(
+            "/api/v1/tickets/submit",
+            json={**BODY, "match_token": match_token, "task_code": "FAKE"},
+            headers=headers,
+        )
+    ).status_code == 422
+    assert (
+        await client.post(
+            "/api/v1/tickets/submit",
+            json={**BODY, "match_token": match_token, "description": "short"},
+            headers=headers,
+        )
+    ).status_code == 422
+
+    response = await client.post(
+        "/api/v1/tickets/submit",
+        json={**BODY, "match_token": match_token},
+        headers=headers,
     )
-    assert (
-        await client.post(
-            "/api/v1/tickets/submit", json={**BODY, "employee_id": "FS-1042"}
-        )
-    ).status_code == 422
-    assert (
-        await client.post("/api/v1/tickets/submit", json={**BODY, "task_code": "FAKE"})
-    ).status_code == 422
-    assert (
-        await client.post(
-            "/api/v1/tickets/submit", json={**BODY, "description": "short"}
-        )
-    ).status_code == 422
-    response = await client.post("/api/v1/tickets/submit", json=BODY)
     assert response.status_code == 201, response.text
     assert set(response.json()) == {"ticket_code", "status", "created_at", "id"}
     code = response.json()["ticket_code"]
@@ -103,8 +116,13 @@ async def test_lookup_and_public_intake(client, accounts):
         employee = await db.scalar(select(Employee))
         employee.is_active = False
         await db.commit()
-    assert (await client.post("/api/v1/tickets/submit", json=BODY)).status_code == 404
-
+    assert (
+        await client.post(
+            "/api/v1/tickets/submit",
+            json={**BODY, "match_token": match_token},
+            headers=headers,
+        )
+    ).status_code == 404
 
 async def test_atomic_claiming_and_codes(client, accounts):
     responses = await asyncio.gather(

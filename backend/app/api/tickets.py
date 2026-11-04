@@ -13,7 +13,7 @@ from pydantic import TypeAdapter
 from sqlalchemy import func, select
 
 from app.api.deps import DB, Admin, CurrentUser, validated_user
-from app.core.cache import cache, rate_limit
+from app.core.cache import cache, invalidate_queue_version, rate_limit
 from app.core.config import settings
 from app.core.security import (
     decrypt,
@@ -108,6 +108,27 @@ async def get_requester_identity(
             pass
 
     return None, None
+
+def enforce_ticket_read_scope(ticket: Ticket, user: User) -> None:
+    """Enforce read scope: Admin/Supervisor/IT have fleet/cross
+    access; Intern is assigned-only."""
+    if user.role == "intern" and ticket.assigned_tech_id != user.id:
+        raise HTTPException(
+            403, "Interns may only access their assigned tickets"
+        )
+
+
+def enforce_ticket_mutation_scope(ticket: Ticket, user: User) -> None:
+    """Enforce mutation scope: Supervisor cannot mutate operations;
+    Intern is assigned-only."""
+    if user.role == "supervisor":
+        raise HTTPException(
+            403, "Supervisor role does not have operational mutation permissions"
+        )
+    if user.role == "intern" and ticket.assigned_tech_id != user.id:
+        raise HTTPException(
+            403, "Interns may only mutate their assigned tickets"
+        )
 
 
 @router.post("/submit", status_code=201, response_model=PublicTicket)
@@ -231,6 +252,8 @@ async def verify_access(
     verified_closure_hash = None
 
     if staff_user:
+        if staff_user.role == "intern" and ticket.assigned_tech_id !=staff_user.id:
+            raise HTTPException(403, "Interns may only access their assigned tickets")
         is_authorized = True
         can_close = False
         verified_closure_hash = None
@@ -399,10 +422,73 @@ async def queue(
     await cache.set(key, encrypt(payload), ex=5)
     return Response(payload, media_type="application/json")
 
+@router.get("/history", response_model=list[TicketOut])
+async def ticket_history(
+    db: DB,
+    user: CurrentUser,
+    status: Literal["ALL", "OPEN", "PROG", "RESL", "CLSD"] = "ALL",
+    order: Literal["asc", "desc"] = "desc",
+    offset: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    location_id: UUID | None = None,
+    technician_id: UUID | None = None,
+):
+    """
+    Bounded ticket history separate from the operational queue.
+    IT/Intern scope is locked to their own assignment UUID (requesting
+    another tech is 403).
+    Admin and Supervisor have fleet read access with optional location
+    and technician filters.
+    """
+    effective_tech_id = technician_id
+    if user.role in ("intern", "it"):
+        if technician_id is not None and technician_id != user.id:
+            raise HTTPException(403, "Staff in this role can only access their own job history")
+        effective_tech_id = user.id
+
+    query = select(Ticket)
+    if status != "ALL":
+        query = query.where(Ticket.status == status)
+
+    if effective_tech_id:
+        query = query.where(Ticket.assigned_tech_id ==effective_tech_id)
+
+    if location_id:
+        query = query.where(Ticket.location_id == location_id)
+
+    if order == "desc":
+        query = query.order_by(Ticket.created_at.desc(), Ticket.id.desc())
+    else:
+        query = query.order_by(Ticket.created_at.asc(), Ticket.id.asc())
+
+    query = query.offset(offset).limit(limit)
+
+    ticket_rows = (await db.scalars(query)).all()
+    emp_ids = {t.employee_id for t in ticket_rows if t.employee_id}
+    tech_ids = {t.assigned_tech_id for t in ticket_rows if t.assigned_tech_id}
+
+    emp_map = {}
+    if emp_ids:
+        emps = (await db.scalars(select(Employee).where(Employee.id.in_(emp_ids)))).all()
+        emp_map = {e.id: e.employee_id for e in emps}
+
+    tech_map = {}
+    if tech_ids:
+        techs = (await db.scalars(select(User).where(User.id.in_(tech_ids)))).all()
+        tech_map = {u.id: u.full_name for u in techs}
+
+    rows = []
+    for t in ticket_rows:
+        v = ticket_view(t, employee_id_number=emp_map.get(t.employee_id))
+        if t.assigned_tech_id and t.assigned_tech_id in tech_map:
+            v["technician_name"] = tech_map[t.assigned_tech_id]
+        rows.append(v)
+    return rows
 
 @router.get("/{ticket_id}", response_model=TicketOut)
 async def detail(ticket_id: UUID, db: DB, user: CurrentUser):
     row = await get_ticket(db, ticket_id)
+    enforce_ticket_read_scope(row, user)
     emp_num = None
     if row.employee_id:
         emp = await db.get(Employee, row.employee_id)
@@ -428,7 +514,7 @@ async def claim_ticket(ticket_id: UUID, db: DB, user: CurrentUser):
     row = await get_ticket(db, ticket_id, lock=True)
     await claim(db, row, user)
     await db.commit()
-    await cache.incr("queue:version")
+    await invalidate_queue_version()
     res = ticket_view(row)
     res["technician_name"] = user.full_name
     return res
@@ -442,6 +528,10 @@ async def update_service_record(
     user: CurrentUser,
 ):
     row = await get_ticket(db, ticket_id, lock=True)
+    if user.role == "supervisor":
+        raise HTTPException(
+            403, "Supervisor role does not have operational mutation permissions"
+        )
     if user.role != "admin" and row.assigned_tech_id != user.id:
         raise HTTPException(
             403,
@@ -464,7 +554,7 @@ async def update_service_record(
 
     row.updated_at = now()
     await db.commit()
-    await cache.incr("queue:version")
+    await invalidate_queue_version()
     return ticket_view(row)
 
 
@@ -531,24 +621,31 @@ async def assign_ticket(
     row.assigned_tech_id = target_tech.id
     row.updated_at = current_time
     await db.commit()
-    await cache.incr("queue:version")
+    await invalidate_queue_version()
     res = ticket_view(row)
     res["technician_name"] = target_tech.full_name
     return res
 
 
 @router.patch("/{ticket_id}/status", response_model=TicketOut)
-async def status_ticket(ticket_id: UUID, body: StatusInput, db: DB, user: CurrentUser):
+async def status_ticket(ticket_id: UUID, body: StatusInput, db: DB,user: CurrentUser):
     row = await get_ticket(db, ticket_id, lock=True)
+    if user.role == "supervisor":
+        raise HTTPException(403, "Supervisor role does not have operational mutation permissions")
+
     closure_url: str | None = None
     if row.status == "OPEN" and body.status == "PROG":
+        if user.role in ("intern", "supervisor"):
+            raise HTTPException(403, f"Role '{user.role}' cannot claim tickets directly from the queue")
         await claim(db, row, user)
         row.mode = body.mode or row.mode
 
     elif row.status == "PROG" and body.status == "PROG":
+        enforce_ticket_mutation_scope(row, user)
         if body.mode:
             row.mode = body.mode
     elif row.status == "PROG" and body.status == "RESL":
+        enforce_ticket_mutation_scope(row, user)
         if not (body.mode or row.mode):
             raise HTTPException(422, "Support mode is required at resolution")
         row.mode = body.mode or row.mode
@@ -625,7 +722,7 @@ async def status_ticket(ticket_id: UUID, body: StatusInput, db: DB, user: Curren
             raise HTTPException(422, "Invalid task category code")
         row.task_code = body.task_code
     await db.commit()
-    await cache.incr("queue:version")
+    await invalidate_queue_version()
     response_data = ticket_view(row)
     if closure_url is not None:
         response_data["closure_url"] = closure_url
@@ -679,7 +776,7 @@ async def reissue_verification(ticket_id: UUID, db: DB, user: CurrentUser):
         closure_url = f"{base_url}/?{params}"
 
     await db.commit()
-    await cache.incr("queue:version")
+    await invalidate_queue_version()
     return {
         "ticket_code": row.ticket_code,
         "status": row.status,
@@ -761,7 +858,7 @@ async def confirm(ticket_id: UUID, body: ClosureInput, request: Request, db: DB)
         db.add(remarks_comment)
 
     await db.commit()
-    await cache.incr("queue:version")
+    await invalidate_queue_version()
 
     tech_name = None
     if row.assigned_tech_id:
@@ -794,6 +891,10 @@ async def reopen(ticket_id: UUID, body: ReopenInput, request: Request, db: DB):
     staff_user, emp_claims = await get_requester_identity(request, db)
     authorized = False
     if staff_user:
+        if staff_user.role == "supervisor":
+            raise HTTPException(
+                403, "Supervisor role does not have operational mutation permissions"
+            )
         if staff_user.role != "admin" and row.assigned_tech_id != staff_user.id:
             raise HTTPException(
                 403,
@@ -879,7 +980,7 @@ async def reopen(ticket_id: UUID, body: ReopenInput, request: Request, db: DB):
     row.updated_at = now()
 
     await db.commit()
-    await cache.incr("queue:version")
+    await invalidate_queue_version()
 
     tech_name = None
     if row.assigned_tech_id:
@@ -910,6 +1011,14 @@ async def comment(
         raise HTTPException(401, "Authentication required to post comments")
 
     if staff_user:
+        if staff_user.role == "supervisor":
+            raise HTTPException(
+                403, "Supervisor role does not have operational mutation permissions"
+            )
+        if staff_user.role == "intern" and row.assigned_tech_id != staff_user.id:
+            raise HTTPException(
+                403, "Interns may only comment on their assigned tickets"
+            )
         user_id = staff_user.id
         author_name = staff_user.full_name
         author_role = staff_user.role
@@ -951,7 +1060,7 @@ async def comment(
     )
     db.add(item)
     await db.commit()
-    await cache.incr("queue:version")
+    await invalidate_queue_version()
     return CommentOut(
         id=item.id,
         body=body.body,
@@ -968,6 +1077,7 @@ async def comments(
     ticket_id: UUID,
     request: Request,
     db: DB,
+    order: Literal["asc", "desc"] = Query("asc"),
     offset: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=200),
 ):
@@ -976,13 +1086,13 @@ async def comments(
     if not staff_user and not emp_claims:
         raise HTTPException(401, "Authentication required to view comments")
 
-    query = (
-        select(TicketComment)
-        .where(TicketComment.ticket_id == ticket_id)
-        .order_by(TicketComment.created_at)
-        .offset(offset)
-        .limit(limit)
-    )
+    if staff_user and staff_user.role == "intern" and ticket.assigned_tech_id != staff_user.id:
+        raise HTTPException(
+            403, "Interns may only view comments on their assigned tickets"
+        )
+
+    # Base filters
+    filters = [TicketComment.ticket_id == ticket_id]
 
     if not staff_user:
         if emp_claims.get("scope") == "ticket_closure":
@@ -1005,7 +1115,19 @@ async def comments(
         else:
             raise HTTPException(403, "Unauthorized ticket comments access")
 
-        query = query.where(TicketComment.is_internal.is_(False))
+        # Exclude internal notes before sorting and paging
+        filters.append(TicketComment.is_internal.is_(False))
+
+    query = select(TicketComment).where(*filters)
+
+    # Stable tie-breaking order on (created_at, id)
+    if order == "desc":
+        query = query.order_by(TicketComment.created_at.desc(), TicketComment.id.desc())
+    else:
+        query = query.order_by(TicketComment.created_at.asc(), TicketComment.id.asc())
+
+    # Bounded paging applied after scope filtering
+    query = query.offset(offset).limit(limit)
 
     rows = (await db.scalars(query)).all()
     user_ids = {r.user_id for r in rows if r.user_id}
@@ -1019,7 +1141,6 @@ async def comments(
         author = row.author_name or (
             user_map.get(row.user_id) if row.user_id else "IT Support"
         )
-        role = row.author_role or ("it" if row.user_id else "employee")
         result.append(
             CommentOut(
                 id=row.id,
@@ -1027,7 +1148,7 @@ async def comments(
                 is_internal=row.is_internal,
                 user_id=row.user_id,
                 author_name=author,
-                author_role=role,
+                author_role=row.author_role,
                 created_at=row.created_at,
             )
         )
@@ -1035,8 +1156,10 @@ async def comments(
 
 
 @router.post("/{ticket_id}/attachments", status_code=201)
-async def upload(ticket_id: UUID, file: UploadFile, db: DB, user: CurrentUser):
+async def upload(ticket_id: UUID, file: UploadFile, db: DB, user:
+CurrentUser):
     row = await get_ticket(db, ticket_id, lock=True)
+    enforce_ticket_mutation_scope(row, user)
     content = await file.read(settings.MAX_ATTACHMENT_BYTES + 1)
     if not content or len(content) > settings.MAX_ATTACHMENT_BYTES:
         raise HTTPException(413, "Attachment must contain 1 byte to 5 MiB")
@@ -1063,13 +1186,14 @@ async def upload(ticket_id: UUID, file: UploadFile, db: DB, user: CurrentUser):
     db.add(item)
     row.updated_at = now()
     await db.commit()
-    await cache.incr("queue:version")
+    await invalidate_queue_version()
     return {"id": item.id, "file_name": name, "file_size": item.file_size}
 
 
 @router.get("/{ticket_id}/attachments")
 async def attachments(ticket_id: UUID, db: DB, user: CurrentUser):
-    await get_ticket(db, ticket_id)
+    ticket = await get_ticket(db, ticket_id)
+    enforce_ticket_read_scope(ticket, user)
     rows = (
         (
             await db.execute(
@@ -1088,10 +1212,13 @@ async def attachments(ticket_id: UUID, db: DB, user: CurrentUser):
 
 
 @router.get("/{ticket_id}/attachments/{attachment_id}")
-async def download(ticket_id: UUID, attachment_id: UUID, db: DB, user: CurrentUser):
+async def download(ticket_id: UUID, attachment_id: UUID, db: DB, user:
+CurrentUser):
     item = await db.get(TicketAttachment, attachment_id)
     if not item or item.ticket_id != ticket_id:
         raise HTTPException(404, "Attachment not found")
+    ticket = await get_ticket(db, ticket_id)
+    enforce_ticket_read_scope(ticket, user)
     return Response(
         content=decrypt_bytes(item.content_enc),
         media_type="application/octet-stream",

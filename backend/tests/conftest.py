@@ -34,12 +34,24 @@ from app.db.session import AsyncSessionLocal, engine  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models import User  # noqa: E402
 from scripts.seed_dictionaries import seed  # noqa: E402
+import asyncio
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.pool import NullPool
 
 
 @pytest.fixture(scope="session", autouse=True)
 def migrations():
     config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
     command.upgrade(config, "head")
+
+    async def _clean_for_downgrade():
+        clean_engine = create_async_engine(url, poolclass=NullPool)
+        async with clean_engine.begin() as conn:
+            await conn.execute(text("TRUNCATE users, account_requests CASCADE"))
+        await clean_engine.dispose()
+
+    asyncio.run(_clean_for_downgrade())
+
     command.downgrade(config, "base")
     command.upgrade(config, "head")
     command.check(config)

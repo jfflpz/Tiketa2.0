@@ -7,7 +7,6 @@ from starlette.concurrency import run_in_threadpool
 
 from app.api.deps import DB, Admin, CurrentUser, SupervisorOrAdmin
 from app.core.cache import (
-    cache,
     check_session_cooldown,
     rate_limit,
     record_matching_attempt,
@@ -25,10 +24,15 @@ from app.models import (
     User,
 )
 from app.schemas import (
+    DepartmentCreate,
+    DepartmentOut,
+    DepartmentUpdate,
     EmployeeInput,
     EmployeeMatchInput,
     EmployeeMatchOut,
     EmployeeScopeOut,
+    LocationDepartmentOut,
+    LocationDepartmentUpdate,
     PlanInput,
     ScopeInput,
     UserCreate,
@@ -109,7 +113,14 @@ async def lookup(
 
 
 @router.get("/dictionaries")
-async def dictionaries(db: DB, user: CurrentUser):
+async def dictionaries(
+    db: DB,
+    user: CurrentUser,
+    include_inactive: bool = Query(False),
+):
+    if include_inactive and user.role != "admin":
+        raise HTTPException(403, "Only administrators can view inactive dictionary records")
+
     result = {}
     for key, model in (
         ("companies", Company),
@@ -117,13 +128,33 @@ async def dictionaries(db: DB, user: CurrentUser):
         ("departments", Department),
         ("tasks", TaskCategory),
     ):
+        stmt = select(model).order_by(model.code)
+        if hasattr(model, "is_active") and not include_inactive:
+            stmt = stmt.where(model.is_active.is_(True))
+
+        rows = (await db.scalars(stmt)).all()
         result[key] = [
-            dict(id=getattr(row, "id", None), code=row.code, name=row.name)
-            for row in (await db.scalars(select(model).order_by(model.code))).all()
+            {
+                "id": getattr(row, "id", None),
+                "code": row.code,
+                "name": row.name,
+                **({"is_active": row.is_active} if hasattr(row, "is_active") else {}),
+            }
+            for row in rows
         ]
+
+    ld_stmt = select(LocationDepartment)
+    if not include_inactive:
+        ld_stmt = ld_stmt.where(LocationDepartment.is_active.is_(True))
+    ld_rows = (await db.scalars(ld_stmt)).all()
     result["location_departments"] = [
-        dict(location_id=row.location_id, department_id=row.department_id)
-        for row in (await db.scalars(select(LocationDepartment))).all()
+        {
+            "location_id": row.location_id,
+            "department_id": row.department_id,
+            "is_default": row.is_default,
+            "is_active": row.is_active,
+        }
+        for row in ld_rows
     ]
     return result
 
@@ -178,6 +209,10 @@ async def users(
 
 @router.post("/admin/users", status_code=201, response_model=UserOut)
 async def create_user(body: UserCreate, db: DB, admin: Admin):
+    raise HTTPException(
+        403,
+        "Direct user creation is disabled. Propose account creation via /account-requests for Supervisor approval.",
+    )
     user = User(
         **body.model_dump(exclude={"password"}),
         password_hash=await run_in_threadpool(hash_password, body.password),
@@ -194,18 +229,22 @@ async def update_user(user_id: UUID, body: UserUpdate, db: DB, admin: Admin):
     user = await db.get(User, user_id, with_for_update=True)
     if not user:
         raise HTTPException(404, "User not found")
-    if user.id == admin.id and (body.is_active is False or body.role == "it"):
+
+    # Audit Finding 15 & B-03 Governance
+    if body.role is not None and body.role != user.role:
         raise HTTPException(
-            409, "Cannot deactivate or demote your own administrator account"
+            403, "Direct role changes are disabled. Role changes require governed account proposals."
         )
-    for key, value in body.model_dump(exclude_none=True, exclude={"password"}).items():
+    if body.is_active is False:
+        raise HTTPException(
+            403, "Direct deactivation is disabled. Submit a deactivation request via /account-requests."
+        )
+
+    for key, value in body.model_dump(exclude_none=True, exclude={"password", "role", "is_active"}).items():
         setattr(user, key, value)
     if body.password:
         user.password_hash = await run_in_threadpool(hash_password, body.password)
-    # Any governance change invalidates existing access and refresh tokens.
     user.token_version += 1
-    if body.is_active is False:
-        await cache.set(f"revoked-user:{user.id}", "1", ex=86400 * 7)
     await db.commit()
     return user
 
@@ -257,9 +296,14 @@ async def create_scope(body: ScopeInput, db: DB, admin: Admin):
         row = await db.get(model, value)
         if not row or not row.is_active:
             raise HTTPException(422, "Unknown or inactive location/department")
-    if not await db.get(LocationDepartment, (body.location_id, body.department_id)):
-        db.add(LocationDepartment(**body.model_dump()))
-        await db.commit()
+
+    loc_dept = await db.get(LocationDepartment, (body.location_id, body.department_id))
+    if not loc_dept:
+        loc_dept = LocationDepartment(**body.model_dump(), is_active=True)
+        db.add(loc_dept)
+    else:
+        loc_dept.is_active = True
+    await db.commit()
     return body
 
 
@@ -282,3 +326,137 @@ async def update_plan(plan_id: UUID, body: PlanInput, db: DB, admin: Admin):
         setattr(plan, key, value)
     await db.commit()
     return {"id": plan.id, **body.model_dump()}
+
+@router.post("/departments", status_code=201, response_model=DepartmentOut)
+async def create_department(body: DepartmentCreate, db: DB, admin: Admin):
+    clean_code = body.code.strip().upper()
+    clean_name = body.name.strip()
+
+    conflict = await db.scalar(
+        select(Department).where(
+            (func.upper(Department.code) == clean_code)
+            | (func.lower(Department.name) == clean_name.lower())
+        )
+    )
+    if conflict:
+        raise HTTPException(409, "A department with this code or name already exists")
+
+    dept = Department(
+        code=clean_code,
+        name=clean_name,
+        is_active=body.is_active,
+    )
+    db.add(dept)
+    await db.commit()
+    await db.refresh(dept)
+    return dept
+
+
+@router.patch("/departments/{department_id}", response_model=DepartmentOut)
+async def update_department(department_id: UUID, body: DepartmentUpdate, db: DB, admin: Admin):
+    dept = await db.get(Department, department_id, with_for_update=True)
+    if not dept:
+        raise HTTPException(404, "Department not found")
+
+    if body.code is not None:
+        clean_code = body.code.strip().upper()
+        conflict = await db.scalar(
+            select(Department).where(
+                func.upper(Department.code) == clean_code,
+                Department.id != department_id,
+            )
+        )
+        if conflict:
+            raise HTTPException(409, "A department with this code already exists")
+        dept.code = clean_code
+
+    if body.name is not None:
+        clean_name = body.name.strip()
+        conflict = await db.scalar(
+            select(Department).where(
+                func.lower(Department.name) == clean_name.lower(),
+                Department.id != department_id,
+            )
+        )
+        if conflict:
+            raise HTTPException(409, "A department with this name already exists")
+        dept.name = clean_name
+
+    if body.is_active is False and dept.is_active is True:
+        emp_count = await db.scalar(
+            select(func.count())
+            .select_from(Employee)
+            .where(Employee.department_id == department_id, Employee.is_active.is_(True))
+        )
+        if (emp_count or 0) > 0:
+            raise HTTPException(409, "Cannot deactivate department with active assigned employees")
+
+        ticket_count = await db.scalar(
+            select(func.count())
+            .select_from(Ticket)
+            .where(Ticket.department_id == department_id, Ticket.status.in_(["OPEN", "PROG"]))
+        )
+        if (ticket_count or 0) > 0:
+            raise HTTPException(409, "Cannot deactivate department with active tickets in progress")
+
+        dept.is_active = False
+    elif body.is_active is True:
+        dept.is_active = True
+
+    await db.commit()
+    await db.refresh(dept)
+    return dept
+
+
+@router.patch(
+    "/admin/location-departments/{location_id}/{department_id}",
+    response_model=LocationDepartmentOut,
+)
+async def update_location_department(
+    location_id: UUID,
+    department_id: UUID,
+    body: LocationDepartmentUpdate,
+    db: DB,
+    admin: Admin,
+):
+    loc_dept = await db.get(
+        LocationDepartment, (location_id, department_id), with_for_update=True
+    )
+    if not loc_dept:
+        raise HTTPException(404, "Location-department link not found")
+
+    if body.is_active is False and loc_dept.is_active is True:
+        emp_count = await db.scalar(
+            select(func.count())
+            .select_from(Employee)
+            .where(
+                Employee.location_id == location_id,
+                Employee.department_id == department_id,
+                Employee.is_active.is_(True),
+            )
+        )
+        if (emp_count or 0) > 0:
+            raise HTTPException(409, "Cannot deactivate link with active assigned employees")
+
+        ticket_count = await db.scalar(
+            select(func.count())
+            .select_from(Ticket)
+            .where(
+                Ticket.location_id == location_id,
+                Ticket.department_id == department_id,
+                Ticket.status.in_(["OPEN", "PROG"]),
+            )
+        )
+        if (ticket_count or 0) > 0:
+            raise HTTPException(409, "Cannot deactivate link with active tickets in progress")
+
+        loc_dept.is_active = False
+    elif body.is_active is True:
+        loc_dept.is_active = True
+
+    if body.is_default is not None:
+        loc_dept.is_default = body.is_default
+
+    await db.commit()
+    await db.refresh(loc_dept)
+    return loc_dept

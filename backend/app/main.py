@@ -16,6 +16,7 @@ from app.api import (
     checklists,
     directory,
     locations,
+    photos,
     repair_notes,
     reports,
     tickets,
@@ -57,6 +58,7 @@ for router in (
     repair_notes.router,
     tickets.router,
     reports.router,
+    photos.router,
 ):
     app.include_router(router, prefix=settings.API_V1_STR)
 

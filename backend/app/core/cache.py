@@ -116,3 +116,13 @@ async def record_matching_attempt(session_id: str, is_mismatch: bool):
     except RedisError as e:
         logger.critical(f"Redis session matching attempt error: {e}")
         raise HTTPException(503, "Session service unavailable") from e
+
+async def invalidate_queue_version():
+    """
+    Best-effort increment of queue:version after a successful database commit.
+    Logged if Redis is unavailable so committed mutations return their saved results.
+    """
+    try:
+        await cache.incr("queue:version")
+    except Exception as e:
+        logger.warning("Failed to increment queue:version cache after commit: %s", e)
