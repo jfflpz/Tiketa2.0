@@ -162,7 +162,7 @@ export const JobLogDrawerRecordForm: React.FC<JobLogDrawerRecordFormProps> = ({
         </div>
 
         {/* Group 2: Issue & Assignment */}
-        <div className="bg-canvas border border-line rounded-2xl divide-y divide-line overflow-hidden">
+        <div className="bg-canvas border border-line rounded-2xl divide-y divide-line relative z-30 overflow-visible">
           <div className="px-3.5 py-2 bg-zinc-100/70 text-[11px] font-bold text-ink-subtle uppercase tracking-wider">
             2. Task, Mode &amp; Assignment
           </div>

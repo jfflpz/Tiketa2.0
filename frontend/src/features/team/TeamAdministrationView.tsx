@@ -289,44 +289,7 @@ export const TeamAdministrationView: React.FC = () => {
           </div>
         )}
 
-        {activeTab === 'EMPLOYEES' && (
-          <div className="flex flex-wrap items-center gap-2">
-            <select
-              value={employeeCompanyFilter}
-              onChange={(e) => setEmployeeCompanyFilter(e.target.value)}
-              className="px-2.5 py-1.5 bg-[#F8F9FA] border border-[#ECEEF2] rounded-xl text-xs font-semibold text-ink focus:outline-none focus:border-orange-400"
-              aria-label="Filter by Company"
-            >
-              <option value="ALL">All Companies</option>
-              {uniqueCompanies.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
-
-            <select
-              value={employeeDeptFilter}
-              onChange={(e) => setEmployeeDeptFilter(e.target.value)}
-              className="px-2.5 py-1.5 bg-[#F8F9FA] border border-[#ECEEF2] rounded-xl text-xs font-semibold text-ink focus:outline-none focus:border-orange-400"
-              aria-label="Filter by Department"
-            >
-              <option value="ALL">All Departments</option>
-              {uniqueDepartments.map((d) => (
-                <option key={d} value={d}>{d}</option>
-              ))}
-            </select>
-
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <input
-                type="text"
-                value={employeeSearch}
-                onChange={(e) => setEmployeeSearch(e.target.value)}
-                placeholder="Search employees or ID..."
-                className="pl-8 pr-3 py-1.5 bg-[#F8F9FA] border border-[#ECEEF2] rounded-xl text-xs text-ink focus:outline-none focus:border-orange-400 w-52 sm:w-60"
-              />
-            </div>
-          </div>
-        )}
+        
       </div>
 
       {isLoadingTeam && itTeamMembers.length === 0 ? (
@@ -363,6 +326,14 @@ export const TeamAdministrationView: React.FC = () => {
               onDeleteEmployee={(empId, name) => {
                 deactivateEmployeeApi(empId, name);
               }}
+              employeeSearch={employeeSearch}
+              onSearchChange={setEmployeeSearch}
+              companyFilter={employeeCompanyFilter}
+              onCompanyFilterChange={setEmployeeCompanyFilter}
+              departmentFilter={employeeDeptFilter}
+              onDepartmentFilterChange={setEmployeeDeptFilter}
+              companiesList={uniqueCompanies}
+              departmentsList={uniqueDepartments}
             />
           )}
 

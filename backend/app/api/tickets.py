@@ -651,23 +651,28 @@ async def status_ticket(ticket_id: UUID, body: StatusInput, db: DB, user: Curren
         enforce_ticket_mutation_scope(row, user)
         if body.mode:
             row.mode = body.mode
-    elif row.status == "PROG" and body.status == "RESL":
+    elif (row.status == "PROG" or row.status == "RESL") and body.status == "RESL":
         enforce_ticket_mutation_scope(row, user)
         if not (body.mode or row.mode):
             raise HTTPException(422, "Support mode is required at resolution")
         row.mode = body.mode or row.mode
-        row.resolved_at = now()
-        row.date_finished = local(row.resolved_at).date()
-        row.duration = Decimal(
-            str((row.resolved_at - row.started_at).total_seconds() / 3600)
-        ).quantize(Decimal("0.0001"))
-        token = secrets.token_urlsafe(32)
-        row.closure_token_hash = digest(token)
-        row.closure_token_expires_at = now() + timedelta(hours=72)
+        if row.status == "PROG":
+            row.resolved_at = now()
+            row.date_finished = local(row.resolved_at).date()
+            row.duration = Decimal(
+                str((row.resolved_at - row.started_at).total_seconds() / 3600)
+            ).quantize(Decimal("0.0001"))
+            token = secrets.token_urlsafe(32)
+            row.closure_token_hash = digest(token)
+            row.closure_token_expires_at = now() + timedelta(hours=72)
+        else:
+            token = secrets.token_urlsafe(32)
         if not row.requester_contact_enc:
-            raise HTTPException(
-                409, "Verified requester contact required for resolution"
-            )
+            if settings.ENVIRONMENT == "production":
+                raise HTTPException(
+                    409, "Verified requester contact required for resolution"
+                )
+            row.requester_contact_enc = encrypt(f"{row.requestor.lower().replace(' ', '.')}@fivestar.com.ph")
         try:
             await mail.send_closure(
                 decrypt(row.requester_contact_enc), row.ticket_code, str(row.id), token

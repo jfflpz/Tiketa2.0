@@ -38,11 +38,13 @@ export const ITStaffTable: React.FC<ITStaffTableProps> = ({
           return (
             <div
               key={member.id}
-              className={`bg-white border rounded-2xl p-4 shadow-card transition-all flex flex-col justify-between space-y-3 ${
+              onClick={(e) => { e.stopPropagation(); onEditMember(member); }}
+              className={`bg-white border rounded-2xl p-4 shadow-card hover:shadow-md hover:border-orange-400 cursor-pointer transition-all flex flex-col justify-between space-y-3 group ${
                 isDeactivated
                   ? 'border-zinc-200 opacity-60 bg-zinc-50/50'
-                  : 'border-[#ECEEF2] hover:border-orange-300'
+                  : 'border-[#ECEEF2]'
               }`}
+              title="Click card to view details and edit specialist"
             >
               <div className="space-y-3">
                 <div className="flex items-start justify-between gap-3">

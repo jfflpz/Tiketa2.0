@@ -242,7 +242,7 @@ export const JobLogDrawer: React.FC = () => {
         />
 
         {/* Drawer Body */}
-        <div className="p-5 overflow-y-auto flex-1 space-y-4">
+        <div className="p-5 pb-36 overflow-y-auto flex-1 space-y-4">
           {/* Closure Verification Loop Banner (When status is RESL) */}
           {ticket.status === 'RESL' && (
             <div className="bg-peach/60 border border-orange-300/80 rounded-2xl p-4 space-y-3">

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Building2, Plus, Trash2, Pencil } from 'lucide-react';
+import { Building2, Plus, Trash2, Pencil, Search } from 'lucide-react';
 import type { EmployeeProfile } from '../../../types';
 
 export interface VerifiedEmployeeTableProps {
@@ -7,6 +7,14 @@ export interface VerifiedEmployeeTableProps {
   onOpenAddModal: () => void;
   onEditEmployee: (employee: EmployeeProfile) => void;
   onDeleteEmployee: (empId: string, name: string) => void;
+  employeeSearch?: string;
+  onSearchChange?: (val: string) => void;
+  companyFilter?: string;
+  onCompanyFilterChange?: (val: string) => void;
+  departmentFilter?: string;
+  onDepartmentFilterChange?: (val: string) => void;
+  companiesList?: string[];
+  departmentsList?: string[];
 }
 
 export const VerifiedEmployeeTable: React.FC<VerifiedEmployeeTableProps> = ({
@@ -14,10 +22,19 @@ export const VerifiedEmployeeTable: React.FC<VerifiedEmployeeTableProps> = ({
   onOpenAddModal,
   onEditEmployee,
   onDeleteEmployee,
+  employeeSearch = '',
+  onSearchChange,
+  companyFilter = 'ALL',
+  onCompanyFilterChange,
+  departmentFilter = 'ALL',
+  onDepartmentFilterChange,
+  companiesList = [],
+  departmentsList = [],
 }) => {
   return (
     <div className="bg-white border border-[#ECEEF2] rounded-3xl p-5 shadow-card space-y-4">
-      <div className="flex items-center justify-between">
+      {/* Header with Title and Integrated Filter Controls */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-[#ECEEF2]">
         <div>
           <h2 className="text-sm font-bold text-ink">
             Verified Company Employee Directory ({employees.length})
@@ -26,14 +43,59 @@ export const VerifiedEmployeeTable: React.FC<VerifiedEmployeeTableProps> = ({
             Authorized staff profiles recognized by the employee kiosk intake for automated company &amp; terminal binding.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onOpenAddModal}
-          className="py-1.5 px-3 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-sm transition-colors press-fx"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>Add Employee</span>
-        </button>
+
+        {/* Filters in Card Header */}
+        <div className="flex flex-wrap items-center gap-2">
+          {onCompanyFilterChange && (
+            <select
+              value={companyFilter}
+              onChange={(e) => onCompanyFilterChange(e.target.value)}
+              className="px-2.5 py-1.5 bg-[#F8F9FA] border border-[#ECEEF2] rounded-xl text-xs font-semibold text-ink focus:outline-none focus:border-orange-400"
+              aria-label="Filter by Company"
+            >
+              <option value="ALL">All Companies</option>
+              {companiesList.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          )}
+
+          {onDepartmentFilterChange && (
+            <select
+              value={departmentFilter}
+              onChange={(e) => onDepartmentFilterChange(e.target.value)}
+              className="px-2.5 py-1.5 bg-[#F8F9FA] border border-[#ECEEF2] rounded-xl text-xs font-semibold text-ink focus:outline-none focus:border-orange-400"
+              aria-label="Filter by Department"
+            >
+              <option value="ALL">All Departments</option>
+              {departmentsList.map((d) => (
+                <option key={d} value={d}>{d}</option>
+              ))}
+            </select>
+          )}
+
+          {onSearchChange && (
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={employeeSearch}
+                onChange={(e) => onSearchChange(e.target.value)}
+                placeholder="Search employees or ID..."
+                className="pl-8 pr-3 py-1.5 bg-[#F8F9FA] border border-[#ECEEF2] rounded-xl text-xs text-ink focus:outline-none focus:border-orange-400 w-48 sm:w-56"
+              />
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={onOpenAddModal}
+            className="py-1.5 px-3 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-sm transition-colors press-fx"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Add Employee</span>
+          </button>
+        </div>
       </div>
 
       <div className="overflow-x-auto">
@@ -57,9 +119,11 @@ export const VerifiedEmployeeTable: React.FC<VerifiedEmployeeTableProps> = ({
               return (
                 <tr
                   key={emp.id || emp.employee_id}
-                  className={`hover:bg-zinc-50/70 transition-colors ${
+                  onClick={() => onEditEmployee(emp)}
+                  className={`hover:bg-orange-50/60 cursor-pointer transition-colors ${
                     isDeactivated ? 'opacity-60 bg-zinc-50/40' : ''
                   }`}
+                  title="Click row to view details and edit employee"
                 >
                   <td className="py-3 px-3">
                     <span className="font-mono font-bold text-xs px-2 py-0.5 rounded-lg bg-zinc-900 text-white">
@@ -84,42 +148,36 @@ export const VerifiedEmployeeTable: React.FC<VerifiedEmployeeTableProps> = ({
                           : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                       }`}
                     >
-                      <span
-                        className={`w-1.5 h-1.5 rounded-full ${
-                          isDeactivated ? 'bg-zinc-400' : 'bg-emerald-500'
-                        }`}
-                      />
-                      {isDeactivated ? 'Deactivated' : 'Active'}
+                      <span className={`w-1.5 h-1.5 rounded-full ${isDeactivated ? 'bg-zinc-400' : 'bg-emerald-500'}`} />
+                      {isDeactivated ? 'Inactive' : 'Active'}
                     </span>
                   </td>
                   <td className="py-3 px-3 text-right">
-                    <div className="flex items-center justify-end gap-1">
+                    <div className="flex items-center justify-end gap-1.5">
                       <button
                         type="button"
-                        onClick={(e) => { e.stopPropagation(); onEditEmployee(emp); }}
-                        className="p-1.5 rounded-lg text-zinc-400 hover:text-orange-600 hover:bg-orange-50 transition-colors press-fx"
-                        title="Edit Profile"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEditEmployee(emp);
+                        }}
+                        className="p-1 rounded-lg text-zinc-400 hover:text-orange-600 hover:bg-orange-50 transition-colors"
+                        title="Edit Employee"
+                        aria-label="Edit Employee"
                       >
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
-                      {!isDeactivated && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (
-                              window.confirm(
-                                `Are you sure you want to deactivate employee profile ${emp.full_name} (${emp.employee_id})?\n\nHistorical ticket submissions, resolution records, and audit logs are preserved.`
-                              )
-                            ) {
-                              onDeleteEmployee(emp.id || emp.employee_id, emp.full_name);
-                            }
-                          }}
-                          className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-600 hover:bg-rose-50 transition-colors press-fx"
-                          title="Deactivate Profile"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteEmployee(emp.employee_id, emp.full_name);
+                        }}
+                        className="p-1 rounded-lg text-zinc-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                        title="Delete Employee"
+                        aria-label="Delete Employee"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </td>
                 </tr>

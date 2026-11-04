@@ -224,7 +224,7 @@ export const ITOverviewDashboard: React.FC = () => {
                 </div>
 
                 <div className="space-y-2.5">
-                  {(myTickets.length > 0 ? myTickets.slice(0, 2) : tickets.slice(0, 2)).map(
+                  {(myTickets.length > 0 ? myTickets.slice(0, 4) : tickets.slice(0, 4)).map(
                     (t, i) => {
                       const badgeColors = [
                         'bg-orange-100 text-orange-700',
@@ -270,14 +270,14 @@ export const ITOverviewDashboard: React.FC = () => {
                 </div>
               </div>
 
-              {(myTickets.length > 2 || tickets.length > 2) && (
+              {(myTickets.length > 4 || tickets.length > 4) && (
                 <div className="pt-2 text-right border-t border-zinc-100 mt-2">
                   <button
                     type="button"
                     onClick={() => setActiveView('tickets')}
                     className="text-[11px] font-bold text-orange-600 hover:text-orange-700 hover:underline inline-flex items-center gap-1 press-fx"
                   >
-                    <span>+{Math.max(0, (myTickets.length > 0 ? myTickets.length : tickets.length) - 2)} more assigned</span>
+                    <span>+{Math.max(0, (myTickets.length > 0 ? myTickets.length : tickets.length) - 4)} more assigned</span>
                     <ArrowRight className="w-3 h-3" />
                   </button>
                 </div>
@@ -600,7 +600,7 @@ export const ITOverviewDashboard: React.FC = () => {
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-stretch">
           {/* LEFT: Weekly Repair Hours Card */}
           <div className="xl:col-span-3">
-            <div className="bg-white border border-[#ECEEF2] rounded-2xl p-5 shadow-card flex flex-col justify-between h-full space-y-3.5">
+            <div className="bg-white border border-[#ECEEF2] rounded-2xl p-5 shadow-card space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="w-1 h-4 rounded-full bg-orange-500" />
@@ -611,28 +611,17 @@ export const ITOverviewDashboard: React.FC = () => {
                 </span>
               </div>
 
-              {/* Weekly Target Progress Indicator */}
-              <div className="p-3 rounded-xl bg-[#F8F9FA] border border-[#ECEEF2] space-y-1.5">
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-zinc-500 font-medium">Weekly Target Progress</span>
-                  <span className="font-bold text-ink font-mono">96% (38.4 / 40.0h)</span>
-                </div>
-                <div className="w-full h-2 rounded-full bg-zinc-200 overflow-hidden">
-                  <div className="h-full rounded-full bg-gradient-to-r from-orange-400 to-orange-500 transition-all duration-500" style={{ width: '96%' }} />
-                </div>
-              </div>
-
               {/* Duration Metric & 7-Day Histogram Bars */}
-              <div className="flex items-end justify-between gap-2 pt-1">
-                <div>
-                  <span className="text-2xl font-extrabold text-ink tabular-nums">
+              <div className="flex items-end justify-between gap-3 pt-1">
+                <div className="space-y-1">
+                  <span className="text-3xl font-extrabold text-ink tabular-nums block">
                     0.42 hrs
                   </span>
-                  <p className="text-[11px] text-zinc-400 mt-0.5 font-medium">
-                    Avg. Repair Duration
+                  <p className="text-[11px] text-zinc-400 font-medium">
+                    Avg. Repair Duration (#11)
                   </p>
-                  <span className="inline-block mt-2 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
-                    &le; 45m Target Met
+                  <span className="inline-block mt-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                    Target &le; 45m Met
                   </span>
                 </div>
 
@@ -650,6 +639,17 @@ export const ITOverviewDashboard: React.FC = () => {
                       </span>
                     </div>
                   ))}
+                </div>
+              </div>
+
+              {/* Weekly Target Progress Indicator */}
+              <div className="p-3 rounded-xl bg-[#F8F9FA] border border-[#ECEEF2] space-y-1.5 mt-2">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-zinc-500 font-medium">Weekly Target Progress</span>
+                  <span className="font-bold text-ink font-mono">96% (38.4 / 40.0h)</span>
+                </div>
+                <div className="w-full h-2 rounded-full bg-zinc-200 overflow-hidden">
+                  <div className="h-full rounded-full bg-gradient-to-r from-orange-400 to-orange-500 transition-all duration-500" style={{ width: '96%' }} />
                 </div>
               </div>
             </div>
