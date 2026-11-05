@@ -346,7 +346,7 @@ export const createTicketVerificationSlice: AppSliceCreator<TicketVerificationSl
         typeof window !== 'undefined' && window.location.origin
           ? window.location.origin
           : 'http://localhost:5173';
-      let link = `${origin}/?verifyTicket=${ticketCode}`;
+      let link = `${origin}/?track=${ticketCode}`;
       let isClosureCredential = false;
       let emailDispatched = false;
 

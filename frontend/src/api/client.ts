@@ -339,9 +339,11 @@ export const directoryApi = {
     });
     return res.data;
   },
-  lookupEmployee: async (query: string): Promise<EmployeeLookupResult> => {
+    lookupEmployee: async (query: string): Promise<EmployeeLookupResult> => {
+    const token = getAccessToken();
     const res = await apiClient.get<EmployeeLookupResult>('/employees/lookup', {
-      params: { q: query },
+        params: { q: query },
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     });
     return res.data;
     },
