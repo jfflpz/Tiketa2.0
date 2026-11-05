@@ -32,17 +32,11 @@ export const EmployeeTicketScreen: React.FC = () => {
   const clearVerificationContext = useAppStore((state) => state.clearVerificationContext);
   const copyTicketShareLink = useAppStore((state) => state.copyTicketShareLink);
   const fetchMyEmployeeTickets = useAppStore((state) => state.fetchMyEmployeeTickets);
-  const hydrateKioskEmployeeTickets = useAppStore((state) => state.hydrateKioskEmployeeTickets);
-
   const [tab, setTab] = useState<'create' | 'my_tickets' | 'lookup'>('create');
   const [detailTicketId, setDetailTicketId] = useState<string | null>(null);
   const [copiedTicketId, setCopiedTicketId] = useState<string | null>(null);
 
   const intake = useEmployeeIntake();
-
-  useEffect(() => {
-    hydrateKioskEmployeeTickets?.();
-  }, [hydrateKioskEmployeeTickets]);
 
   useEffect(() => {
     if (verifyTicketCode && verificationStatus === 'idle') {

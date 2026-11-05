@@ -20,6 +20,7 @@ export const HubResolutionHistoryTab: React.FC<HubResolutionHistoryTabProps> = (
   const serverDictionaries = useAppStore((state) => state.serverDictionaries);
   const itTeamMembers = useAppStore((state) => state.itTeamMembers);
   const hubSummariesVersion = useAppStore((state) => state.hubSummariesVersion);
+  const currentUser = useAppStore((state) => state.currentUser);
 
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -54,14 +55,16 @@ export const HubResolutionHistoryTab: React.FC<HubResolutionHistoryTabProps> = (
     }
     setError(null);
 
-    try {
-      const data = await ticketsApi.getQueue({
-        location_id: hubId,
-        status: statusFilter === 'ALL' ? undefined : statusFilter,
-        order: 'desc',
-        limit: pageSize + 1,
-        offset: (page - 1) * pageSize,
-      });
+   try {
+    const fetcher =
+      currentUser?.role === 'supervisor' ? ticketsApi.getHistory : ticketsApi.getQueue;
+    const data = await fetcher({
+      location_id: hubId,
+      status: statusFilter === 'ALL' ? undefined : statusFilter,
+      order: 'desc',
+      limit: pageSize + 1,
+      offset: (page - 1) * pageSize,
+    });
 
       if (currentSeq !== seqRef.current) return;
 

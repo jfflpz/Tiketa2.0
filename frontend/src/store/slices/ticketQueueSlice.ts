@@ -87,6 +87,13 @@ export const createTicketQueueSlice: AppSliceCreator<TicketQueueSlice> = (set, g
         dicts,
         itMembers.find((member) => member.id === row.assigned_tech_id)?.name,
       );
+      // @spec F-03: Retain existing loaded messages for this ticket
+      const existingMsgs = get().inspectedTicket?.id === id
+        ? get().inspectedTicket?.messages
+        : get().tickets.find((t) => t.id === id)?.messages;
+      if (existingMsgs && existingMsgs.length > 0) {
+        mapped.messages = existingMsgs;
+      }
       if (get().selectedTicketId === id) {
         set({
           inspectedTicket: mapped,
@@ -156,6 +163,13 @@ export const createTicketQueueSlice: AppSliceCreator<TicketQueueSlice> = (set, g
         dicts,
         itMembers.find((member) => member.id === row.assigned_tech_id)?.name,
       );
+      // @spec F-03: Retain existing loaded messages for this ticket
+      const existingWorkbenchMsgs = get().workbenchTicket?.id === id
+        ? get().workbenchTicket?.messages
+        : get().tickets.find((t) => t.id === id)?.messages;
+      if (existingWorkbenchMsgs && existingWorkbenchMsgs.length > 0) {
+        mapped.messages = existingWorkbenchMsgs;
+      }
       if (get().activeWorkbenchTicketId === id) {
         set({
           workbenchTicket: mapped,
@@ -204,12 +218,66 @@ export const createTicketQueueSlice: AppSliceCreator<TicketQueueSlice> = (set, g
       if (Array.isArray(data)) {
         const itMembers = get().itTeamMembers;
         const dicts = get().serverDictionaries;
-        const mapped = data.map((row) => mapStaffTicket(
-          row,
-          dicts,
-          itMembers.find((member) => member.id === row.assigned_tech_id)?.name,
-        ));
-        set({ tickets: mapped, isFetchingQueue: false });
+        const currentTickets = get().tickets;
+        const currentInspected = get().inspectedTicket;
+        const currentWorkbench = get().workbenchTicket;
+
+        // @spec F-03: Preserve loaded conversation messages across queue polling refreshes
+        const messagesMap = new Map<string, NonNullable<Ticket['messages']>>();
+        for (const t of currentTickets) {
+          if (t.messages && t.messages.length > 0) {
+            messagesMap.set(t.id, t.messages);
+          }
+        }
+        if (currentInspected?.id && currentInspected.messages && currentInspected.messages.length > 0) {
+          const prev = messagesMap.get(currentInspected.id) || [];
+          if (currentInspected.messages.length >= prev.length) {
+            messagesMap.set(currentInspected.id, currentInspected.messages);
+          }
+        }
+        if (currentWorkbench?.id && currentWorkbench.messages && currentWorkbench.messages.length > 0) {
+          const prev = messagesMap.get(currentWorkbench.id) || [];
+          if (currentWorkbench.messages.length >= prev.length) {
+            messagesMap.set(currentWorkbench.id, currentWorkbench.messages);
+          }
+        }
+
+        const mapped = data.map((row) => {
+          const t = mapStaffTicket(
+            row,
+            dicts,
+            itMembers.find((member) => member.id === row.assigned_tech_id)?.name,
+          );
+          const savedMsgs = messagesMap.get(t.id);
+          if (savedMsgs && savedMsgs.length > 0) {
+            t.messages = savedMsgs;
+          }
+          return t;
+        });
+
+        // Also synchronize inspectedTicket and workbenchTicket metadata without clearing messages
+        let updatedInspected = currentInspected;
+        if (currentInspected) {
+          const matchingInQueue = mapped.find((t) => t.id === currentInspected.id);
+          if (matchingInQueue) {
+            updatedInspected = { ...matchingInQueue, messages: currentInspected.messages || matchingInQueue.messages };
+          }
+        }
+
+        let updatedWorkbench = currentWorkbench;
+        if (currentWorkbench) {
+          const matchingInQueue = mapped.find((t) => t.id === currentWorkbench.id);
+          if (matchingInQueue) {
+            updatedWorkbench = { ...matchingInQueue, messages: currentWorkbench.messages || matchingInQueue.messages };
+          }
+        }
+
+        set({
+          tickets: mapped,
+          inspectedTicket: updatedInspected,
+          workbenchTicket: updatedWorkbench,
+          isFetchingQueue: false,
+        });
         return true;
       }
       set({ isFetchingQueue: false });

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 import { JobLogDrawerChat } from '../src/components/tickets/drawer/JobLogDrawerChat';
 import { JobLogSheetView } from '../src/features/joblogs/JobLogSheetView';
+import { ticketsApi } from '../src/api/client';
 import { sanitizeCsvCell } from '../src/features/joblogs/utils/csvSanitizer';
 import { useAppStore } from '../src/store/useAppStore';
 import type { Ticket } from '../src/types/ticket';
@@ -223,6 +224,42 @@ describe('F-07 & F-08 Chat & History Suite', () => {
 
       vi.useRealTimers();
     });
+
+    it('4b. [F-03] Conversation messages survive background fetchQueueApi polling refreshes', async () => {
+      useAppStore.setState({
+        tickets: [sampleTicket],
+      });
+
+      // Verify initial messages exist on the ticket in store
+      expect(useAppStore.getState().tickets[0].messages).toHaveLength(3);
+
+      // Simulate background queue refresh returning new raw metadata without comments
+      vi.mocked(ticketsApi.getQueue).mockResolvedValueOnce([
+        {
+          id: 'ticket-uuid-101',
+          ticket_code: 'T-100101',
+          company_code: 'P5STAR',
+          location_code: 'MNL-PASAY',
+          department_code: 'OPS',
+          task_code: 'PRN-TS',
+          status: 'PROG',
+          assigned_tech_id: 'tech-uuid-1',
+          created_at: '2026-11-04T08:30:00Z',
+          description: 'Refreshed queue metadata',
+        } as any,
+      ]);
+
+      const success = await useAppStore.getState().fetchQueueApi();
+      expect(success).toBe(true);
+
+      // F-03: Messages MUST be preserved and not wiped out by queue sync
+      const refreshedTicket = useAppStore.getState().tickets.find((t) => t.id === 'ticket-uuid-101');
+      expect(refreshedTicket).toBeDefined();
+      expect(refreshedTicket?.messages).toHaveLength(3);
+      expect(refreshedTicket?.messages?.[0].id).toBe('msg-1');
+      expect(refreshedTicket?.messages?.[1].id).toBe('msg-2');
+      expect(refreshedTicket?.messages?.[2].id).toBe('msg-3');
+    });
   });
 
   describe('F-08 Complete Job History & Safe CSV Export', () => {
@@ -243,31 +280,51 @@ describe('F-07 & F-08 Chat & History Suite', () => {
       expect(sanitizeCsvCell(undefined)).toBe('""');
     });
 
-    it('6. JobLogSheetView scopes personal history strictly to logged-in technician UUID', () => {
+    it('6. JobLogSheetView scopes personal history strictly to logged-in technician UUID', async () => {
       // Add a ticket worked by someone else with a similar first name
-      const otherTechTicket: Ticket = {
-        ...sampleTicket,
+      const myTicketRow: any = {
+        id: 'ticket-uuid-101',
+        ticket_code: 'T-100101',
+        company_id: 'comp-1',
+        department_id: 'dept-1',
+        location_id: 'loc-1',
+        task_code: 'PRN-TS',
+        reported_issue: 'Workstation touchscreen unresponsive after boot',
+        requestor_name: 'Maria Santos',
+        status: 'PROG',
+        mode: 'SITE',
+        assigned_tech_id: 'tech-uuid-1',
+        created_at: '2026-11-04T08:30:00Z',
+      };
+      const otherTechTicketRow: any = {
         id: 'ticket-uuid-202',
-        ticketCode: 'T-100202',
-        workedBy: 'Juan Miguel Bautista',
-        workedById: 'tech-uuid-999',
+        ticket_code: 'T-100202',
+        company_id: 'comp-1',
+        department_id: 'dept-1',
+        location_id: 'loc-1',
+        task_code: 'PRN-TS',
+        reported_issue: 'Workstation touchscreen unresponsive after boot',
+        requestor_name: 'Maria Santos',
+        status: 'PROG',
+        mode: 'SITE',
         assigned_tech_id: 'tech-uuid-999',
+        created_at: '2026-11-04T08:30:00Z',
       };
 
-      useAppStore.setState({
-        tickets: [sampleTicket, otherTechTicket],
-      });
+      vi.mocked(ticketsApi.getHistory).mockResolvedValueOnce([myTicketRow, otherTechTicketRow]);
 
       render(<JobLogSheetView />);
 
       // Juan Dela Cruz's ticket MUST be visible
-      expect(screen.getByText('T-100101')).toBeDefined();
+      await waitFor(() => {
+        expect(screen.getByText('T-100101')).toBeDefined();
+      });
 
       // Other technician's ticket with similar first name MUST NOT leak into personal ledger
       expect(screen.queryByText('T-100202')).toBeNull();
     });
 
-    it('7. JobLogSheetView renders each row actual worker and does not overwrite with admin name', () => {
+    it('7. JobLogSheetView renders each row actual worker and does not overwrite with admin name', async () => {
       // Switch user to Admin
       useAppStore.setState({
         currentUser: {
@@ -279,27 +336,51 @@ describe('F-07 & F-08 Chat & History Suite', () => {
           title: 'IT Director',
           avatar: '',
         },
-        tickets: [
-          sampleTicket,
-          {
-            ...sampleTicket,
-            id: 'ticket-uuid-303',
-            ticketCode: 'T-100303',
-            workedBy: 'Pedro Penduko',
-            workedById: 'tech-uuid-2',
-            assigned_tech_id: 'tech-uuid-2',
-          },
+        itTeamMembers: [
+          { id: 'tech-uuid-1', name: 'Juan Dela Cruz', email: 'juan@ph.omnitick.com', role: 'it' as any, status: 'active', is_active: true, avatar: '', department: 'IT', primaryLocation: 'Pasay', ticketsClosed: 0, activeTickets: 0, flameScore: 0 },
+          { id: 'tech-uuid-2', name: 'Pedro Penduko', email: 'pedro@ph.omnitick.com', role: 'it' as any, status: 'active', is_active: true, avatar: '', department: 'IT', primaryLocation: 'Pasay', ticketsClosed: 0, activeTickets: 0, flameScore: 0 },
         ],
       });
 
+      const ticketRow1: any = {
+        id: 'ticket-uuid-101',
+        ticket_code: 'T-100101',
+        company_id: 'comp-1',
+        department_id: 'dept-1',
+        location_id: 'loc-1',
+        task_code: 'PRN-TS',
+        reported_issue: 'Workstation touchscreen unresponsive after boot',
+        requestor_name: 'Maria Santos',
+        status: 'PROG',
+        mode: 'SITE',
+        assigned_tech_id: 'tech-uuid-1',
+        created_at: '2026-11-04T08:30:00Z',
+      };
+      const ticketRow2: any = {
+        id: 'ticket-uuid-303',
+        ticket_code: 'T-100303',
+        company_id: 'comp-1',
+        department_id: 'dept-1',
+        location_id: 'loc-1',
+        task_code: 'PRN-TS',
+        reported_issue: 'Workstation touchscreen unresponsive after boot',
+        requestor_name: 'Maria Santos',
+        status: 'PROG',
+        mode: 'SITE',
+        assigned_tech_id: 'tech-uuid-2',
+        created_at: '2026-11-04T08:30:00Z',
+      };
+
+      vi.mocked(ticketsApi.getHistory).mockResolvedValueOnce([ticketRow1, ticketRow2]);
+
       render(<JobLogSheetView />);
 
-      // Admin sees all tickets with their actual respective workers
-      expect(screen.getByText('T-100101')).toBeDefined();
-      expect(screen.getByText('Juan Dela Cruz')).toBeDefined();
-
-      expect(screen.getByText('T-100303')).toBeDefined();
-      expect(screen.getByText('Pedro Penduko')).toBeDefined();
+      await waitFor(() => {
+        expect(screen.getByText('T-100101')).toBeDefined();
+        expect(screen.getByText('Juan Dela Cruz')).toBeDefined();
+        expect(screen.getByText('T-100303')).toBeDefined();
+        expect(screen.getByText('Pedro Penduko')).toBeDefined();
+      });
 
       // Admin's own name is NOT stamped as the worker for other technicians' tickets
       expect(screen.queryByText('System Administrator')).toBeNull();

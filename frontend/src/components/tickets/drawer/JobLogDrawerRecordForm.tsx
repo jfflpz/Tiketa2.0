@@ -122,6 +122,17 @@ export const JobLogDrawerRecordForm: React.FC<JobLogDrawerRecordFormProps> = ({
         </div>
       </div>
 
+      {/* Original Employee Report & Context */}
+      <div className="bg-canvas border border-line rounded-2xl p-4 space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold text-ink">Original Employee Report & Context</span>
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-100 text-zinc-500">Intake Description</span>
+        </div>
+        <p className="text-xs text-ink leading-relaxed bg-surface p-3 rounded-xl border border-line font-medium">
+          {ticket.description || 'No description provided by requestor.'}
+        </p>
+      </div>
+
       {/* Persistent SOP Checklist & Saved Repair Guides */}
       <TicketChecklistSection
         ticketId={ticket.id}

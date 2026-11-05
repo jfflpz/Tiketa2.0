@@ -1,5 +1,6 @@
 // @spec F-02: Universal Staff Avatar with Deterministic Initials Fallback
 import React, { useState, useEffect } from 'react';
+import { apiClient } from '../../api/client';
 
 export interface StaffAvatarProps {
   name?: string | null;
@@ -44,23 +45,67 @@ export const StaffAvatar: React.FC<StaffAvatarProps> = ({
   className = '',
 }) => {
   const [hasImageError, setHasImageError] = useState(false);
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const initials = computeInitials(name, username);
   const sizeClass = SIZE_CLASSES[size] || SIZE_CLASSES.md;
 
-  // Reset error flag if a new avatarUrl is provided
   useEffect(() => {
-    setHasImageError(false);
-  }, [avatarUrl]);
+  setHasImageError(false);
+  setBlobUrl(null);
 
-  const showImage = Boolean(avatarUrl && !hasImageError);
+  if (!avatarUrl) {
+    return;
+  }
 
-  if (showImage && avatarUrl) {
+  // Direct URLs (external links, data URIs, or local blob previews)
+  if (
+    avatarUrl.startsWith('blob:') ||
+    avatarUrl.startsWith('data:') ||
+    avatarUrl.startsWith('http://') ||
+    avatarUrl.startsWith('https://')
+  ) {
+    setBlobUrl(avatarUrl);
+    return;
+  }
+
+  // Protected API photo endpoints: fetch with Authorization header
+  let isCancelled = false;
+  let localCreatedUrl: string | null = null;
+  const endpointPath = avatarUrl.replace(/^\/api\/v1/, '');
+
+  apiClient
+    .get(endpointPath, { responseType: 'blob' })
+    .then((res) => {
+      if (!isCancelled) {
+        localCreatedUrl = URL.createObjectURL(res.data);
+        setHasImageError(false);
+        setBlobUrl(localCreatedUrl);
+      }
+    })
+    .catch(() => {
+      if (!isCancelled) {
+        setHasImageError(true);
+      }
+    });
+
+  return () => {
+    isCancelled = true;
+    if (localCreatedUrl) {
+      URL.revokeObjectURL(localCreatedUrl);
+    }
+  };
+}, [avatarUrl]);
+
+  const showImage = Boolean(blobUrl && !hasImageError);
+
+  if (showImage && blobUrl) {
     return (
       <img
-        src={avatarUrl}
+        src={blobUrl}
         alt={name || username || 'Staff Avatar'}
         onError={() => setHasImageError(true)}
-        className={`${sizeClass} rounded-full object-cover border border-[#ECEEF2] bg-zinc-100 shrink-0 ${className}`}
+        className={`${sizeClass} rounded-full object-cover border border-[#ECEEF2] bg-zinc-100 shrink-0
+        ${className}`}
       />
     );
   }
@@ -68,7 +113,8 @@ export const StaffAvatar: React.FC<StaffAvatarProps> = ({
   return (
     <div
       aria-label={name || username || 'Staff Avatar'}
-      className={`${sizeClass} rounded-full bg-zinc-900 text-white font-bold flex items-center justify-center shrink-0 border border-zinc-700/50 select-none shadow-sm ${className}`}
+      className={`${sizeClass} rounded-full bg-zinc-900 text-white font-bold flex items-center justify-center
+      shrink-0 border border-zinc-700/50 select-none shadow-sm ${className}`}
     >
       <span>{initials}</span>
     </div>

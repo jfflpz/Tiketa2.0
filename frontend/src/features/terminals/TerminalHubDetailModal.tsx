@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   Building2,
@@ -131,9 +132,10 @@ export const TerminalHubDetailModal: React.FC<TerminalHubDetailModalProps> = ({
     onClose();
   };
 
-  return (
+  const modalContent = (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-zinc-900/60 backdrop-blur-sm animate-fade-in overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-zinc-900/60 backdrop-blur-sm
+      animate-fade-in overflow-y-auto"
       role="dialog"
       aria-modal="true"
       aria-labelledby="terminal-hub-title"
@@ -299,4 +301,10 @@ export const TerminalHubDetailModal: React.FC<TerminalHubDetailModalProps> = ({
       </div>
     </div>
   );
+
+    if (typeof document !== 'undefined' && import.meta.env.NODE_ENV !== 'test') {
+    return createPortal(modalContent, document.body);
+  }
+
+  return modalContent;
 };

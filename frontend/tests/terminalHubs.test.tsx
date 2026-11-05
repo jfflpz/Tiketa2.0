@@ -22,6 +22,7 @@ vi.mock('../src/api/client', async () => {
       ...actual.ticketsApi,
       getQueue: vi.fn(),
       getTicket: vi.fn(),
+      getHistory: vi.fn().mockResolvedValue([]),
       getComments: vi.fn().mockResolvedValue([]),
       claimTicket: vi.fn().mockResolvedValue({}),
       assignTicket: vi.fn().mockResolvedValue({}),

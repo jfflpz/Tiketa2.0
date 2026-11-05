@@ -105,12 +105,20 @@ export const MyProfileModal: React.FC<MyProfileModalProps> = ({ isOpen, onClose 
       const res = await usersApi.uploadSelfPhoto(selectedFile);
       const newAvatarUrl = res.avatar_url;
 
-      // Update in-memory user state
       if (currentUser) {
         setCurrentUser({
           ...currentUser,
           avatarUrl: newAvatarUrl,
         });
+
+        // Also reflect immediately in IT Team Roster
+        useAppStore.setState((state) => ({
+          itTeamMembers: state.itTeamMembers.map((m) =>
+            m.id === currentUser.id || m.email.toLowerCase() === currentUser.email.toLowerCase()
+              ? { ...m, avatar: newAvatarUrl }
+              : m
+          ),
+        }));
       }
 
       setSuccessMsg('Profile photo updated successfully.');
@@ -145,6 +153,20 @@ export const MyProfileModal: React.FC<MyProfileModalProps> = ({ isOpen, onClose 
           ...currentUser,
           avatarUrl: null,
         });
+
+        // Revert in IT Team Roster
+        useAppStore.setState((state) => ({
+          itTeamMembers: state.itTeamMembers.map((m) =>
+            m.id === currentUser.id || m.email.toLowerCase() === currentUser.email.toLowerCase()
+              ? {
+                  ...m,
+                  avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(
+                    m.username || currentUser.username || 'staff'
+                  )}&backgroundColor=${m.systemRole === 'admin' ? 'fed7aa' : 'b6e3f4'}`,
+                }
+              : m
+          ),
+        }));
       }
 
       if (previewUrl && previewUrl.startsWith('blob:')) {

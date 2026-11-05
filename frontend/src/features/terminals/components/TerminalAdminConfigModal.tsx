@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   Building2,
@@ -328,7 +329,7 @@ export const TerminalAdminConfigModal: React.FC<TerminalAdminConfigModalProps> =
     }
   };
 
-  return (
+  return createPortal (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-zinc-900/60 backdrop-blur-sm animate-fade-in overflow-y-auto"
       role="dialog"
@@ -1000,6 +1001,7 @@ export const TerminalAdminConfigModal: React.FC<TerminalAdminConfigModalProps> =
           </div>
         </div>
       )}
-    </div>
+    </div>,
+      document.body
   );
 };
