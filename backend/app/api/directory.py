@@ -2,7 +2,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, Request
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from starlette.concurrency import run_in_threadpool
 
 from app.api.deps import DB, Admin, CurrentUser, SupervisorOrAdmin
@@ -22,6 +22,7 @@ from app.models import (
     TaskCategory,
     Ticket,
     User,
+    UserProfilePhoto,
 )
 from app.schemas import (
     DepartmentCreate,
@@ -35,6 +36,7 @@ from app.schemas import (
     LocationDepartmentUpdate,
     PlanInput,
     ScopeInput,
+    StaffRole,
     UserCreate,
     UserOut,
     UserUpdate,
@@ -167,11 +169,30 @@ async def users(
     user: SupervisorOrAdmin,
     offset: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=200),
+    q: str | None = None,
+    role: StaffRole | None = None,
+    location_id: UUID | None = None,
+    is_active: bool | None = None,
 ):
-    users_list = (
-        await db.scalars(
-            select(User).order_by(User.username).offset(offset).limit(limit)
+    query = select(User)
+    if q:
+        clean_q = f"%{q.strip().lower()}%"
+        query = query.where(
+            or_(
+                func.lower(User.username).like(clean_q),
+                func.lower(User.full_name).like(clean_q),
+                func.lower(User.email).like(clean_q),
+            )
         )
+    if role:
+        query = query.where(User.role == role)
+    if location_id:
+        query = query.where(User.location_id == location_id)
+    if is_active is not None:
+        query = query.where(User.is_active == is_active)
+
+    users_list = (
+        await db.scalars(query.order_by(User.username).offset(offset).limit(limit))
     ).all()
     if not users_list:
         return []
@@ -194,6 +215,21 @@ async def users(
         for row in stats_rows
     }
 
+    photo_rows = (
+        await db.execute(
+            select(UserProfilePhoto.user_id, UserProfilePhoto.updated_at).where(
+                UserProfilePhoto.user_id.in_(user_ids)
+            )
+        )
+    ).all()
+    photo_map = {
+        row.user_id: (
+            f"/api/v1/users/{row.user_id}/photo?v={int(row.updated_at.timestamp())}",
+            row.updated_at,
+        )
+        for row in photo_rows
+    }
+
     return [
         UserOut(
             id=u.id,
@@ -204,6 +240,8 @@ async def users(
             is_active=u.is_active,
             active_bench=stats_map.get(u.id, (0, 0))[0],
             closed_repairs=stats_map.get(u.id, (0, 0))[1],
+            avatar_url=photo_map.get(u.id, (None, None))[0],
+            avatar_updated_at=photo_map.get(u.id, (None, None))[1],
         )
         for u in users_list
     ]
@@ -261,10 +299,34 @@ async def employees(
     user: SupervisorOrAdmin,
     offset: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=200),
+    q: str | None = None,
+    company_id: UUID | None = None,
+    location_id: UUID | None = None,
+    department_id: UUID | None = None,
+    is_active: bool | None = None,
 ):
+    query = select(Employee)
+    if q:
+        clean_q = f"%{q.strip().lower()}%"
+        query = query.where(
+            or_(
+                func.lower(Employee.employee_id).like(clean_q),
+                func.lower(Employee.full_name).like(clean_q),
+                func.lower(Employee.email).like(clean_q),
+            )
+        )
+    if company_id:
+        query = query.where(Employee.company_id == company_id)
+    if location_id:
+        query = query.where(Employee.location_id == location_id)
+    if department_id:
+        query = query.where(Employee.department_id == department_id)
+    if is_active is not None:
+        query = query.where(Employee.is_active == is_active)
+
     records = (
         await db.scalars(
-            select(Employee).order_by(Employee.employee_id).offset(offset).limit(limit)
+            query.order_by(Employee.employee_id).offset(offset).limit(limit)
         )
     ).all()
     return [await employee_view(db, row) for row in records]

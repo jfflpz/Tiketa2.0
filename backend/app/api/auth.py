@@ -16,8 +16,32 @@ from app.core.security import (
     issue_token,
     verify_password,
 )
-from app.models import User
+from app.models import User, UserProfilePhoto
 from app.schemas import Login, TokenOut, UserOut
+
+
+async def build_user_out(db: DB, user: User) -> UserOut:
+    photo = (
+        await db.execute(
+            select(UserProfilePhoto.updated_at).where(
+                UserProfilePhoto.user_id == user.id
+            )
+        )
+    ).scalar_one_or_none()
+    avatar_url = (
+        f"/api/v1/users/{user.id}/photo?v={int(photo.timestamp())}" if photo else None
+    )
+    return UserOut(
+        id=user.id,
+        username=user.username,
+        email=user.email,
+        full_name=user.full_name,
+        role=user.role,
+        is_active=user.is_active,
+        avatar_url=avatar_url,
+        avatar_updated_at=photo,
+    )
+
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 COOKIE_PATH = "/api/v1/auth"
@@ -113,7 +137,7 @@ async def login(body: Login, request: Request, response: Response, db: DB):
         "refresh:" + sid, claims["jti"], ex=settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400
     )
     set_cookie(response, refresh)
-    return TokenOut(access_token=access, user=UserOut.model_validate(user))
+    return TokenOut(access_token=access, user=await build_user_out(db, user))
 
 
 @router.post("/refresh", response_model=TokenOut)
@@ -140,7 +164,7 @@ async def refresh(
         raise HTTPException(401, "Refresh token already consumed")
     access, _ = issue_token(user, "access", old["sid"])
     set_cookie(response, new_token)
-    return TokenOut(access_token=access, user=UserOut.model_validate(user))
+    return TokenOut(access_token=access, user=await build_user_out(db, user))
 
 
 @router.post("/logout", status_code=204)
@@ -170,5 +194,5 @@ async def logout(request: Request, response: Response, db: DB, user: CurrentUser
 
 
 @router.get("/me", response_model=UserOut)
-async def me(user: CurrentUser):
-    return user
+async def me(user: CurrentUser, db: DB):
+    return await build_user_out(db, user)

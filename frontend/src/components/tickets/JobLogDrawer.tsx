@@ -236,7 +236,7 @@ export const JobLogDrawer: React.FC = () => {
           drawerTab={drawerTab}
           messageCount={messages.length}
           onSelectTab={setDrawerTab}
-          onCopyShareLink={() => copyTicketShareLink(ticket.ticketCode)}
+          onCopyShareLink={() => copyTicketShareLink(ticket.ticketCode, ticket.id)}
           onRequestValidation={() => requestValidation(ticket.id)}
           onClose={() => setSelectedTicketId(null)}
         />
@@ -279,7 +279,7 @@ export const JobLogDrawer: React.FC = () => {
                         'success'
                       );
                     } else {
-                      await copyTicketShareLink(ticket.ticketCode);
+                      await copyTicketShareLink(ticket.ticketCode, ticket.id);
                     }
                   }}
                   className="py-2 px-3 bg-surface hover:bg-zinc-50 text-brand border border-orange-300 text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition-colors press-fx"
