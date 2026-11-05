@@ -487,7 +487,7 @@ export const ticketsApi = {
     },
     verifyAccess: async (
     codeOrId: string,
-    payload?: { employee_id?: string; token?: string; match_token?: string }
+    payload?: { employee_id?: string; email?: string; token?: string; match_token?: string }
     ): Promise<TicketVerifyAccessOut> => {
     const res = await apiClient.post<TicketVerifyAccessOut>(
         `/tickets/${codeOrId}/verify-access`,

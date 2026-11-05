@@ -327,23 +327,25 @@ export const KioskIntakeForm: React.FC<KioskIntakeFormProps> = ({
 
             <div className="shrink-0 flex items-center gap-2">
               {locationState.status === 'captured' ? (
-                <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200">
-                  <MapPin className="w-3.5 h-3.5" />
+                <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-xl border
+                border-emerald-200">
+                  <MapPin className="w-3.5 h-3.5 shrink-0" />
                   <span>
-                    Location captured
+                    {locationState.placeName || 'Location Captured'}
                     {locationState.accuracy ? ` (±${locationState.accuracy}m)` : ''}
                   </span>
                 </div>
               ) : locationState.status === 'requesting' ? (
                 <div className="flex items-center gap-1.5 text-xs font-medium text-ink-subtle bg-surface px-3 py-1.5 rounded-xl border border-line">
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>Requesting GPS...</span>
+                  <span>Detecting Location...</span>
                 </div>
               ) : (
                 <button
                   type="button"
                   onClick={onCaptureLocation}
-                  className="px-3.5 py-1.5 bg-surface hover:bg-zinc-100 border border-line rounded-xl text-xs font-semibold text-ink flex items-center gap-1.5 transition-colors press-fx"
+                  className="px-3.5 py-1.5 bg-surface hover:bg-zinc-100 border border-line rounded-xl text-xs font-semibold text-ink flex items-center
+                  gap-1.5 transition-colors press-fx"
                 >
                   <MapPin className="w-3.5 h-3.5 text-ink-subtle" />
                   <span>Capture Location</span>
@@ -351,6 +353,16 @@ export const KioskIntakeForm: React.FC<KioskIntakeFormProps> = ({
               )}
             </div>
           </div>
+
+          {locationState.status === 'captured' && locationState.placeName && (
+            <p className="text-[11px] text-emerald-700 mt-1.5 px-1 flex items-center gap-1 font-medium">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <span>
+                Terminal bay detected: <strong>{locationState.placeName}</strong>
+                {locationState.capturedAt ? ` • captured at ${locationState.capturedAt}` : ''}
+              </span>
+            </p>
+          )}
 
           {locationState.message && locationState.status !== 'captured' && (
             <p className="text-[11px] text-ink-subtle mt-1.5 px-1">

@@ -188,6 +188,7 @@ class ReopenInput(Input):
 class TicketVerifyAccessInput(Input):
     ticket_code: str | None = Field(default=None, max_length=50)
     employee_id: str | None = Field(default=None, max_length=50)
+    email: str | None = Field(default=None, max_length=150)
     token: str | None = Field(default=None, max_length=100)
     match_token: str | None = Field(default=None, max_length=1000)
 
@@ -355,7 +356,7 @@ class TicketChecklistStepOut(BaseModel):
 class TicketChecklistApplyRequest(Input):
     repair_note_id: UUID
     expected_note_revision: int = Field(gt=0)
-    expected_checklist_revision: int | None = Field(default=None, gt=0)
+    expected_checklist_revision: int | None = Field(default=None, ge=0)
     replace_existing: bool = False
 
 
