@@ -5197,7 +5197,7 @@
     },
     "/api/v1/tickets/history": {
       "get": {
-        "description": "Bounded ticket history separate from the operational queue.\nIT/Intern scope is locked to their own assignment UUID (requesting\nanother tech is 403).\nAdmin and Supervisor have fleet read access with optional location\nand technician filters.",
+        "description": "Bounded ticket history separate from the operational queue.\n\nIT/Intern scope is locked to their own assignment UUID (requesting\n\nanother tech is 403).\n\nAdmin and Supervisor have fleet read access with optional location\n\nand technician filters.",
         "operationId": "ticket_history_api_v1_tickets_history_get",
         "parameters": [
           {
