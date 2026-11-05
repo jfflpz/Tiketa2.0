@@ -63,7 +63,15 @@ export const ITWorkbenchBoardView: React.FC = () => {
             (Boolean(currentUser?.name) &&
               t.workedBy?.toLowerCase() === currentUser?.name.toLowerCase()))
       )
-    : tickets.filter((t) => t.status === 'PROG');
+    : tickets.filter(
+        (t) =>
+          t.status === 'PROG' ||
+          ((t.status === 'RESL' || (t.status as string) === 'PVER') &&
+            (t.assigned_tech_id === currentUser?.id ||
+              t.workedById === currentUser?.id ||
+              (Boolean(currentUser?.name) &&
+                t.workedBy?.toLowerCase() === currentUser?.name.toLowerCase())))
+      );
   const openTickets = isIntern ? [] : tickets.filter((t) => t.status === 'OPEN');
 
   const rawFocusedTicket = activeWorkbenchTicketId
@@ -287,9 +295,17 @@ export const ITWorkbenchBoardView: React.FC = () => {
                   <div className="space-y-3">
                     {/* Card Top: Code, Mode, Priority */}
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-zinc-900 text-white group-hover:bg-orange-600 transition-colors shrink-0 whitespace-nowrap">
-                        {ticket.ticketCode}
-                      </span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-zinc-900 text-white group-hover:bg-orange-600 transition-colors shrink-0 whitespace-nowrap">
+                          {ticket.ticketCode}
+                        </span>
+                        {(ticket.status === 'RESL' || (ticket.status as string) === 'PVER') && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold">
+                            <Clock className="w-3 h-3 text-amber-500 animate-pulse" />
+                            <span>Waiting for requester approval</span>
+                          </span>
+                        )}
+                      </div>
                       <div className="flex items-center gap-1.5">
                         <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-zinc-100 text-zinc-700 border border-zinc-200">
                           {ticket.mode === 'SITE' ? 'On-Site' : 'Remote'}
@@ -440,7 +456,7 @@ export const ITWorkbenchBoardView: React.FC = () => {
 
           <div className="h-4 w-[1px] bg-zinc-200 hidden sm:block" />
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs text-zinc-400 font-medium hidden sm:inline">
               Currently Focusing:
             </span>
@@ -448,6 +464,12 @@ export const ITWorkbenchBoardView: React.FC = () => {
               {focusedTicket.ticketCode}
             </span>
             <StatusBadge status={focusedTicket.status} size="sm" />
+            {(focusedTicket.status === 'RESL' || (focusedTicket.status as string) === 'PVER') && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold">
+                <Clock className="w-3 h-3 text-amber-500 animate-pulse" />
+                <span>Waiting for requester approval</span>
+              </span>
+            )}
           </div>
         </div>
 
@@ -465,7 +487,7 @@ export const ITWorkbenchBoardView: React.FC = () => {
                 <Wrench className="w-5 h-5" />
               </div>
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-orange-50 text-orange-600 border border-orange-200/60">
                     Active Repair Workstation
                   </span>
@@ -473,6 +495,12 @@ export const ITWorkbenchBoardView: React.FC = () => {
                     {focusedTicket.ticketCode}
                   </span>
                   <StatusBadge status={focusedTicket.status} size="sm" />
+                  {(focusedTicket.status === 'RESL' || (focusedTicket.status as string) === 'PVER') && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-xs font-bold">
+                      <Clock className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
+                      <span>Waiting for requester approval</span>
+                    </span>
+                  )}
                 </div>
                 <h2 className="text-base font-bold text-ink mt-0.5">
                   {focusedTicket.task} — {focusedTicket.location}
@@ -482,24 +510,43 @@ export const ITWorkbenchBoardView: React.FC = () => {
 
             {/* Top-Right: Mode Switcher + Resolve + Drawer Trigger */}
             <div className="flex flex-wrap items-center gap-2.5">
-              <div className="inline-flex items-center bg-[#F4F6F9] p-1 rounded-xl border border-[#ECEEF2]">
-                {(['REM', 'SITE'] as SupportMode[]).map((m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={async () => {
+              <div
+                className={`inline-flex items-center bg-[#F4F6F9] p-1 rounded-xl border border-[#ECEEF2] ${
+                  focusedTicket.status === 'RESL' || (focusedTicket.status as string) === 'PVER'
+                    ? 'opacity-80'
+                    : ''
+                }`}
+                title={
+                  focusedTicket.status === 'RESL' || (focusedTicket.status as string) === 'PVER'
+                    ? 'Mode selector is read-only while awaiting requester approval'
+                    : undefined
+                }
+              >
+                {(['REM', 'SITE'] as SupportMode[]).map((m) => {
+                  const isReadOnly =
+                    focusedTicket.status === 'RESL' || (focusedTicket.status as string) === 'PVER';
+                  return (
+                    <button
+                      key={m}
+                      type="button"
+                      disabled={isReadOnly}
+                      onClick={async () => {
+                        if (isReadOnly) return;
                         updateTicketMode(focusedTicket.id, m);
-                        await updateTicketStatusApi(focusedTicket.id, 'PROG', m);
-                    }}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all press-fx ${
-                      focusedTicket.mode === m
-                        ? 'bg-orange-500 text-white shadow-sm'
-                        : 'text-zinc-500 hover:text-ink'
-                    }`}
-                  >
-                    {m === 'REM' ? 'Remote (REM)' : 'On-Site (SITE)'}
-                  </button>
-                ))}
+                        await updateTicketStatusApi(focusedTicket.id, focusedTicket.status, m);
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                        focusedTicket.mode === m
+                          ? 'bg-orange-500 text-white shadow-sm'
+                          : isReadOnly
+                          ? 'text-zinc-400 cursor-not-allowed'
+                          : 'text-zinc-500 hover:text-ink press-fx'
+                      }`}
+                    >
+                      {m === 'REM' ? 'Remote (REM)' : 'On-Site (SITE)'}
+                    </button>
+                  );
+                })}
               </div>
 
               <button
@@ -521,7 +568,12 @@ export const ITWorkbenchBoardView: React.FC = () => {
                 )}
               </button>
 
-              {focusedTicket.status === 'OPEN' ? (
+              {focusedTicket.status === 'RESL' || (focusedTicket.status as string) === 'PVER' ? (
+                <div className="px-3.5 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold inline-flex items-center gap-1.5 shadow-xs">
+                  <Clock className="w-4 h-4 text-amber-600" />
+                  <span>Waiting for requester approval</span>
+                </div>
+              ) : focusedTicket.status === 'OPEN' ? (
                 <button
                   type="button"
                   onClick={async () => {

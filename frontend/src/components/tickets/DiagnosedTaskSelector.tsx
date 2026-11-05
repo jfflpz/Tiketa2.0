@@ -238,7 +238,7 @@ export const DiagnosedTaskSelector: React.FC<DiagnosedTaskSelectorProps> = ({
           </div>
 
           {/* Grouped Task List */}
-          <div className="${compact ? 'max-h-52' : 'max-h-80'} overflow-y-auto p-2 space-y-3 divide-y divide-[#F0F2F5]">
+          <div className={`${compact ? 'max-h-52' : 'max-h-80'} overflow-y-auto p-2 space-y-3 divide-y divide-[#F0F2F5]`}>
             {displayedGroups.length === 0 ? (
               <div className="p-6 text-center text-xs text-zinc-400">
                 No task categories match &quot;{searchQuery}&quot;

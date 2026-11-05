@@ -306,39 +306,42 @@ export const createPublicIntakeSlice: AppSliceCreator<PublicIntakeSlice> = (set,
     }
 
     // 3. For each recent employee ticket, refresh live status via ticketsApi.trackTicket
-    const allTickets = get().employeeTickets || [];
-    if (allTickets.length > 0) {
-      const updatedTickets = [...allTickets];
-      let hasUpdates = false;
+      const allTickets = get().employeeTickets || [];
+      const activeCandidates = allTickets
+        .filter((t) => t.ticketCode && t.status !== 'CLSD')
+        .slice(0, 4);
 
-      await Promise.allSettled(
-        allTickets.map(async (t) => {
-          if (!t.ticketCode) return;
-          try {
-            const live = await ticketsApi.trackTicket(t.ticketCode);
-            if (live && live.status && live.status !== t.status) {
-              const idx = updatedTickets.findIndex(
-                (item) => item.ticketCode?.toUpperCase() === t.ticketCode.toUpperCase()
-              );
-              if (idx !== -1) {
-                updatedTickets[idx] = {
-                  ...updatedTickets[idx],
-                  status: live.status as any,
-                };
-                hasUpdates = true;
+      if (activeCandidates.length > 0) {
+        const updatedTickets = [...allTickets];
+        let hasUpdates = false;
+
+        await Promise.allSettled(
+          activeCandidates.map(async (t) => {
+            try {
+              const live = await ticketsApi.trackTicket(t.ticketCode);
+              if (live && live.status && live.status !== t.status) {
+                const idx = updatedTickets.findIndex(
+                  (item) => item.ticketCode?.toUpperCase() === t.ticketCode.toUpperCase()
+                );
+                if (idx !== -1) {
+                  updatedTickets[idx] = {
+                    ...updatedTickets[idx],
+                    status: live.status as any,
+                  };
+                  hasUpdates = true;
+                }
               }
+            } catch {
+              // Ignore rate-limit / network hiccups silently
             }
-          } catch {
-            // Track fallback
-          }
-        })
-      );
+          })
+        );
 
-      if (hasUpdates) {
-        set({ employeeTickets: updatedTickets });
-        persistEmployeeTickets(updatedTickets);
+        if (hasUpdates) {
+          set({ employeeTickets: updatedTickets });
+          persistEmployeeTickets(updatedTickets);
+        }
       }
-    }
 
     // 4. If we have a match token, also pull server tickets for this employee
     if (get().employeeMatchToken) {

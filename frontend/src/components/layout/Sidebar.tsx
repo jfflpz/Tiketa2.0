@@ -229,6 +229,7 @@ export const Sidebar: React.FC = () => {
                   GOVERNANCE &amp; AUDIT
                 </div>
               )}
+              {renderNavButton('terminals', 'Terminal Hubs', Building2, 'text-teal-400')}
               {renderNavButton('team', 'IT Team & Accounts', Users, 'text-emerald-400')}
               {renderNavButton('joblogs', '15-Col Master Sheet', FileSpreadsheet, 'text-emerald-400')}
             </div>
@@ -267,7 +268,7 @@ export const Sidebar: React.FC = () => {
             <div className="space-y-1.5">
               {!sidebarCollapsed && (
                 <div className="px-2.5 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-                  OPERATIONS &amp; FLEET TRIAGE
+                  OPERATIONS &amp; QUEUE TRIAGE
                 </div>
               )}
               {renderNavButton(

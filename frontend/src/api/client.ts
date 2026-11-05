@@ -429,8 +429,8 @@ export const ticketsApi = {
     limit?: number;
     order?: 'asc' | 'desc';
     }) => {
-    const res = await apiClient.get<StaffTicketResponse[]>('/tickets', {
-        params: { status: 'ALL', ...params },
+    const res = await apiClient.get<StaffTicketResponse[]>('/tickets/history', {
+    params: { status: 'ALL', ...params },
     });
     return res.data;
     },
@@ -606,6 +606,8 @@ export interface BackendUser {
     location_id?: string | null;
     closed_repairs?: number;
     active_bench?: number;
+    avatar_url?: string | null;
+    avatar_updated_at?: string | null;
     token_version?: number;
     created_at?: string;
     updated_at?: string;

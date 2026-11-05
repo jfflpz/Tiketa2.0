@@ -105,7 +105,6 @@ export const KioskIntakeForm: React.FC<KioskIntakeFormProps> = ({
   employeeProfile,
   locationState,
   onCaptureLocation,
-  activeHubName,
   selectedTask,
   onSelectTask,
   description,
@@ -147,13 +146,11 @@ export const KioskIntakeForm: React.FC<KioskIntakeFormProps> = ({
               Match Employee Record
             </h3>
           </div>
-          <span className="text-[11px] text-ink-subtle">
-            {isMatched && employeeProfile ? (
-            <strong className="text-emerald-700">Official Station: {employeeProfile.location}</strong>
-          ) : (
-            `Terminal: ${activeHubName}`
-          )}
-          </span>
+              {isMatched && employeeProfile && (
+                <span className="text-[11px] text-emerald-700 font-bold">
+                  Official Station: {employeeProfile.location}
+                </span>
+              )}
         </div>
 
         <p className="text-xs text-ink-subtle leading-relaxed">

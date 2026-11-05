@@ -2,7 +2,7 @@ import type { AppSliceCreator } from '../types';
 import type { Ticket } from '../../types/ticket';
 import { ticketsApi, extractApiErrorMessage, setEmployeeToken } from '../../api/client';
 import { mapStaffTicket } from '../../utils/mapStaffTicket';
-import { getPersistedEmployeeTickets, persistEmployeeTickets } from '../../utils/session';
+import { getPersistedEmployeeTickets, persistEmployeeProfile, persistEmployeeTickets, persistMatchToken } from '../../utils/session';
 
 export type VerificationViewStatus =
   | 'idle'
@@ -266,8 +266,13 @@ export const createTicketVerificationSlice: AppSliceCreator<TicketVerificationSl
           set({ employeeTickets: combined });
           persistEmployeeTickets(combined);
         }
-      } catch {
-        // Unauthenticated or employee session without my-tickets
+      } catch (err: any) {
+        // Clear expired/unauthorized session so it stops querying on every reload
+        if (err?.response?.status === 401) {
+          set({ employeeMatchToken: null, employeeProfile: null });
+          persistMatchToken(null);
+          persistEmployeeProfile(null);
+        }
       }
     },
 

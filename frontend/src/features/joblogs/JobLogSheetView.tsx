@@ -6,6 +6,7 @@ import {
   Search,
   UserCheck,
   Loader2,
+  AlertCircle,
 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { COMPANIES } from '../../constants/domain';
@@ -25,16 +26,19 @@ export const JobLogSheetView: React.FC = () => {
 
   const [historyTickets, setHistoryTickets] = useState<Ticket[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
   const [companyFilter, setCompanyFilter] = useState('ALL');
   const [modeFilter, setModeFilter] = useState<'ALL' | 'SITE' | 'REM'>('ALL');
   const [sheetSearch, setSheetSearch] = useState('');
 
-  const isAdmin = currentUser?.role === 'admin';
+  const isSupervisorOrAdmin = currentUser?.role === 'admin' || currentUser?.role === 'supervisor';
   const accountEmployeeName = currentUser?.name ?? 'IT Specialist';
 
-  // @spec F-08: Load authoritative job history ledger including closed tickets via GET /api/v1/tickets/history
+  // @spec F-08 & F-04: Load authoritative job history ledger via GET /api/v1/tickets/history
+  // Supervisors and Admins view overall history (technician_id: undefined)
   const loadAuthoritativeHistory = useCallback(async () => {
     setIsLoadingHistory(true);
+    setHistoryError(null);
     try {
       if (!serverDictionaries) {
         await fetchDictionaries();
@@ -43,14 +47,14 @@ export const JobLogSheetView: React.FC = () => {
       const dicts = useAppStore.getState().serverDictionaries;
       const currentStaff = useAppStore.getState().itTeamMembers;
 
-      const techIdParam = isAdmin ? undefined : currentUser?.id;
+      const techIdParam = isSupervisorOrAdmin ? undefined : currentUser?.id;
       const data = await ticketsApi.getHistory({
         technician_id: techIdParam,
         limit: 200,
         status: 'ALL',
       });
 
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data)) {
         const mapped = data.map((row) =>
           mapStaffTicket(
             row,
@@ -60,55 +64,49 @@ export const JobLogSheetView: React.FC = () => {
         );
         setHistoryTickets(mapped);
       } else {
-        // Fallback to queue state if backend mock or empty
         setHistoryTickets([]);
       }
-    } catch {
-      // Graceful fallback to store queue state
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to load authoritative job history';
+      setHistoryError(msg);
       setHistoryTickets([]);
     } finally {
       setIsLoadingHistory(false);
     }
-  }, [isAdmin, currentUser?.id, serverDictionaries, fetchDictionaries]);
+  }, [isSupervisorOrAdmin, currentUser?.id, serverDictionaries, fetchDictionaries]);
 
   useEffect(() => {
     loadAuthoritativeHistory();
   }, [loadAuthoritativeHistory]);
 
-  // Combine authoritative history with local queue tickets (deduplicated by UUID)
-  const allCandidateTickets = useMemo(() => {
+  // @spec F-04 & F-08: Authoritative history ledger with queue deduplication fallback
+  const candidateTickets = useMemo(() => {
     const list = historyTickets.length > 0 ? historyTickets : queueTickets;
     const map = new Map<string, Ticket>();
     for (const t of list) {
       map.set(t.id, t);
     }
-    // Also include any queue tickets not yet in history
     for (const t of queueTickets) {
       if (!map.has(t.id)) {
         map.set(t.id, t);
       }
     }
-    return Array.from(map.values());
-  }, [historyTickets, queueTickets]);
+    const combined = Array.from(map.values());
 
-  // @spec F-08: Scope personal history strictly by staff UUID without first-name substring matches
-  const personalOrAdminTickets = useMemo(() => {
-    if (isAdmin) {
-      return allCandidateTickets.filter((t) =>
-        Boolean(t.workedBy || t.workedById || t.assigned_tech_id)
-      );
+    if (isSupervisorOrAdmin) {
+      return combined;
     }
-    return allCandidateTickets.filter((t) => {
+    return combined.filter((t) => {
       if (!currentUser?.id) return false;
       return (
         t.workedById === currentUser.id ||
         t.assigned_tech_id === currentUser.id
       );
     });
-  }, [isAdmin, currentUser?.id, allCandidateTickets]);
+  }, [isSupervisorOrAdmin, currentUser?.id, historyTickets, queueTickets]);
 
   const filteredLogs = useMemo(() => {
-    return personalOrAdminTickets.filter((t) => {
+    return candidateTickets.filter((t) => {
       if (companyFilter !== 'ALL' && t.companyCode !== companyFilter) return false;
       if (modeFilter !== 'ALL' && t.mode !== modeFilter) return false;
       const q = sheetSearch.trim().toLowerCase();
@@ -121,7 +119,7 @@ export const JobLogSheetView: React.FC = () => {
         t.description.toLowerCase().includes(q)
       );
     });
-  }, [personalOrAdminTickets, companyFilter, modeFilter, sheetSearch]);
+  }, [candidateTickets, companyFilter, modeFilter, sheetSearch]);
 
   // @spec F-08: Safe CSV Export with Formula Injection Neutralization & Actual Worker Attribution
   const exportJobLogsCsv = () => {
@@ -144,8 +142,8 @@ export const JobLogSheetView: React.FC = () => {
     ].join(',');
 
     const rows = filteredLogs.map((t) => {
-      // Use each row's actual worker; never stamp the viewer as technician for others
-      const actualWorker = t.workedBy || (isAdmin ? 'Unassigned' : accountEmployeeName);
+      // Use each row's actual worker; output 'Unassigned' when empty
+      const actualWorker = t.workedBy?.trim() ? t.workedBy : 'Unassigned';
 
       return [
         sanitizeCsvCell(`${t.company} (${t.companyCode})`),
@@ -170,7 +168,7 @@ export const JobLogSheetView: React.FC = () => {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    const fileName = isAdmin
+    const fileName = isSupervisorOrAdmin
       ? `all_staff_job_logs_${Date.now()}.csv`
       : `${(currentUser?.username || 'my')}_job_logs.csv`;
     link.setAttribute('download', fileName);
@@ -192,9 +190,9 @@ export const JobLogSheetView: React.FC = () => {
         <div>
           <div className="flex items-center gap-2.5">
             <h1 className="text-xl font-bold text-ink tracking-tight">
-              {isAdmin ? 'All Staff Job Logs Ledger' : `My Job Logs — ${accountEmployeeName}`}
+              {isSupervisorOrAdmin ? 'All Staff Job Logs Ledger' : `My Job Logs — ${accountEmployeeName}`}
             </h1>
-            {!isAdmin && (
+            {!isSupervisorOrAdmin && (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-orange-50 text-orange-600 border border-orange-200/70 text-xs font-bold">
                 <UserCheck className="w-3.5 h-3.5" />
                 <span>Account: {accountEmployeeName}</span>
@@ -202,7 +200,7 @@ export const JobLogSheetView: React.FC = () => {
             )}
           </div>
           <p className="text-xs text-zinc-500 mt-0.5">
-            {isAdmin
+            {isSupervisorOrAdmin
               ? 'Authoritative 15-column IT service job log ledger across all terminals (includes closed & resolved work).'
               : `Personal 15-column job log sheet scoped to UUID ${currentUser?.id || 'active account'} (includes closed work).`}
           </p>
@@ -227,7 +225,7 @@ export const JobLogSheetView: React.FC = () => {
           <div className="flex items-center gap-2">
             <FileSpreadsheet className="w-4 h-4 text-orange-500" />
             <span className="text-sm font-bold text-ink">
-              {isAdmin
+              {isSupervisorOrAdmin
                 ? `All Job Log Records (${filteredLogs.length})`
                 : `${accountEmployeeName}'s Job Log Sheet (${filteredLogs.length} Records)`}
             </span>
@@ -304,12 +302,45 @@ export const JobLogSheetView: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#ECEEF2]">
-              {filteredLogs.length === 0 ? (
+              {isLoadingHistory && candidateTickets.length === 0 ? (
                 <tr>
-                  <td colSpan={16} className="py-8 text-center text-zinc-400 text-xs">
-                    {isLoadingHistory
-                      ? 'Loading job history records...'
-                      : 'No job logs matched the current filters.'}
+                  <td colSpan={16} className="py-12 text-center text-xs">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <Loader2 className="w-6 h-6 animate-spin text-orange-500" />
+                      <span className="font-bold text-ink">Loading authoritative job logs...</span>
+                      <span className="text-zinc-400 text-[11px]">Fetching official records from server history ledger</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : historyError ? (
+                <tr>
+                  <td colSpan={16} className="py-12 text-center text-xs">
+                    <div className="flex flex-col items-center justify-center gap-2 text-rose-600">
+                      <AlertCircle className="w-6 h-6 text-rose-500" />
+                      <span className="font-bold text-sm">Failed to load job history</span>
+                      <span className="text-zinc-500 max-w-md">{historyError}</span>
+                      <button
+                        type="button"
+                        onClick={loadAuthoritativeHistory}
+                        className="mt-1 px-4 py-1.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold transition-colors shadow-xs press-fx"
+                      >
+                        Retry Loading
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredLogs.length === 0 ? (
+                <tr>
+                  <td colSpan={16} className="py-12 text-center text-xs">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <FileSpreadsheet className="w-8 h-8 text-zinc-300" />
+                      <span className="font-bold text-ink">No Job Logs Found</span>
+                      <span className="text-zinc-400 text-[11px] max-w-sm">
+                        {candidateTickets.length === 0
+                          ? 'No job logs recorded in the ledger yet.'
+                          : 'No job log records matched the current filter criteria.'}
+                      </span>
+                    </div>
                   </td>
                 </tr>
               ) : (
@@ -363,7 +394,7 @@ export const JobLogSheetView: React.FC = () => {
                       {t.location} ({t.locationCode})
                     </td>
                     <td className="py-3 px-3 font-semibold text-ink">
-                      {t.workedBy || (isAdmin ? 'Unassigned' : accountEmployeeName)}
+                      {t.workedBy?.trim() ? t.workedBy : 'Unassigned'}
                     </td>
                   </tr>
                 ))

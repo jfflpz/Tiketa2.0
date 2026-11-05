@@ -91,6 +91,7 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
                 .join('')
                 .slice(0, 2)
                 .toUpperCase(),
+              avatarUrl: data.user.avatar_url || null,
             },
             authSessionId: get().authSessionId + 1,
             loginModalRole: null,
@@ -153,6 +154,7 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
             .join('')
             .slice(0, 2)
             .toUpperCase(),
+          avatarUrl: data.user.avatar_url || null,
         },
         authSessionId: get().authSessionId + 1,
         loginModalRole: null,
