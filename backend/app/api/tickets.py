@@ -711,7 +711,9 @@ async def status_ticket(ticket_id: UUID, body: StatusInput, db: DB, user: Curren
                 raise HTTPException(
                     409, "Verified requester contact required for resolution"
                 )
-            row.requester_contact_enc = encrypt(f"{row.requestor.lower().replace(' ', '.')}@fivestar.com.ph")
+            row.requester_contact_enc = encrypt(
+                f"{row.requestor.lower().replace(' ', '.')}@fivestar.com.ph"
+            )
         try:
             await mail.send_closure(
                 decrypt(row.requester_contact_enc), row.ticket_code, str(row.id), token
