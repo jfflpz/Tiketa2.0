@@ -141,7 +141,7 @@ export const ITWorkbenchBoardView: React.FC = () => {
       setTimeout(() => setCopiedLink(false), 2000);
       return;
     }
-    await copyTicketShareLink(focusedTicket.ticketCode);
+    await copyTicketShareLink(focusedTicket.ticketCode, focusedTicket.id);
     setCopiedLink(true);
     addToast('Link Copied', `Employee verification URL copied for ${focusedTicket.ticketCode}`, 'success');
     setTimeout(() => setCopiedLink(false), 2000);

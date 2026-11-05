@@ -17,7 +17,7 @@ MAX_PIXELS = 4096
 
 @router.put("/me/photo")
 async def upload_my_photo(file: UploadFile, db: DB, user: CurrentUser):
-    if user.role not in ("it", "admin", "supervisor"):
+    if user.role not in ("it", "admin", "supervisor", "intern"):
         raise HTTPException(
             403, "Role is not authorized to maintain a custom profile photo"
         )

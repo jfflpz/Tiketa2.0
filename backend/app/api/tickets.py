@@ -1,7 +1,7 @@
 import logging
 import secrets
 import smtplib
-from datetime import timedelta
+from datetime import date, timedelta
 from decimal import Decimal
 from typing import Literal
 from urllib.parse import quote, urlencode
@@ -272,6 +272,31 @@ async def verify_access(
             ticket.closure_token_hash, digest(body.token)
         ):
             raise HTTPException(400, "Invalid or expired closure verification token")
+
+        # Identity Challenge: Validate Employee ID and registered email if supplied
+        if body.employee_id:
+            if not linked_emp or linked_emp.employee_id != body.employee_id.strip():
+                raise HTTPException(
+                    403,
+                    "Registered Email & Employee ID does not match the ticket requester",
+                )
+
+        if body.email:
+            expected_email = linked_emp.email if linked_emp else None
+            if not expected_email and ticket.requester_contact_enc:
+                try:
+                    expected_email = decrypt(ticket.requester_contact_enc)
+                except Exception:
+                    pass
+            if (
+                not expected_email
+                or expected_email.strip().lower() != body.email.strip().lower()
+            ):
+                raise HTTPException(
+                    403,
+                    "Registered Email & Employee ID does not match the ticket requester",
+                )
+
         is_authorized = True
         can_close = ticket.status == "RESL"
         verified_closure_hash = ticket.closure_token_hash
@@ -287,7 +312,10 @@ async def verify_access(
                 body.match_token, session_id if session_id else None
             )
             if not linked_emp or linked_emp.employee_id != match_emp_id:
-                raise HTTPException(403, "Employee ID does not match ticket requester")
+                raise HTTPException(
+                    403,
+                    "Registered Email & Employee ID do not match the ticket requester",
+                )
             is_authorized = True
             # Match token provides viewing/conversation credentials, not direct closure credentials
             can_close = False
@@ -430,6 +458,8 @@ async def ticket_history(
     limit: int = Query(50, ge=1, le=200),
     location_id: UUID | None = None,
     technician_id: UUID | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
 ):
     """
     Bounded ticket history separate from the operational queue.
@@ -446,6 +476,9 @@ async def ticket_history(
             )
         effective_tech_id = user.id
 
+    if date_from and date_to and date_from > date_to:
+        raise HTTPException(422, "Start date must not be after end date")
+
     query = select(Ticket)
     if status != "ALL":
         query = query.where(Ticket.status == status)
@@ -455,6 +488,12 @@ async def ticket_history(
 
     if location_id:
         query = query.where(Ticket.location_id == location_id)
+
+    if date_from:
+        query = query.where(Ticket.date_started >= date_from)
+
+    if date_to:
+        query = query.where(Ticket.date_started <= date_to)
 
     if order == "desc":
         query = query.order_by(Ticket.created_at.desc(), Ticket.id.desc())

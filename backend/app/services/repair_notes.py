@@ -497,6 +497,11 @@ async def apply_repair_note_to_ticket(
         checklist.updated_by_id = user.id
         checklist.revision += 1
     else:
+        if payload.expected_checklist_revision not in (None, 0):
+            raise HTTPException(
+                409,
+                f"Conflict: ticket has no checklist, expected revision must be 0 or null, got {payload.expected_checklist_revision}",
+            )
         checklist = TicketChecklist(
             ticket_id=ticket.id,
             source_repair_note_id=note.id,
