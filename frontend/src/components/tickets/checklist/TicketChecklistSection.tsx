@@ -133,17 +133,43 @@ export const TicketChecklistSection: React.FC<TicketChecklistSectionProps> = ({
     }
   };
 
-  // Perform Apply Guide
+  // Handle Escape key dismissing or stepping back
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isSubmittingApply) {
+        if (confirmReplaceOpen) {
+          setConfirmReplaceOpen(false);
+          setIsApplyModalOpen(true);
+        } else if (isApplyModalOpen) {
+          setIsApplyModalOpen(false);
+          setSelectedGuideId(null);
+        }
+      }
+    };
+    if (isApplyModalOpen || confirmReplaceOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [isApplyModalOpen, confirmReplaceOpen, isSubmittingApply]);
+
+  // Perform Apply Guide - Single active dialog: close picker before opening confirm
   const handleSelectAndApplyGuide = async (guideId: string) => {
     setSelectedGuideId(guideId);
     const hasExistingContent =
       Boolean(checklist?.guideTitleSnapshot) || (checklist?.steps.length ?? 0) > 0;
 
     if (hasExistingContent) {
+      setIsApplyModalOpen(false);
       setConfirmReplaceOpen(true);
     } else {
       await executeApplyGuide(guideId, false);
     }
+  };
+
+  const handleCancelReplacement = () => {
+    if (isSubmittingApply) return;
+    setConfirmReplaceOpen(false);
+    setIsApplyModalOpen(true);
   };
 
   const executeApplyGuide = async (guideId: string, replaceExisting: boolean) => {
@@ -422,14 +448,24 @@ export const TicketChecklistSection: React.FC<TicketChecklistSectionProps> = ({
       {/* ===================================================================== */}
       {/* APPLY SAVED GUIDE MODAL */}
       {/* ===================================================================== */}
-      {isApplyModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/60 backdrop-blur-xs animate-fade-in">
-          <div className="bg-white border border-[#ECEEF2] rounded-2xl w-full max-w-xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
+      {isApplyModalOpen && !confirmReplaceOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="apply-guide-modal-title"
+        >
+          <div
+            className="fixed inset-0"
+            onClick={() => !isSubmittingApply && setIsApplyModalOpen(false)}
+            aria-hidden="true"
+          />
+          <div className="relative z-10 bg-white border border-[#ECEEF2] rounded-2xl w-full max-w-xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
             {/* Modal Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-[#ECEEF2]">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[#ECEEF2] shrink-0">
               <div className="flex items-center gap-2">
                 <BookOpen className="w-5 h-5 text-orange-500" />
-                <h3 className="text-sm font-bold text-ink">
+                <h3 id="apply-guide-modal-title" className="text-sm font-bold text-ink">
                   Apply Saved Repair Guide to Ticket
                 </h3>
               </div>
@@ -437,13 +473,14 @@ export const TicketChecklistSection: React.FC<TicketChecklistSectionProps> = ({
                 type="button"
                 onClick={() => setIsApplyModalOpen(false)}
                 className="p-1.5 rounded-lg text-zinc-400 hover:text-ink hover:bg-zinc-100"
+                aria-label="Close"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Filter Bar */}
-            <div className="p-4 border-b border-[#ECEEF2] bg-[#F4F6F9] space-y-2.5">
+            <div className="p-4 border-b border-[#ECEEF2] bg-[#F4F6F9] space-y-2.5 shrink-0">
               <div className="relative">
                 <Search className="w-4 h-4 absolute left-3 top-2.5 text-zinc-400" />
                 <input
@@ -505,46 +542,53 @@ export const TicketChecklistSection: React.FC<TicketChecklistSectionProps> = ({
                   </button>
                 </div>
               ) : (
-                filteredGuides.map((guide) => (
-                  <div
-                    key={guide.id}
-                    className="pt-2.5 first:pt-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl hover:bg-orange-50/50 border border-transparent hover:border-orange-200 transition-all"
-                  >
-                    <div className="space-y-1 min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-zinc-100 border border-zinc-200 text-zinc-700">
-                          {guide.taskCode}
-                        </span>
-                        <h4 className="text-xs font-bold text-ink truncate">
-                          {guide.title}
-                        </h4>
-                      </div>
-                      <p className="text-[11px] text-zinc-500 line-clamp-2 leading-relaxed">
-                        {guide.symptomAndFixNote}
-                      </p>
-                      <div className="flex items-center gap-3 text-[10px] text-zinc-400">
-                        <span>{guide.checklistSteps.length} SOP steps</span>
-                        <span>•</span>
-                        <span>By {guide.author}</span>
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      disabled={isSubmittingApply}
-                      onClick={() => handleSelectAndApplyGuide(guide.id)}
-                      className="px-3 py-1.5 rounded-xl bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white text-xs font-bold shrink-0 inline-flex items-center gap-1 self-start sm:self-center shadow-xs transition-colors press-fx"
+                filteredGuides.map((guide) => {
+                  const isSelected = selectedGuideId === guide.id;
+                  return (
+                    <div
+                      key={guide.id}
+                      className={`pt-2.5 first:pt-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl border transition-all ${
+                        isSelected
+                          ? 'bg-orange-50/90 border-orange-400 shadow-xs ring-1 ring-orange-400/40'
+                          : 'hover:bg-orange-50/50 border-transparent hover:border-orange-200'
+                      }`}
                     >
-                      <Check className="w-3.5 h-3.5" />
-                      <span>Select Guide</span>
-                    </button>
-                  </div>
-                ))
+                      <div className="space-y-1 min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-zinc-100 border border-zinc-200 text-zinc-700">
+                            {guide.taskCode}
+                          </span>
+                          <h4 className="text-xs font-bold text-ink truncate">
+                            {guide.title}
+                          </h4>
+                        </div>
+                        <p className="text-[11px] text-zinc-500 line-clamp-2 leading-relaxed">
+                          {guide.symptomAndFixNote}
+                        </p>
+                        <div className="flex items-center gap-3 text-[10px] text-zinc-400">
+                          <span>{guide.checklistSteps.length} SOP steps</span>
+                          <span>•</span>
+                          <span>By {guide.author}</span>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        disabled={isSubmittingApply}
+                        onClick={() => handleSelectAndApplyGuide(guide.id)}
+                        className="px-3 py-1.5 rounded-xl bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white text-xs font-bold shrink-0 inline-flex items-center gap-1 self-start sm:self-center shadow-xs transition-colors press-fx"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Select Guide</span>
+                      </button>
+                    </div>
+                  );
+                })
               )}
             </div>
 
             {/* Modal Footer */}
-            <div className="px-5 py-3 border-t border-[#ECEEF2] bg-[#F4F6F9] flex items-center justify-between text-xs">
+            <div className="px-5 py-3 border-t border-[#ECEEF2] bg-[#F4F6F9] flex items-center justify-between text-xs shrink-0">
               <span className="text-[11px] text-zinc-400">
                 Applying copies guide snapshots and steps independently.
               </span>
@@ -561,17 +605,27 @@ export const TicketChecklistSection: React.FC<TicketChecklistSectionProps> = ({
       )}
 
       {/* ===================================================================== */}
-      {/* REPLACEMENT WARNING DIALOG */}
+      {/* REPLACEMENT WARNING DIALOG (Single active dialog state machine) */}
       {/* ===================================================================== */}
       {confirmReplaceOpen && selectedGuideId && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-zinc-950/70 backdrop-blur-xs animate-fade-in">
-          <div className="bg-white border-2 border-rose-500/80 rounded-2xl w-full max-w-md p-5 shadow-2xl space-y-4">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="confirm-replace-title"
+        >
+          <div
+            className="fixed inset-0"
+            onClick={handleCancelReplacement}
+            aria-hidden="true"
+          />
+          <div className="relative z-10 bg-white border-2 border-rose-500/80 rounded-2xl w-full max-w-md p-5 shadow-2xl space-y-4">
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
                 <AlertTriangle className="w-5 h-5" />
               </div>
               <div className="space-y-1">
-                <h3 className="text-sm font-bold text-ink">
+                <h3 id="confirm-replace-title" className="text-sm font-bold text-ink">
                   Replace Existing Ticket Checklist?
                 </h3>
                 <p className="text-xs text-zinc-600 leading-relaxed">
@@ -596,7 +650,7 @@ export const TicketChecklistSection: React.FC<TicketChecklistSectionProps> = ({
               <button
                 type="button"
                 disabled={isSubmittingApply}
-                onClick={() => setConfirmReplaceOpen(false)}
+                onClick={handleCancelReplacement}
                 className="px-3.5 py-1.5 rounded-xl bg-surface border border-line text-xs font-semibold text-ink hover:bg-zinc-100 transition-colors"
               >
                 Cancel

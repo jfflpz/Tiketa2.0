@@ -17,12 +17,15 @@ import {
   Inbox,
   AlertCircle,
   RefreshCw,
+  Tag,
 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
-import { SupportMode, Ticket } from '../../types/ticket';
+import { SupportMode, Ticket, TicketStatus } from '../../types/ticket';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { DiagnosedTaskSelector } from '../../components/tickets/DiagnosedTaskSelector';
 import { TicketChecklistSection } from '../../components/tickets/checklist/TicketChecklistSection';
+import { canEditTicket } from '../../store/slices/ticketOperationsSlice';
+import { ticketsApi } from '../../api/client';
 
 const WORKBENCH_QUICK_REPLIES = [
   'Please share your AnyDesk ID so I can check remotely.',
@@ -86,6 +89,7 @@ export const ITWorkbenchBoardView: React.FC = () => {
         (Boolean(currentUser?.name) &&
           rawFocusedTicket?.workedBy?.toLowerCase() === currentUser?.name.toLowerCase())));
   const focusedTicket = isAssignedToIntern ? rawFocusedTicket : null;
+  const isOwner = canEditTicket(currentUser, focusedTicket);
 
   // Poll comments for focused ticket
   useEffect(() => {
@@ -112,14 +116,21 @@ export const ITWorkbenchBoardView: React.FC = () => {
 
   useEffect(() => {
     if (focusedTicket) {
-      setDiagnosisDraft(focusedTicket.technicianDiagnosis || '');
+      setDiagnosisDraft(focusedTicket.technicianDiagnosis || focusedTicket.description || '');
+    } else {
+      setDiagnosisDraft('');
     }
   }, [focusedTicket?.id]);
 
   const handleSaveDiagnosis = async () => {
-    if (!focusedTicket) return;
+    if (!focusedTicket || !isOwner) return;
     setIsSavingDiagnosis(true);
     updateTicketDescription(focusedTicket.id, diagnosisDraft);
+    try {
+      await ticketsApi.updateServiceRecord(focusedTicket.id, { diagnosis: diagnosisDraft });
+    } catch {
+      // safe fallback
+    }
     await updateTicketStatusApi(focusedTicket.id, focusedTicket.status, focusedTicket.mode, focusedTicket.taskCode);
     setIsSavingDiagnosis(false);
   };
@@ -129,7 +140,7 @@ export const ITWorkbenchBoardView: React.FC = () => {
 
   const handleSendWorkbenchChat = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!focusedTicket || !chatDraft.trim()) return;
+    if (!focusedTicket || !isOwner || !chatDraft.trim()) return;
     const msg = chatDraft.trim();
     setChatDraft('');
     const res = await sendTicketMessageApi(focusedTicket.id, msg, false);
@@ -512,19 +523,21 @@ export const ITWorkbenchBoardView: React.FC = () => {
             <div className="flex flex-wrap items-center gap-2.5">
               <div
                 className={`inline-flex items-center bg-[#F4F6F9] p-1 rounded-xl border border-[#ECEEF2] ${
-                  focusedTicket.status === 'RESL' || (focusedTicket.status as string) === 'PVER'
+                  focusedTicket.status === 'RESL' || (focusedTicket.status as string) === 'PVER' || !isOwner
                     ? 'opacity-80'
                     : ''
                 }`}
                 title={
-                  focusedTicket.status === 'RESL' || (focusedTicket.status as string) === 'PVER'
+                  !isOwner
+                    ? 'Only the assigned technician may edit support mode'
+                    : focusedTicket.status === 'RESL' || (focusedTicket.status as string) === 'PVER'
                     ? 'Mode selector is read-only while awaiting requester approval'
                     : undefined
                 }
               >
                 {(['REM', 'SITE'] as SupportMode[]).map((m) => {
                   const isReadOnly =
-                    focusedTicket.status === 'RESL' || (focusedTicket.status as string) === 'PVER';
+                    !isOwner || focusedTicket.status === 'RESL' || (focusedTicket.status as string) === 'PVER';
                   return (
                     <button
                       key={m}
@@ -584,7 +597,7 @@ export const ITWorkbenchBoardView: React.FC = () => {
                   <UserCheck className="w-4 h-4" />
                   <span>Claim & Start Repair</span>
                 </button>
-              ) : (
+              ) : isOwner ? (
                 <button
                   type="button"
                   onClick={async () => {
@@ -596,6 +609,11 @@ export const ITWorkbenchBoardView: React.FC = () => {
                   <CheckCircle2 className="w-4 h-4" />
                   <span>Mark Repair Resolved</span>
                 </button>
+              ) : (
+                <div className="px-3.5 py-2 rounded-xl bg-zinc-100 border border-zinc-200 text-zinc-700 text-xs font-semibold inline-flex items-center gap-1.5 shadow-2xs">
+                  <User className="w-4 h-4 text-zinc-500" />
+                  <span>Assigned to {focusedTicket.workedBy || 'another technician'}</span>
+                </div>
               )}
 
               {/* Arrow Button to Open Slide-Out Side Drawer */}
@@ -656,11 +674,25 @@ export const ITWorkbenchBoardView: React.FC = () => {
           {/* Header Bottom 4-Column Balanced Metadata Strip */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
             {/* Diagnosed Technical Task (Smart Grouped Selector) */}
-            <DiagnosedTaskSelector
-              ticketId={focusedTicket.id}
-              currentTaskCode={focusedTicket.taskCode}
-              currentTaskName={focusedTicket.task}
-            />
+            {isOwner ? (
+              <DiagnosedTaskSelector
+                ticketId={focusedTicket.id}
+                currentTaskCode={focusedTicket.taskCode}
+                currentTaskName={focusedTicket.task}
+              />
+            ) : (
+              <div className="px-3.5 py-2 rounded-xl bg-[#F4F6F9] border border-[#ECEEF2] flex items-center gap-2.5">
+                <Tag className="w-4 h-4 text-orange-500 shrink-0" />
+                <div className="min-w-0">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
+                    Task Category
+                  </span>
+                  <span className="text-xs font-bold text-ink truncate block">
+                    {focusedTicket.task} ({focusedTicket.taskCode})
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* Terminal Hub & Department */}
             <div className="px-3.5 py-2 rounded-xl bg-[#F4F6F9] border border-[#ECEEF2] flex items-center gap-2.5">
@@ -736,6 +768,11 @@ export const ITWorkbenchBoardView: React.FC = () => {
               <span className="text-xs font-bold uppercase tracking-wider text-zinc-800">
                 Technician Notes &amp; Observations
               </span>
+              {!isOwner && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-zinc-100 text-zinc-600 border border-zinc-200">
+                  Assigned to {focusedTicket.workedBy || 'another technician'}
+                </span>
+              )}
             </div>
             <span className="text-[11px] text-zinc-400 font-medium">
               Save repair progress or pending reasons
@@ -745,25 +782,33 @@ export const ITWorkbenchBoardView: React.FC = () => {
             <textarea
               rows={2}
               value={diagnosisDraft}
+              readOnly={!isOwner}
+              disabled={!isOwner}
               onChange={(e) => setDiagnosisDraft(e.target.value)}
-              placeholder="Leave technician notes here once in progress or pending (e.g. Diagnosed thermal print head failure. Waiting for replacement part or customer AnyDesk confirmation)..."
-              className="flex-1 px-3.5 py-2.5 bg-[#F8F9FA] border border-[#ECEEF2] rounded-xl text-xs text-ink focus:outline-none focus:border-orange-500 resize-none leading-relaxed"
+              placeholder={
+                !isOwner
+                  ? `Assigned to ${focusedTicket.workedBy || 'another technician'} (Read-Only)`
+                  : 'Leave technician notes here once in progress or pending (e.g. Diagnosed thermal print head failure. Waiting for replacement part or customer AnyDesk confirmation)...'
+              }
+              className="flex-1 px-3.5 py-2.5 bg-[#F8F9FA] border border-[#ECEEF2] rounded-xl text-xs text-ink focus:outline-none focus:border-orange-500 resize-none leading-relaxed disabled:bg-zinc-100/60 disabled:text-zinc-500"
             />
-            <button
-              type="button"
-              disabled={isSavingDiagnosis}
-              onClick={handleSaveDiagnosis}
-              className="px-5 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold inline-flex items-center justify-center gap-1.5 shadow-sm transition-colors press-fx sm:self-end"
-            >
-              <span>{isSavingDiagnosis ? 'Saving...' : 'Save Note'}</span>
-            </button>
+            {isOwner && (
+              <button
+                type="button"
+                disabled={isSavingDiagnosis}
+                onClick={handleSaveDiagnosis}
+                className="px-5 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold inline-flex items-center justify-center gap-1.5 shadow-sm transition-colors press-fx sm:self-end"
+              >
+                <span>{isSavingDiagnosis ? 'Saving...' : 'Save Note'}</span>
+              </button>
+            )}
           </div>
         </div>
 
         {/* SOP Checklist & Saved Repair Guides */}
         <TicketChecklistSection
           ticketId={focusedTicket.id}
-          ticketStatus={focusedTicket.status}
+          ticketStatus={isOwner ? focusedTicket.status : ('CLSD' as TicketStatus)}
           ticketTaskCode={focusedTicket.taskCode}
         />
 
@@ -849,10 +894,11 @@ export const ITWorkbenchBoardView: React.FC = () => {
               <button
                 key={preset}
                 type="button"
-                  onClick={() =>
-                    sendTicketMessageApi(focusedTicket.id, preset, false)
-                  }
-                className="text-[11px] px-2.5 py-1 rounded-lg bg-white hover:bg-orange-50 text-zinc-600 hover:text-orange-600 border border-[#ECEEF2] transition-colors press-fx"
+                disabled={!isOwner}
+                onClick={() =>
+                  sendTicketMessageApi(focusedTicket.id, preset, false)
+                }
+                className="text-[11px] px-2.5 py-1 rounded-lg bg-white hover:bg-orange-50 disabled:opacity-40 disabled:cursor-not-allowed text-zinc-600 hover:text-orange-600 border border-[#ECEEF2] transition-colors press-fx"
               >
                 + {preset}
               </button>
@@ -866,14 +912,19 @@ export const ITWorkbenchBoardView: React.FC = () => {
           >
             <input
               type="text"
+              disabled={!isOwner}
               value={chatDraft}
               onChange={(e) => setChatDraft(e.target.value)}
-              placeholder={`Type a message to ${focusedTicket.requestor} (${focusedTicket.location})...`}
-              className="flex-1 px-4 py-2.5 bg-white border border-[#ECEEF2] rounded-xl text-xs text-ink placeholder:text-zinc-400 focus:outline-none focus:border-orange-400"
+              placeholder={
+                !isOwner
+                  ? `Chat input is restricted to assigned technician (${focusedTicket.workedBy || 'Assigned'})`
+                  : `Type a message to ${focusedTicket.requestor} (${focusedTicket.location})...`
+              }
+              className="flex-1 px-4 py-2.5 bg-white border border-[#ECEEF2] rounded-xl text-xs text-ink placeholder:text-zinc-400 focus:outline-none focus:border-orange-400 disabled:bg-zinc-100/60 disabled:text-zinc-400"
             />
             <button
               type="submit"
-              disabled={!chatDraft.trim()}
+              disabled={!isOwner || !chatDraft.trim()}
               className="px-5 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-sm transition-colors press-fx shrink-0"
             >
               <Send className="w-3.5 h-3.5" />

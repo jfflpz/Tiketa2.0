@@ -11,6 +11,10 @@ import {
 } from 'lucide-react';
 import type { Ticket } from '../../../types/ticket';
 import type { TeamMember } from '../../../types/team';
+import { useAppStore } from '../../../store/useAppStore';
+import { canEditTicket } from '../../../store/slices/ticketOperationsSlice';
+import { sortTicketsSprint5 } from '../../../store/slices/ticketQueueSlice';
+import { formatManilaTimestamp } from './TicketQueueTable';
 
 export interface TicketQueueKanbanBoardProps {
   openTickets: Ticket[];
@@ -54,6 +58,11 @@ export const TicketQueueKanbanBoard: React.FC<TicketQueueKanbanBoardProps> = ({
   onCopyVerification,
   onAssignTicket,
 }) => {
+  const currentUser = useAppStore((state) => state.currentUser);
+  const sortedOpen = sortTicketsSprint5(openTickets);
+  const sortedProg = sortTicketsSprint5(progTickets);
+  const sortedResl = sortTicketsSprint5(reslTickets);
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
       {/* COLUMN 1: UNASSIGNED POOL (OPEN) */}
@@ -66,19 +75,19 @@ export const TicketQueueKanbanBoard: React.FC<TicketQueueKanbanBoardProps> = ({
             </h3>
           </div>
           <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 text-xs font-bold tabular-nums">
-            {openTickets.length}
+            {sortedOpen.length}
           </span>
         </div>
 
         <div className="space-y-3 flex-1 overflow-y-auto max-h-[calc(100vh-280px)]">
-          {openTickets.length === 0 ? (
+          {sortedOpen.length === 0 ? (
             <div className="p-8 text-center text-xs text-zinc-400">
               <CheckCircle2 className="w-6 h-6 mx-auto mb-1 text-emerald-500" />
               <p className="font-semibold text-ink">Zero unassigned tickets!</p>
               <p className="text-[11px]">All submitted tickets have been claimed.</p>
             </div>
           ) : (
-            openTickets.map((t) => (
+            sortedOpen.map((t) => (
               <div
                 key={t.id}
                 onClick={() => onSelectTicket(t.id)}
@@ -95,6 +104,11 @@ export const TicketQueueKanbanBoard: React.FC<TicketQueueKanbanBoardProps> = ({
                   >
                     {t.priority}
                   </span>
+                </div>
+
+                <div className="flex items-center gap-1 text-[11px] text-zinc-500 font-mono">
+                  <Clock className="w-3 h-3 text-zinc-400" />
+                  <span>{formatManilaTimestamp(t.createdAt || (t as any).created_at)}</span>
                 </div>
 
                 <div>
@@ -161,19 +175,19 @@ export const TicketQueueKanbanBoard: React.FC<TicketQueueKanbanBoardProps> = ({
             </h3>
           </div>
           <span className="px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 text-xs font-bold tabular-nums">
-            {progTickets.length}
+            {sortedProg.length}
           </span>
         </div>
 
         <div className="space-y-3 flex-1 overflow-y-auto max-h-[calc(100vh-280px)]">
-          {progTickets.length === 0 ? (
+          {sortedProg.length === 0 ? (
             <div className="p-8 text-center text-xs text-zinc-400">
               <Wrench className="w-6 h-6 mx-auto mb-1 text-zinc-300" />
               <p className="font-semibold text-ink">No tickets in progress</p>
               <p className="text-[11px]">Claim an open ticket from column 1.</p>
             </div>
           ) : (
-            progTickets.map((t) => (
+            sortedProg.map((t) => (
               <div
                 key={t.id}
                 onClick={() => onSelectTicket(t.id)}
@@ -186,6 +200,11 @@ export const TicketQueueKanbanBoard: React.FC<TicketQueueKanbanBoardProps> = ({
                   <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-white border border-zinc-200 text-zinc-700">
                     {t.mode === 'SITE' ? 'On-Site' : 'Remote'}
                   </span>
+                </div>
+
+                <div className="flex items-center gap-1 text-[11px] text-zinc-500 font-mono">
+                  <Clock className="w-3 h-3 text-zinc-400" />
+                  <span>{formatManilaTimestamp(t.createdAt || (t as any).created_at)}</span>
                 </div>
 
                 <div>
@@ -224,26 +243,44 @@ export const TicketQueueKanbanBoard: React.FC<TicketQueueKanbanBoardProps> = ({
                   </div>
                 )}
 
-                <div
-                  className="grid grid-cols-2 gap-2 pt-1"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <button
-                    type="button"
-                    onClick={(e) => onFocusWorkbench(e, t)}
-                    className="py-1.5 px-2.5 rounded-lg bg-white hover:bg-zinc-100 text-ink border border-zinc-200 text-xs font-semibold transition-colors active:scale-95"
+                {canEditTicket(currentUser, t) ? (
+                  <div
+                    className="grid grid-cols-2 gap-2 pt-1"
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    Workbench ({t.messages?.length ?? 0})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onResolveTicket(t)}
-                    className="py-1.5 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center justify-center gap-1 shadow-sm transition-colors active:scale-95"
+                    <button
+                      type="button"
+                      onClick={(e) => onFocusWorkbench(e, t)}
+                      className="py-1.5 px-2.5 rounded-lg bg-white hover:bg-zinc-100 text-ink border border-zinc-200 text-xs font-semibold transition-colors active:scale-95"
+                    >
+                      Workbench ({t.messages?.length ?? 0})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onResolveTicket(t)}
+                      className="py-1.5 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center justify-center gap-1 shadow-sm transition-colors active:scale-95"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Resolve</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div
+                    className="flex items-center justify-between gap-2 pt-1"
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>Resolve</span>
-                  </button>
-                </div>
+                    <button
+                      type="button"
+                      onClick={(e) => onFocusWorkbench(e, t)}
+                      className="flex-1 py-1.5 px-2.5 rounded-lg bg-white hover:bg-zinc-100 text-ink border border-zinc-200 text-xs font-semibold transition-colors active:scale-95 text-center"
+                    >
+                      Workbench ({t.messages?.length ?? 0})
+                    </button>
+                    <span className="text-[11px] font-medium text-zinc-500 bg-zinc-100 px-2 py-1 rounded-md text-center">
+                      Assigned to {t.workedBy || 'another technician'}
+                    </span>
+                  </div>
+                )}
               </div>
             ))
           )}
@@ -260,19 +297,19 @@ export const TicketQueueKanbanBoard: React.FC<TicketQueueKanbanBoardProps> = ({
             </h3>
           </div>
           <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs font-bold tabular-nums">
-            {reslTickets.length}
+            {sortedResl.length}
           </span>
         </div>
 
         <div className="space-y-3 flex-1 overflow-y-auto max-h-[calc(100vh-280px)]">
-          {reslTickets.length === 0 ? (
+          {sortedResl.length === 0 ? (
             <div className="p-8 text-center text-xs text-zinc-400">
               <Clock className="w-6 h-6 mx-auto mb-1 text-zinc-300" />
               <p className="font-semibold text-ink">No pending verifications</p>
               <p className="text-[11px]">Resolved tickets waiting for employee sign-off show here.</p>
             </div>
           ) : (
-            reslTickets.map((t) => (
+            sortedResl.map((t) => (
               <div
                 key={t.id}
                 onClick={() => onSelectTicket(t.id)}
@@ -285,6 +322,11 @@ export const TicketQueueKanbanBoard: React.FC<TicketQueueKanbanBoardProps> = ({
                   <span className="text-[10px] font-mono font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded">
                     {t.duration != null ? `${t.duration} hrs logged` : 'Resolved'}
                   </span>
+                </div>
+
+                <div className="flex items-center gap-1 text-[11px] text-zinc-500 font-mono">
+                  <Clock className="w-3 h-3 text-zinc-400" />
+                  <span>{formatManilaTimestamp(t.createdAt || (t as any).created_at)}</span>
                 </div>
 
                 <div>

@@ -5,10 +5,33 @@ import {
   Check,
   AlertCircle,
   ExternalLink,
+  Clock,
 } from 'lucide-react';
 import type { Ticket } from '../../../types/ticket';
 import type { TeamMember } from '../../../types/team';
 import { StatusBadge } from '../../../components/common/StatusBadge';
+import { useAppStore } from '../../../store/useAppStore';
+import { canEditTicket } from '../../../store/slices/ticketOperationsSlice';
+import { sortTicketsSprint5 } from '../../../store/slices/ticketQueueSlice';
+
+export function formatManilaTimestamp(dateString?: string): string {
+  if (!dateString) return '—';
+  try {
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return dateString;
+    return d.toLocaleString('en-US', {
+      timeZone: 'Asia/Manila',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+  } catch {
+    return dateString;
+  }
+}
 
 export interface TicketQueueTableProps {
   tickets: Ticket[];
@@ -48,6 +71,8 @@ export const TicketQueueTable: React.FC<TicketQueueTableProps> = ({
   onCopyVerification,
   onAssignTicket,
 }) => {
+  const currentUser = useAppStore((state) => state.currentUser);
+  const sortedTickets = sortTicketsSprint5(tickets);
   return (
     <div className="bg-white border border-[#ECEEF2] rounded-2xl shadow-card overflow-hidden">
       <div className="overflow-x-auto">
@@ -55,6 +80,7 @@ export const TicketQueueTable: React.FC<TicketQueueTableProps> = ({
           <thead>
             <tr className="bg-[#F8F9FA] text-zinc-500 text-[11px] font-semibold border-b border-[#ECEEF2]">
               <th className="py-3 px-4">Ticket Code</th>
+              <th className="py-3 px-3">Date Created</th>
               <th className="py-3 px-3">Mode</th>
               <th className="py-3 px-3">Priority</th>
               <th className="py-3 px-3">Task &amp; Description</th>
@@ -66,16 +92,16 @@ export const TicketQueueTable: React.FC<TicketQueueTableProps> = ({
             </tr>
           </thead>
           <tbody className="divide-y divide-[#ECEEF2]">
-            {tickets.length === 0 ? (
+            {sortedTickets.length === 0 ? (
               <tr>
-                <td colSpan={9} className="py-12 text-center text-zinc-400">
+                <td colSpan={10} className="py-12 text-center text-zinc-400">
                   <AlertCircle className="w-6 h-6 mx-auto mb-1.5 text-zinc-300" />
                   <p className="font-semibold text-ink text-xs">No matching tickets found</p>
                   <p className="text-[11px] text-zinc-400 mt-0.5">Try clearing your filters or search keywords.</p>
                 </td>
               </tr>
             ) : (
-              tickets.map((ticket) => (
+              sortedTickets.map((ticket) => (
                 <tr
                   key={ticket.id}
                   onClick={() => onSelectTicket(ticket.id)}
@@ -85,6 +111,14 @@ export const TicketQueueTable: React.FC<TicketQueueTableProps> = ({
                   <td className="py-3 px-4 whitespace-nowrap">
                     <span className="font-mono font-bold text-xs px-2 py-0.5 rounded-lg bg-zinc-900 text-white group-hover:bg-orange-600 transition-colors shrink-0 whitespace-nowrap inline-block">
                       {ticket.ticketCode}
+                    </span>
+                  </td>
+
+                  {/* Date Created (Asia/Manila) */}
+                  <td className="py-3 px-3 whitespace-nowrap text-zinc-600 font-mono text-[11px]">
+                    <span className="inline-flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-zinc-400" />
+                      <span>{formatManilaTimestamp(ticket.createdAt || (ticket as any).created_at)}</span>
                     </span>
                   </td>
 
@@ -191,13 +225,19 @@ export const TicketQueueTable: React.FC<TicketQueueTableProps> = ({
                           >
                             Workbench
                           </button>
-                          <button
-                            type="button"
-                            onClick={(e) => onResolveTicket(e, ticket)}
-                            className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition-colors"
-                          >
-                            Resolve
-                          </button>
+                          {canEditTicket(currentUser, ticket) ? (
+                            <button
+                              type="button"
+                              onClick={(e) => onResolveTicket(e, ticket)}
+                              className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition-colors"
+                            >
+                              Resolve
+                            </button>
+                          ) : (
+                            <span className="text-[11px] font-medium text-zinc-500 bg-zinc-100 px-2 py-0.5 rounded-md">
+                              Assigned to {ticket.workedBy || 'another technician'}
+                            </span>
+                          )}
                         </>
                       )}
                       {ticket.status === 'RESL' && (

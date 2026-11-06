@@ -650,9 +650,12 @@ export interface UserCreateInput {
 
 export interface UserUpdateInput {
     full_name?: string | null;
+    username?: string | null;
     role?: StaffRole | null;
     is_active?: boolean | null;
     password?: string | null;
+    acting_admin_password?: string | null;
+    confirm_password?: string | null;
 }
 
 export interface EmployeeCreateInput {

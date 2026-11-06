@@ -2,15 +2,14 @@
 // @spec FR-VERIF-02: Closure Verification Modal Gate
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  CheckCircle2,
   RotateCcw,
   Clock,
-  ShieldCheck,
   UserCheck,
   Wrench,
   Copy,
 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
+import { canEditTicket } from '../../store/slices/ticketOperationsSlice';
 import { JobLogDrawerHeader } from './drawer/JobLogDrawerHeader';
 import { JobLogDrawerChat } from './drawer/JobLogDrawerChat';
 import { JobLogDrawerRecordForm } from './drawer/JobLogDrawerRecordForm';
@@ -33,7 +32,6 @@ export const JobLogDrawer: React.FC = () => {
   const updateTicketDescription = useAppStore((state) => state.updateTicketDescription);
   const resolveTicket = useAppStore((state) => state.resolveTicket);
   const requestValidation = useAppStore((state) => state.requestValidation);
-  const openVerificationModal = useAppStore((state) => state.openVerificationModal);
   const reopenTicket = useAppStore((state) => state.reopenTicket);
   const copyTicketShareLink = useAppStore((state) => state.copyTicketShareLink);
   const setActiveWorkbenchTicketId = useAppStore((state) => state.setActiveWorkbenchTicketId);
@@ -202,6 +200,7 @@ export const JobLogDrawer: React.FC = () => {
   const messages = ticket.messages ?? [];
   const techSenderName = ticket.workedBy ?? currentUser?.name ?? 'Christian (IT Specialist)';
   const isAdmin = currentUser?.role === 'admin';
+  const isOwner = canEditTicket(currentUser, ticket);
 
   const handleOpenWorkbench = () => {
     // Preserve explicit claiming: opening a ticket or workbench must not claim it automatically
@@ -212,6 +211,10 @@ export const JobLogDrawer: React.FC = () => {
   };
 
   const handleSaveJobLog = async () => {
+    if (!isOwner) {
+      addToast('Permission Denied', `Ticket is assigned to ${ticket.workedBy || 'another technician'}`, 'warning');
+      return;
+    }
     setIsSavingNotes(true);
     updateTicketDescription(ticket.id, notesDraft);
     await updateTicketStatusApi(ticket.id, ticket.status, ticket.mode);
@@ -243,29 +246,22 @@ export const JobLogDrawer: React.FC = () => {
 
         {/* Drawer Body */}
         <div className="p-5 pb-36 overflow-y-auto flex-1 space-y-4">
-          {/* Closure Verification Loop Banner (When status is RESL) */}
+          {/* Compact Requester Approval Banner (When status is RESL) */}
           {ticket.status === 'RESL' && (
-            <div className="bg-peach/60 border border-orange-300/80 rounded-2xl p-4 space-y-3">
-              <div className="flex items-start gap-2.5">
-                <ShieldCheck className="w-5 h-5 text-peach-text shrink-0 mt-0.5" />
-                <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-peach-text">
-                    Pending Employee Closure Verification
-                  </h3>
-                  <p className="text-xs text-peach-text/90 mt-1 leading-relaxed">
-                    Technician <strong>{ticket.workedBy}</strong> marked this repair resolved. Confirm terminal resolution or
-                    reopen if the issue persists.
-                  </p>
+            <div className="bg-amber-50/90 border border-amber-200 rounded-2xl p-3.5 space-y-2.5 animate-fade-in">
+              <div className="flex items-center justify-between gap-2">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-300 text-xs font-bold">
+                  <Clock className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
+                  <span>Waiting for requester approval</span>
                 </div>
+                <span className="text-[11px] font-medium text-amber-700">
+                  Awaiting {ticket.requestor} sign-off
+                </span>
               </div>
-              <div className="flex flex-wrap items-center gap-2 pt-1">
-                <button
-                  onClick={() => openVerificationModal(ticket.id)}
-                  className="flex-1 min-w-[140px] py-2 px-3 bg-brand hover:bg-brand-hover text-white text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition-colors press-fx"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  Confirm Closure Sign-Off
-                </button>
+              <p className="text-xs text-zinc-600 leading-relaxed">
+                Technician <strong>{ticket.workedBy}</strong> marked this repair resolved. Requester validation is pending.
+              </p>
+              <div className="flex flex-wrap items-center gap-2 pt-0.5">
                 <button
                   type="button"
                   onClick={async () => {
@@ -282,18 +278,19 @@ export const JobLogDrawer: React.FC = () => {
                       await copyTicketShareLink(ticket.ticketCode, ticket.id);
                     }
                   }}
-                  className="py-2 px-3 bg-surface hover:bg-zinc-50 text-brand border border-orange-300 text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition-colors press-fx"
+                  className="py-1.5 px-3 bg-white hover:bg-amber-50 text-amber-800 border border-amber-300 text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition-colors press-fx shadow-2xs"
                   title="Copy Viber closure link"
                 >
                   <Copy className="w-3.5 h-3.5" />
                   <span>Copy Viber Link</span>
                 </button>
                 <button
+                  type="button"
                   onClick={() => reopenTicket(ticket.id)}
-                  className="py-2 px-3 bg-surface hover:bg-zinc-50 text-peach-text border border-orange-300 text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition-colors press-fx"
+                  className="py-1.5 px-3 bg-white hover:bg-zinc-50 text-zinc-700 border border-zinc-300 text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition-colors press-fx shadow-2xs"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
-                  Reopen Ticket
+                  <span>Reopen Ticket</span>
                 </button>
               </div>
             </div>
@@ -304,9 +301,13 @@ export const JobLogDrawer: React.FC = () => {
             <JobLogDrawerChat
               ticket={ticket}
               techSenderName={techSenderName}
-              onSendMessage={(msg, isInternal) =>
-                sendTicketMessageApi(ticket.id, msg, isInternal)
-              }
+              onSendMessage={(msg, isInternal) => {
+                if (!isOwner) {
+                  addToast('Permission Denied', `Ticket is assigned to ${ticket.workedBy || 'another technician'}. Only the assigned owner may post comments.`, 'warning');
+                  return false;
+                }
+                return sendTicketMessageApi(ticket.id, msg, isInternal);
+              }}
             />
           ) : (
             /* TAB 2: 15-COLUMN JOB LOG & WORK CONTROLS */
@@ -316,7 +317,13 @@ export const JobLogDrawer: React.FC = () => {
               onNotesDraftChange={setNotesDraft}
               isSavingNotes={isSavingNotes}
               onSaveJobLog={handleSaveJobLog}
-              onUpdateMode={(mode) => updateTicketMode(ticket.id, mode)}
+              onUpdateMode={(mode) => {
+                if (!isOwner) {
+                  addToast('Permission Denied', `Ticket is assigned to ${ticket.workedBy || 'another technician'}. Only the assigned owner may change mode.`, 'warning');
+                  return;
+                }
+                updateTicketMode(ticket.id, mode);
+              }}
               isAdmin={isAdmin}
               itTeamMembers={itTeamMembers}
               onAssignTicket={assignTicket}
@@ -343,6 +350,7 @@ export const JobLogDrawer: React.FC = () => {
             </button>
             {ticket.status === 'OPEN' && (
               <button
+                type="button"
                 onClick={() => claimTicketApi(ticket.id)}
                 className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-colors press-fx"
               >
@@ -351,18 +359,26 @@ export const JobLogDrawer: React.FC = () => {
               </button>
             )}
             {ticket.status === 'PROG' && (
-              <button
-                onClick={async () => {
-                  resolveTicket(ticket.id);
-                  await updateTicketStatusApi(ticket.id, 'RESL', ticket.mode || 'SITE');
-                }}
-                className="px-4 py-2 bg-brand hover:bg-brand-hover text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-colors press-fx"
-              >
-                <Wrench className="w-4 h-4" />
-                <span>Mark as Resolved</span>
-              </button>
+              isOwner ? (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    resolveTicket(ticket.id);
+                    await updateTicketStatusApi(ticket.id, 'RESL', ticket.mode || 'SITE');
+                  }}
+                  className="px-4 py-2 bg-brand hover:bg-brand-hover text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-colors press-fx"
+                >
+                  <Wrench className="w-4 h-4" />
+                  <span>Mark as Resolved</span>
+                </button>
+              ) : (
+                <span className="px-3 py-1.5 rounded-xl bg-zinc-100 text-zinc-600 text-xs font-medium border border-zinc-200">
+                  Assigned to {ticket.workedBy || 'another technician'}
+                </span>
+              )
             )}
             <button
+              type="button"
               onClick={() => setSelectedTicketId(null)}
               className="px-3.5 py-2 bg-surface hover:bg-zinc-100 text-ink-subtle border border-line text-xs font-medium rounded-xl transition-colors press-fx"
             >
