@@ -325,6 +325,52 @@
         "title": "AccountRequestRejectInput",
         "type": "object"
       },
+      "AdminResetPasswordRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "admin_current_password": {
+            "minLength": 1,
+            "title": "Admin Current Password",
+            "type": "string"
+          },
+          "confirm_password": {
+            "maxLength": 128,
+            "minLength": 12,
+            "title": "Confirm Password",
+            "type": "string"
+          },
+          "new_password": {
+            "maxLength": 128,
+            "minLength": 12,
+            "title": "New Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "admin_current_password",
+          "new_password",
+          "confirm_password"
+        ],
+        "title": "AdminResetPasswordRequest",
+        "type": "object"
+      },
+      "AdminUsernameUpdateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "username": {
+            "maxLength": 50,
+            "minLength": 3,
+            "pattern": "^[a-zA-Z0-9_.-]+$",
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "username"
+        ],
+        "title": "AdminUsernameUpdateRequest",
+        "type": "object"
+      },
       "AssignInput": {
         "additionalProperties": false,
         "properties": {
@@ -3774,6 +3820,118 @@
         ]
       }
     },
+    "/api/v1/admin/users/{user_id}/reset-password": {
+      "post": {
+        "operationId": "admin_reset_password_api_v1_admin_users__user_id__reset_password_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminResetPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Admin Reset Password",
+        "tags": [
+          "Directory"
+        ]
+      }
+    },
+    "/api/v1/admin/users/{user_id}/username": {
+      "patch": {
+        "operationId": "admin_update_username_api_v1_admin_users__user_id__username_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminUsernameUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Admin Update Username",
+        "tags": [
+          "Directory"
+        ]
+      }
+    },
     "/api/v1/auth/login": {
       "post": {
         "operationId": "login_api_v1_auth_login_post",
@@ -5021,7 +5179,8 @@
               "default": "json",
               "enum": [
                 "json",
-                "csv"
+                "csv",
+                "xlsx"
               ],
               "title": "Format",
               "type": "string"
@@ -5355,6 +5514,30 @@
           }
         ],
         "summary": "Ticket History",
+        "tags": [
+          "Tickets"
+        ]
+      }
+    },
+    "/api/v1/tickets/job-logs/export": {
+      "get": {
+        "operationId": "export_job_logs_xlsx_api_v1_tickets_job_logs_export_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Export Job Logs Xlsx",
         "tags": [
           "Tickets"
         ]

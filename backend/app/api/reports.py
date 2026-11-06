@@ -4,7 +4,7 @@ from typing import Literal
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Response
 from fastapi.responses import StreamingResponse
 from sqlalchemy import and_, func, select
 
@@ -225,7 +225,7 @@ async def report(
     company_id: UUID | None = None,
     location_id: UUID | None = None,
     department_id: UUID | None = None,
-    format: Literal["json", "csv"] = Query("json"),
+    format: Literal["json", "csv", "xlsx"] = Query("json"),
 ):
     is_pms = report_name == "pms-compliance"
     if is_pms and not all_time and date_to is None:
@@ -257,8 +257,73 @@ async def report(
     else:
         data = build_report(report_name, rows, now())
 
-    if format == "csv":
+    if format in ("csv", "xlsx"):
         columns = REPORT_COLUMNS[report_name]
+        if format == "xlsx":
+            import io
+
+            import openpyxl
+            from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Report"
+            headers = [c.replace("_", " ").title() for c in columns]
+            ws.append(headers)
+
+            ws.row_dimensions[1].height = 24.0
+            header_fill = PatternFill(
+                start_color="1F4E78", end_color="1F4E78", fill_type="solid"
+            )
+            header_font = Font(name="Arial", size=11, bold=True, color="FFFFFF")
+            header_align = Alignment(horizontal="center", vertical="center")
+            for col_idx in range(1, len(columns) + 1):
+                cell = ws.cell(row=1, column=col_idx)
+                cell.fill = header_fill
+                cell.font = header_font
+                cell.alignment = header_align
+
+            thin_border = Border(
+                left=Side(style="thin", color="BFBFBF"),
+                right=Side(style="thin", color="BFBFBF"),
+                top=Side(style="thin", color="BFBFBF"),
+                bottom=Side(style="thin", color="BFBFBF"),
+            )
+            data_font = Font(name="Arial", size=10)
+            data_align = Alignment(vertical="center")
+
+            for item in data:
+                row_vals = []
+                for key in columns:
+                    val = item.get(key, "")
+                    if isinstance(val, str) and val.startswith(("=", "+", "-", "@")):
+                        val = f"'{val}"
+                    row_vals.append(val if val is not None else "")
+                ws.append(row_vals)
+                row_idx = ws.max_row
+                for col_idx in range(1, len(columns) + 1):
+                    c = ws.cell(row=row_idx, column=col_idx)
+                    c.font = data_font
+                    c.border = thin_border
+                    c.alignment = data_align
+
+            for col_idx in range(1, len(columns) + 1):
+                col_letter = openpyxl.utils.get_column_letter(col_idx)
+                ws.column_dimensions[col_letter].width = 20
+
+            ws.views.sheetView[0].showGridLines = True
+            ws.freeze_panes = "A2"
+            buf = io.BytesIO()
+            wb.save(buf)
+            buf.seek(0)
+            return Response(
+                content=buf.getvalue(),
+                media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                headers={
+                    "Content-Disposition": f'attachment; filename="{report_name}.xlsx"'
+                },
+            )
+
         return StreamingResponse(
             csv_chunks(data, columns),
             media_type="text/csv",

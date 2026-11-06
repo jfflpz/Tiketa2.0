@@ -90,10 +90,11 @@ export const StandardizedReportsView: React.FC = () => {
           <button
             type="button"
             onClick={handleExportCSV}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-[#ECEEF2] text-xs font-semibold text-zinc-700 shadow-sm hover:bg-zinc-50 transition-colors press-fx"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-[#ECEEF2] text-xs font-semibold text-zinc-700
+            shadow-sm hover:bg-zinc-50 transition-colors press-fx"
           >
             <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Export CSV</span>
+            <span>Export XLSX</span>
           </button>
           <button
             type="button"

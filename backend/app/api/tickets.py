@@ -10,7 +10,7 @@ from uuid import UUID
 import jwt
 from fastapi import APIRouter, HTTPException, Query, Request, Response, UploadFile
 from pydantic import TypeAdapter
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 
 from app.api.deps import DB, Admin, CurrentUser, validated_user
 from app.core.cache import cache, invalidate_queue_version, rate_limit
@@ -26,7 +26,10 @@ from app.core.security import (
     verify_match_token,
 )
 from app.models import (
+    Company,
+    Department,
     Employee,
+    Location,
     TaskCategory,
     Ticket,
     TicketAttachment,
@@ -140,17 +143,15 @@ def enforce_ticket_read_scope(ticket: Ticket, user: User) -> None:
 
 
 def enforce_ticket_mutation_scope(ticket: Ticket, user: User) -> None:
-    """Enforce mutation scope: Supervisor cannot mutate operations;
-
-    Intern is assigned-only."""
+    """Enforce mutation scope: Supervisor cannot mutate operations; assigned tickets are owner-only."""
 
     if user.role == "supervisor":
         raise HTTPException(
             403, "Supervisor role does not have operational mutation permissions"
         )
 
-    if user.role == "intern" and ticket.assigned_tech_id != user.id:
-        raise HTTPException(403, "Interns may only mutate their assigned tickets")
+    if ticket.assigned_tech_id and ticket.assigned_tech_id != user.id:
+        raise HTTPException(403, "Only the assigned technician may edit this ticket")
 
 
 @router.post("/submit", status_code=201, response_model=PublicTicket)
@@ -511,11 +512,24 @@ async def queue(
     if location_id:
         query = query.where(Ticket.location_id == location_id)
 
+    priority_rank = case(
+        (Ticket.task_code.in_(["SRV-ASSESS"]), 1),
+        (Ticket.task_code.in_(["NET-CFG", "PRN-TS", "PC-HW-REP"]), 2),
+        (
+            Ticket.task_code.in_(
+                ["PC-TS", "SW-ASST", "PRN-NET", "PC-SETUP", "PRN-SETUP"]
+            ),
+            3,
+        ),
+        else_=4,
+    )
+
     if order == "desc":
         query = query.order_by(Ticket.created_at.desc(), Ticket.id.desc())
-
     else:
-        query = query.order_by(Ticket.created_at.asc(), Ticket.id.asc())
+        query = query.order_by(
+            priority_rank.asc(), Ticket.created_at.asc(), Ticket.id.asc()
+        )
 
     query = query.offset(offset).limit(limit)
 
@@ -658,6 +672,160 @@ async def ticket_history(
     return rows
 
 
+@router.get("/job-logs/export")
+async def export_job_logs_xlsx(
+    db: DB,
+    user: CurrentUser,
+):
+    import io
+
+    import openpyxl
+    from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+
+    query = select(Ticket).order_by(Ticket.created_at.desc())
+    if user.role in ("intern", "it"):
+        query = query.where(Ticket.assigned_tech_id == user.id)
+
+    ticket_rows = (await db.scalars(query)).all()
+
+    company_ids = {t.company_id for t in ticket_rows}
+    dept_ids = {t.department_id for t in ticket_rows}
+    loc_ids = {t.location_id for t in ticket_rows}
+    tech_ids = {t.assigned_tech_id for t in ticket_rows if t.assigned_tech_id}
+
+    companies = (
+        {
+            c.id: f"{c.name} ({c.code})"
+            for c in (
+                await db.scalars(select(Company).where(Company.id.in_(company_ids)))
+            ).all()
+        }
+        if company_ids
+        else {}
+    )
+    depts = (
+        {
+            d.id: d.name
+            for d in (
+                await db.scalars(select(Department).where(Department.id.in_(dept_ids)))
+            ).all()
+        }
+        if dept_ids
+        else {}
+    )
+    locs = (
+        {
+            loc.id: f"{loc.name} ({loc.code})"
+            for loc in (
+                await db.scalars(select(Location).where(Location.id.in_(loc_ids)))
+            ).all()
+        }
+        if loc_ids
+        else {}
+    )
+    techs = (
+        {
+            u.id: u.full_name
+            for u in (await db.scalars(select(User).where(User.id.in_(tech_ids)))).all()
+        }
+        if tech_ids
+        else {}
+    )
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Job Logs"
+
+    headers = [
+        "01_Company",
+        "02_Mode",
+        "03_Department",
+        "04_Requestor",
+        "05_Task",
+        "06_Description",
+        "07_Month",
+        "08_Date_Started",
+        "09_Time_Started",
+        "10_Time_Finished",
+        "11_Duration_Hrs",
+        "12_Date_Finished",
+        "13_Status",
+        "14_Location",
+        "15_Worked_By",
+    ]
+    ws.append(headers)
+
+    ws.row_dimensions[1].height = 24.0
+    header_fill = PatternFill(
+        start_color="1F4E78", end_color="1F4E78", fill_type="solid"
+    )
+    header_font = Font(name="Arial", size=11, bold=True, color="FFFFFF")
+    header_align = Alignment(horizontal="center", vertical="center")
+    for col_idx in range(1, len(headers) + 1):
+        cell = ws.cell(row=1, column=col_idx)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = header_align
+
+    thin_border = Border(
+        left=Side(style="thin", color="BFBFBF"),
+        right=Side(style="thin", color="BFBFBF"),
+        top=Side(style="thin", color="BFBFBF"),
+        bottom=Side(style="thin", color="BFBFBF"),
+    )
+    data_font = Font(name="Arial", size=10)
+    data_align = Alignment(vertical="center")
+
+    for t in ticket_rows:
+        view = ticket_view(t)
+        raw_vals = [
+            companies.get(t.company_id, ""),
+            t.mode or "",
+            depts.get(t.department_id, ""),
+            t.requester_name or "",
+            t.task_code or "",
+            view.get("description", ""),
+            t.month or "",
+            str(t.date_started) if t.date_started else "",
+            t.started_at.strftime("%H:%M:%S") if t.started_at else "",
+            t.resolved_at.strftime("%H:%M:%S") if t.resolved_at else "",
+            float(t.duration) if t.duration is not None else "",
+            str(t.date_finished) if t.date_finished else "",
+            t.status or "",
+            locs.get(t.location_id, ""),
+            techs.get(t.assigned_tech_id, "Unassigned"),
+        ]
+        sanitized = []
+        for val in raw_vals:
+            if isinstance(val, str) and val.startswith(("=", "+", "-", "@")):
+                val = f"'{val}"
+            sanitized.append(val)
+        ws.append(sanitized)
+        row_idx = ws.max_row
+        for col_idx in range(1, len(headers) + 1):
+            c = ws.cell(row=row_idx, column=col_idx)
+            c.font = data_font
+            c.border = thin_border
+            c.alignment = data_align
+
+    for col in ws.columns:
+        max_len = max(len(str(cell.value or "")) for cell in col)
+        col_letter = openpyxl.utils.get_column_letter(col[0].column)
+        ws.column_dimensions[col_letter].width = min(max(max_len + 4, 12), 60)
+
+    ws.views.sheetView[0].showGridLines = True
+    ws.freeze_panes = "A2"
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    return Response(
+        content=buf.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": 'attachment; filename="job_logs.xlsx"'},
+    )
+
+
 @router.get("/{ticket_id}", response_model=TicketOut)
 async def detail(ticket_id: UUID, db: DB, user: CurrentUser):
 
@@ -727,10 +895,10 @@ async def update_service_record(
             403, "Supervisor role does not have operational mutation permissions"
         )
 
-    if user.role != "admin" and row.assigned_tech_id != user.id:
+    if row.assigned_tech_id and row.assigned_tech_id != user.id:
         raise HTTPException(
             403,
-            "Only the assigned technician or administrator can update the service record",
+            "Only the assigned technician may update the service record",
         )
 
     if "task_code" in body.model_fields_set:
@@ -944,7 +1112,9 @@ async def status_ticket(ticket_id: UUID, body: StatusInput, db: DB, user: Curren
             )
 
         if now() - row.updated_at < timedelta(hours=72):
-            raise HTTPException(409, "Override requires 72 hours of inactivity")
+            raise HTTPException(
+                409, "Administrator override requires 72 hours of inactivity"
+            )
 
         row.status = "CLSD"
 
@@ -977,10 +1147,10 @@ async def status_ticket(ticket_id: UUID, body: StatusInput, db: DB, user: Curren
         raise HTTPException(409, "Invalid status transition")
 
     if body.task_code:
-        if user.role != "admin" and row.assigned_tech_id != user.id:
+        if row.assigned_tech_id and row.assigned_tech_id != user.id:
             raise HTTPException(
                 403,
-                "Only the assigned technician or administrator can modify task classification",
+                "Only the assigned technician may modify task classification",
             )
 
         cat = await db.get(TaskCategory, body.task_code)
@@ -1007,10 +1177,10 @@ async def reissue_verification(ticket_id: UUID, db: DB, user: CurrentUser):
 
     row = await get_ticket(db, ticket_id, lock=True)
 
-    if user.role != "admin" and row.assigned_tech_id != user.id:
+    if row.assigned_tech_id and row.assigned_tech_id != user.id:
         raise HTTPException(
             403,
-            "Only the assigned technician or administrator can reissue verification",
+            "Only the assigned technician may reissue verification",
         )
 
     if row.status != "RESL":
@@ -1374,9 +1544,9 @@ async def comment(
                 403, "Supervisor role does not have operational mutation permissions"
             )
 
-        if staff_user.role == "intern" and row.assigned_tech_id != staff_user.id:
+        if row.assigned_tech_id and row.assigned_tech_id != staff_user.id:
             raise HTTPException(
-                403, "Interns may only comment on their assigned tickets"
+                403, "Only the assigned technician may comment on this ticket"
             )
 
         user_id = staff_user.id

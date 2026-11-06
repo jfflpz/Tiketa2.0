@@ -1,3 +1,4 @@
+from datetime import timedelta
 from typing import Annotated
 from uuid import UUID
 
@@ -25,6 +26,8 @@ from app.models import (
     UserProfilePhoto,
 )
 from app.schemas import (
+    AdminResetPasswordRequest,
+    AdminUsernameUpdateRequest,
     DepartmentCreate,
     DepartmentOut,
     DepartmentUpdate,
@@ -42,6 +45,7 @@ from app.schemas import (
     UserUpdate,
 )
 from app.services.directory import employee_view, find_employee, validate_scope
+from app.services.tickets import now
 
 router = APIRouter(tags=["Directory"])
 
@@ -286,11 +290,79 @@ async def update_user(user_id: UUID, body: UserUpdate, db: DB, admin: Admin):
         exclude_none=True, exclude={"password", "role", "is_active"}
     ).items():
         setattr(user, key, value)
-    if body.password:
-        user.password_hash = await run_in_threadpool(hash_password, body.password)
     user.token_version += 1
     await db.commit()
     return user
+
+
+@router.post("/admin/users/{user_id}/reset-password")
+async def admin_reset_password(
+    user_id: UUID,
+    body: AdminResetPasswordRequest,
+    db: DB,
+    acting_admin: Admin,
+):
+    from app.core.security import verify_password
+
+    valid_admin = await run_in_threadpool(
+        verify_password, body.admin_current_password, acting_admin.password_hash
+    )
+    if not valid_admin:
+        raise HTTPException(401, "Invalid administrator password")
+
+    if body.new_password != body.confirm_password:
+        raise HTTPException(422, "New password and confirmation do not match")
+
+    target_user = await db.get(User, user_id)
+    if not target_user:
+        raise HTTPException(404, "Target user not found")
+
+    target_user.password_hash = await run_in_threadpool(
+        hash_password, body.new_password
+    )
+    target_user.token_version += 1
+    await db.commit()
+    return {"message": "Password successfully reset and target sessions invalidated"}
+
+
+@router.patch("/admin/users/{user_id}/username")
+async def admin_update_username(
+    user_id: UUID,
+    body: AdminUsernameUpdateRequest,
+    db: DB,
+    acting_admin: Admin,
+):
+    target = await db.get(User, user_id)
+    if not target:
+        raise HTTPException(404, "Target user not found")
+
+    clean_username = body.username.strip().lower()
+    if clean_username == target.username.lower():
+        return {"username": target.username, "next_eligible_at": None}
+
+    # Enforce atomic 168-hour cooldown
+    if target.last_username_changed_at:
+        cooldown_elapsed = now() - target.last_username_changed_at
+        if cooldown_elapsed < timedelta(hours=168):
+            next_eligible = target.last_username_changed_at + timedelta(hours=168)
+            raise HTTPException(
+                409,
+                f"Username changes are on cooldown until {next_eligible.isoformat()}",
+            )
+
+    # Enforce uniqueness
+    existing = await db.scalar(
+        select(User).where(func.lower(User.username) == clean_username)
+    )
+    if existing and existing.id != target.id:
+        raise HTTPException(409, "A user with this username already exists")
+
+    target.username = clean_username
+    target.last_username_changed_at = now()
+    target.token_version += 1
+    await db.commit()
+    next_eligible = target.last_username_changed_at + timedelta(hours=168)
+    return {"username": target.username, "next_eligible_at": next_eligible.isoformat()}
 
 
 @router.get("/admin/employees")
