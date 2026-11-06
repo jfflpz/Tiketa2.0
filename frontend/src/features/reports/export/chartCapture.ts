@@ -60,6 +60,7 @@ export async function captureChartImage(reportId: number, data: any[]): Promise<
       backgroundColor: '#FFFFFF',
       cacheBust: true,
       skipAutoScale: true,
+      skipFonts: true,
     });
 
     if (!dataUrl || dataUrl.length < 50) {

@@ -90,7 +90,7 @@ export const ExecutiveAnalyticsView: React.FC = () => {
             Executive Analytics &amp; 8 Standardized Reports
           </h1>
           <p className="text-xs text-ink-subtle mt-0.5">
-            Synchronized with Sir Stephen Miralles, Sir Nathaniel Esguerra, and Sir Raefael KPIs (SR-02).
+            Consolidated performance metrics, technician labor utilization, and executive operational reports.
           </p>
         </div>
 
@@ -167,7 +167,6 @@ export const ExecutiveAnalyticsView: React.FC = () => {
             </h2>
           </div>
           <span className="text-xs font-mono text-ink-subtle">
-            {currentTabMeta?.code}
           </span>
         </div>
 

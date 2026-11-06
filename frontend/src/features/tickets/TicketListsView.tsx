@@ -104,13 +104,15 @@ export const TicketListsView: React.FC = () => {
 
   useEffect(() => {
     fetchDictionaries();
-    fetchITMembers();
+    if (currentUser?.role === 'admin') {
+      fetchITMembers();
+    }
     fetchQueueApi();
     const interval = setInterval(() => {
       fetchQueueApi();
     }, 15000);
     return () => clearInterval(interval);
-  }, [fetchQueueApi, fetchITMembers, fetchDictionaries]);
+  }, [fetchQueueApi, fetchITMembers, fetchDictionaries, currentUser?.role]);
 
   const handleClaimAndWork = async (e: React.MouseEvent, ticket: Ticket) => {
     e.stopPropagation();

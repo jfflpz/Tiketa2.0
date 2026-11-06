@@ -810,6 +810,7 @@ export const ITWorkbenchBoardView: React.FC = () => {
           ticketId={focusedTicket.id}
           ticketStatus={isOwner ? focusedTicket.status : ('CLSD' as TicketStatus)}
           ticketTaskCode={focusedTicket.taskCode}
+          assignedTechId={focusedTicket.workedById ?? focusedTicket.assigned_tech_id}
         />
 
         {/* 2. Full-Width Live Chat with Employee */}

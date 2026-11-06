@@ -198,7 +198,7 @@ describe('F-05 & F-06 Analytics & PPTX Export Suite', () => {
       render(<HourlyPeakDemandChart tickets={mockTickets} />);
 
       expect(screen.getByText(/4 tickets evaluated/i)).toBeDefined();
-      expect(screen.getByText('Hourly Support Surge Histogram (FR-DASH-04)')).toBeDefined();
+      expect(screen.getByText('Hourly Support Surge Histogram')).toBeDefined();
     });
   });
 

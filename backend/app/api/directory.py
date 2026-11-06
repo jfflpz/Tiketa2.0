@@ -28,6 +28,9 @@ from app.models import (
 from app.schemas import (
     AdminResetPasswordRequest,
     AdminUsernameUpdateRequest,
+    CompanyCreate,
+    CompanyOut,
+    CompanyUpdate,
     DepartmentCreate,
     DepartmentOut,
     DepartmentUpdate,
@@ -616,3 +619,93 @@ async def update_location_department(
     await db.commit()
     await db.refresh(loc_dept)
     return loc_dept
+
+
+@router.post("/companies", status_code=201, response_model=CompanyOut)
+@router.post("/admin/companies", status_code=201, response_model=CompanyOut)
+async def create_company(body: CompanyCreate, db: DB, admin: Admin):
+    clean_code = body.code.strip().upper()
+    clean_name = body.name.strip()
+
+    conflict = await db.scalar(
+        select(Company).where(
+            (func.upper(Company.code) == clean_code)
+            | (func.lower(Company.name) == clean_name.lower())
+        )
+    )
+    if conflict:
+        raise HTTPException(409, "A company with this code or name already exists")
+
+    comp = Company(
+        code=clean_code,
+        name=clean_name,
+        is_active=body.is_active,
+    )
+    db.add(comp)
+    await db.commit()
+    await db.refresh(comp)
+    return comp
+
+
+@router.patch("/companies/{company_id}", response_model=CompanyOut)
+@router.patch("/admin/companies/{company_id}", response_model=CompanyOut)
+async def update_company(company_id: UUID, body: CompanyUpdate, db: DB, admin: Admin):
+    comp = await db.get(Company, company_id, with_for_update=True)
+    if not comp:
+        raise HTTPException(404, "Company not found")
+
+    if body.code is not None:
+        clean_code = body.code.strip().upper()
+        conflict = await db.scalar(
+            select(Company).where(
+                func.upper(Company.code) == clean_code,
+                Company.id != company_id,
+            )
+        )
+        if conflict:
+            raise HTTPException(409, "A company with this code already exists")
+        comp.code = clean_code
+
+    if body.name is not None:
+        clean_name = body.name.strip()
+        conflict = await db.scalar(
+            select(Company).where(
+                func.lower(Company.name) == clean_name.lower(),
+                Company.id != company_id,
+            )
+        )
+        if conflict:
+            raise HTTPException(409, "A company with this name already exists")
+        comp.name = clean_name
+
+    if body.is_active is False and comp.is_active is True:
+        emp_count = await db.scalar(
+            select(func.count())
+            .select_from(Employee)
+            .where(Employee.company_id == company_id, Employee.is_active.is_(True))
+        )
+        if (emp_count or 0) > 0:
+            raise HTTPException(
+                409, "Cannot deactivate company with active assigned employees"
+            )
+
+        ticket_count = await db.scalar(
+            select(func.count())
+            .select_from(Ticket)
+            .where(
+                Ticket.company_id == company_id,
+                Ticket.status.in_(["OPEN", "PROG"]),
+            )
+        )
+        if (ticket_count or 0) > 0:
+            raise HTTPException(
+                409, "Cannot deactivate company with active tickets in progress"
+            )
+
+        comp.is_active = False
+    elif body.is_active is True:
+        comp.is_active = True
+
+    await db.commit()
+    await db.refresh(comp)
+    return comp

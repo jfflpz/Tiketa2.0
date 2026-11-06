@@ -458,11 +458,19 @@ export const ticketsApi = {
     return res.data;
     },
     updateServiceRecord: async (
-    ticketId: string,
-    payload: { task_code?: string; diagnosis?: string; resolution_notes?: string }
+        ticketId: string,
+        payload: {
+        task_code?: string;
+        diagnosis?: string;
+        resolution_notes?: string;
+        company_id?: string;
+        location_id?: string;
+        department_id?: string;
+        requester_name?: string;
+        }
     ) => {
-    const res = await apiClient.patch(`/tickets/${ticketId}/service-record`, payload);
-    return res.data;
+        const res = await apiClient.patch(`/tickets/${ticketId}/service-record`, payload);
+        return res.data;
     },
     quickIntake: async (payload: {
     employee_id: string;
@@ -775,6 +783,20 @@ export const adminApi = {
         payload: { name?: string; is_active?: boolean }
     ): Promise<ServerDictionaryItem> => {
         const res = await apiClient.patch<ServerDictionaryItem>(`/admin/departments/${id}`, payload);
+        return res.data;
+    },
+    createCompany: async (payload: {
+        code: string;
+        name: string;
+    }): Promise<ServerDictionaryItem> => {
+        const res = await apiClient.post<ServerDictionaryItem>('/admin/companies', payload);
+        return res.data;
+    },
+    updateCompany: async (
+        id: string,
+        payload: { name?: string; is_active?: boolean }
+    ): Promise<ServerDictionaryItem> => {
+        const res = await apiClient.patch<ServerDictionaryItem>(`/admin/companies/${id}`, payload);
         return res.data;
     },
     createLocationDepartment: async (payload: {

@@ -37,9 +37,8 @@ export const TurnaroundLagChart: React.FC<TurnaroundLagChartProps> = ({ data }) 
       <div>
         <div className="flex items-center justify-between mb-1">
           <h2 className="text-sm font-bold text-ink">
-            Logistical Transit Lag vs. Active Labor (FR-DASH-02)
+            Logistical Transit Lag vs. Active Labor
           </h2>
-          <span className="text-[11px] font-mono text-ink-subtle">Sir Raefael Metric</span>
         </div>
         <p className="text-xs text-ink-subtle mb-3">
           Separates courier/travel turnaround days from active technician bench hours.

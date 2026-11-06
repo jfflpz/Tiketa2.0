@@ -11,6 +11,7 @@ import jwt
 from fastapi import APIRouter, HTTPException, Query, Request, Response, UploadFile
 from pydantic import TypeAdapter
 from sqlalchemy import case, func, select
+from sqlalchemy.dialects.postgresql import insert
 
 from app.api.deps import DB, Admin, CurrentUser, validated_user
 from app.core.cache import cache, invalidate_queue_version, rate_limit
@@ -30,6 +31,7 @@ from app.models import (
     Department,
     Employee,
     Location,
+    LocationDepartment,
     TaskCategory,
     Ticket,
     TicketAttachment,
@@ -737,21 +739,21 @@ async def export_job_logs_xlsx(
     ws.title = "Job Logs"
 
     headers = [
-        "01_Company",
-        "02_Mode",
-        "03_Department",
-        "04_Requestor",
-        "05_Task",
-        "06_Description",
-        "07_Month",
-        "08_Date_Started",
-        "09_Time_Started",
-        "10_Time_Finished",
-        "11_Duration_Hrs",
-        "12_Date_Finished",
-        "13_Status",
-        "14_Location",
-        "15_Worked_By",
+        "Company",
+        "Mode",
+        "Department",
+        "Requestor",
+        "Task",
+        "Description",
+        "Month",
+        "Date_Started",
+        "Time_Started",
+        "Time_Finished",
+        "Duration_Hrs",
+        "Date_Finished",
+        "Status",
+        "Location",
+        "Worked_By",
     ]
     ws.append(headers)
 
@@ -916,6 +918,45 @@ async def update_service_record(
         row.resolution_notes_enc = (
             encrypt(body.resolution_notes) if body.resolution_notes else None
         )
+
+    if "company_id" in body.model_fields_set and body.company_id:
+        comp = await db.get(Company, body.company_id)
+        if not comp:
+            raise HTTPException(422, "Invalid company ID")
+        row.company_id = body.company_id
+
+    if "location_id" in body.model_fields_set and body.location_id:
+        loc = await db.get(Location, body.location_id)
+        if not loc:
+            raise HTTPException(422, "Invalid location ID")
+        row.location_id = body.location_id
+
+    if "department_id" in body.model_fields_set and body.department_id:
+        dept = await db.get(Department, body.department_id)
+        if not dept:
+            raise HTTPException(422, "Invalid department ID")
+        row.department_id = body.department_id
+
+    if (
+        "location_id" in body.model_fields_set
+        or "department_id" in body.model_fields_set
+    ):
+        loc_dept = await db.get(
+            LocationDepartment, (row.location_id, row.department_id)
+        )
+        if not loc_dept:
+            await db.execute(
+                insert(LocationDepartment)
+                .values(
+                    location_id=row.location_id,
+                    department_id=row.department_id,
+                    is_active=True,
+                )
+                .on_conflict_do_nothing()
+            )
+
+    if "requester_name" in body.model_fields_set and body.requester_name is not None:
+        row.requester_name = body.requester_name.strip() or "Unspecified"
 
     row.updated_at = now()
 

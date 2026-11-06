@@ -76,7 +76,6 @@ export const StandardizedReportsView: React.FC = () => {
             <span className="px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-800 text-[10px] font-bold uppercase tracking-wider">
               Management Suite
             </span>
-            <span className="text-xs font-mono text-zinc-400">SR-02 Audit Ready</span>
           </div>
           <h1 className="text-xl font-bold tracking-tight text-ink mt-1">
             8 Standardized Operational &amp; Strategic Reports Suite
@@ -121,9 +120,6 @@ export const StandardizedReportsView: React.FC = () => {
       <div className="bg-white border border-[#ECEEF2] rounded-2xl p-5 shadow-card flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <span className="font-mono text-xs font-extrabold px-2 py-0.5 rounded-lg bg-orange-50 text-orange-600 border border-orange-200">
-              {activeTabMeta.code}
-            </span>
             <h2 className="text-base font-bold text-ink">{activeTabMeta.title}</h2>
           </div>
           <p className="text-xs text-zinc-500 mt-1">{activeTabMeta.description}</p>
@@ -153,9 +149,9 @@ export const StandardizedReportsView: React.FC = () => {
       <div className="bg-white border border-[#ECEEF2] rounded-3xl p-5 shadow-card space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">
-            Canonical Audit Table • {activeTabMeta.code}
+             Audit Table
           </h3>
-          <span className="text-xs text-zinc-400 font-mono">Verified 15-Column Job Log Records</span>
+          <span className="text-xs text-zinc-400 font-mono"> Job Log Records</span>
         </div>
 
         <BarcodeDivider count={85} />

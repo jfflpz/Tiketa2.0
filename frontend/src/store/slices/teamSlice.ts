@@ -154,10 +154,13 @@ export const createTeamSlice: AppSliceCreator<TeamSlice> = (set, get) => ({
   },
 
   fetchITMembers: async () => {
+    const currentAuthUser = get().currentUser;
+    if (currentAuthUser?.role !== 'admin' && currentAuthUser?.role !== 'supervisor') {
+      return;
+    }
     set({ isLoadingTeam: true, teamError: null });
     try {
       const dicts = get().serverDictionaries;
-      const currentAuthUser = get().currentUser;
       const users = await adminApi.getUsers({ offset: 0, limit: 100 });
       const mapped = users.map((u) => {
         const member = mapBackendUserToTeamMember(u, dicts);
