@@ -127,35 +127,85 @@ async def references(db):
 
 def convert(row, refs, number):
     values = {}
-    for label, target in (
-        ("company", "company_id"),
-        ("location", "location_id"),
-        ("department", "department_id"),
-        ("task", "task_code"),
-    ):
-        value = refs[label].get(normalize(row[label]))
-        if not value:
-            raise ValueError(f"Unknown or ambiguous {label}; use a canonical code")
-        values[target] = value
+
+    # 1. Location fallback to TBD if blank
+    loc_val = row["location"]
+    if not loc_val or pd.isna(loc_val) or not str(loc_val).strip():
+        values["location_id"] = refs["location"].get("tbd")
+    else:
+        values["location_id"] = refs["location"].get(normalize(loc_val))
+    if not values["location_id"]:
+        raise ValueError(f"Unknown or ambiguous location: {loc_val}")
+
+    # 2. Company fallback to FS if blank
+    comp_val = row["company"]
+    if not comp_val or pd.isna(comp_val) or not str(comp_val).strip():
+        values["company_id"] = refs["company"].get("fs")
+    else:
+        values["company_id"] = refs["company"].get(normalize(comp_val))
+    if not values["company_id"]:
+        raise ValueError(f"Unknown or ambiguous company: {comp_val}")
+
+    # 3. Department fallback to OPS if blank
+    dept_val = row["department"]
+    if not dept_val or pd.isna(dept_val) or not str(dept_val).strip():
+        values["department_id"] = refs["department"].get("ops")
+    else:
+        values["department_id"] = refs["department"].get(normalize(dept_val))
+    if not values["department_id"]:
+        raise ValueError(f"Unknown or ambiguous department: {dept_val}")
+
+    # 4. Task fallback to PC-ASSESS if blank
+    task_val = row["task"]
+    if not task_val or pd.isna(task_val) or not str(task_val).strip():
+        values["task_code"] = refs["task"].get("pc-assess") or "PC-ASSESS"
+    else:
+        values["task_code"] = refs["task"].get(normalize(task_val))
+    if not values["task_code"]:
+        raise ValueError(f"Unknown or ambiguous task: {task_val}")
+
+    # Auto-allow TBD scope
     if (values["location_id"], values["department_id"]) not in refs["scope"]:
-        raise ValueError(
-            "Location/department mapping does not exist; provision it first"
-        )
-    status = {
-        "open": "OPEN",
-        "in progress": "PROG",
-        "resolved": "RESL",
-        "closed": "CLSD",
-    }.get(normalize(row["status"]), str(row["status"]).upper())
-    mode = {"remote": "REM", "site visit": "SITE", "online": "REM"}.get(
-        normalize(row["mode"]), str(row["mode"]).upper()
+        if values["location_id"] != refs["location"].get("tbd"):
+            raise ValueError(
+                "Location/department mapping does not exist; provision it first"
+            )
+
+    # 5. Missing completion details -> Force OPEN
+    has_completion = (
+        row.get("date finished") is not None
+        and row.get("time finished") is not None
+        and row.get("duration") is not None
+        and row.get("worked by") is not None
     )
-    if status not in {"OPEN", "PROG", "RESL", "CLSD"} or mode not in {"REM", "SITE"}:
-        raise ValueError("Status/mode must use canonical codes")
-    requester = str(row["requestor"] or "").strip()
+    raw_status = normalize(row["status"]) if row.get("status") else "open"
+    if raw_status in {"resolved", "closed", "resl", "clsd"} and not has_completion:
+        status = "OPEN"
+    else:
+        status = {
+            "open": "OPEN",
+            "in progress": "PROG",
+            "resolved": "RESL",
+            "closed": "CLSD",
+            "resl": "RESL",
+            "clsd": "CLSD",
+            "prog": "PROG",
+        }.get(raw_status, str(row.get("status") or "OPEN").upper())
+
+    mode = {"remote": "REM", "site visit": "SITE", "online": "REM"}.get(
+        normalize(row["mode"]) if row.get("mode") else "site", "SITE"
+    )
+
+    req_raw = str(row["requestor"] or "").strip()
+    requester = req_raw if len(req_raw) >= 2 else "Unspecified"
+
     description = str(row["description"] or "").strip()
-    if not 2 <= len(requester) <= 150 or not 10 <= len(description) <= 20000:
-        raise ValueError("Requestor must be 2–150 and description 10–20000 characters")
+    if len(description) < 10:
+        description = (
+            f"Historical Task: {description}"
+            if description
+            else "Historical Ticket (Pending details)"
+        )
     day = parse_date(row["date started"])
     if day > datetime.now(ZoneInfo(settings.BUSINESS_TIMEZONE)).date():
         raise ValueError("Historical creation date cannot be in the future")

@@ -19,7 +19,7 @@ async def test_seed_idempotent():
     async with AsyncSessionLocal() as db:
         for model, expected in (
             (Company, 11),
-            (Location, 15),
+            (Location, 16),
             (Department, 19),
             (TaskCategory, 13),
             (Employee, 1),

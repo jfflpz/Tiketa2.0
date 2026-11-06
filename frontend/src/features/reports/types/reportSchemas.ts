@@ -100,7 +100,6 @@ export interface ChronicRequestorRow {
 
 export interface ReportMeta {
   id: number;
-  code: string;
   title: string;
   shortTitle: string;
   icon: React.ElementType;
@@ -110,7 +109,6 @@ export interface ReportMeta {
 export const REPORT_TABS: ReportMeta[] = [
   {
     id: 1,
-    code: 'FR-REPT-01',
     title: '1. Monthly SLA & Volume Summary',
     shortTitle: 'Monthly SLA',
     icon: Calendar,
@@ -118,7 +116,6 @@ export const REPORT_TABS: ReportMeta[] = [
   },
   {
     id: 2,
-    code: 'FR-REPT-02',
     title: '2. Staff Utilization & Labor Efficiency',
     shortTitle: 'Staff Labor',
     icon: Users,
@@ -126,7 +123,6 @@ export const REPORT_TABS: ReportMeta[] = [
   },
   {
     id: 3,
-    code: 'FR-REPT-03',
     title: '3. Department & Fleet Demand Breakdown',
     shortTitle: 'Dept Demand',
     icon: Building2,
@@ -134,7 +130,6 @@ export const REPORT_TABS: ReportMeta[] = [
   },
   {
     id: 4,
-    code: 'FR-REPT-04',
     title: '4. Critical Aging Backlog (>48h SLA)',
     shortTitle: 'Aging Backlog',
     icon: Clock,
@@ -142,7 +137,6 @@ export const REPORT_TABS: ReportMeta[] = [
   },
   {
     id: 5,
-    code: 'FR-REPT-05',
     title: '5. Logistical Transit Lag Disaggregation',
     shortTitle: 'Transit Lag',
     icon: Truck,
@@ -150,7 +144,6 @@ export const REPORT_TABS: ReportMeta[] = [
   },
   {
     id: 6,
-    code: 'FR-REPT-06',
     title: '6. Hardware Vulnerability & Failure Hotspots',
     shortTitle: 'Hardware Hotspots',
     icon: Wrench,
@@ -158,7 +151,6 @@ export const REPORT_TABS: ReportMeta[] = [
   },
   {
     id: 7,
-    code: 'FR-REPT-07',
     title: '7. Fleet PMS Compliance Audit',
     shortTitle: 'PMS Compliance',
     icon: CheckSquare,
@@ -166,7 +158,6 @@ export const REPORT_TABS: ReportMeta[] = [
   },
   {
     id: 8,
-    code: 'FR-REPT-08',
     title: '8. Chronic Repeat Requestor Index',
     shortTitle: 'Repeat Requestors',
     icon: AlertTriangle,

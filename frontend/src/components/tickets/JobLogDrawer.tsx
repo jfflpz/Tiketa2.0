@@ -11,6 +11,7 @@ import {
   Copy,
 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
+import { ticketsApi } from '../../api/client';
 import { JobLogDrawerHeader } from './drawer/JobLogDrawerHeader';
 import { JobLogDrawerChat } from './drawer/JobLogDrawerChat';
 import { JobLogDrawerRecordForm } from './drawer/JobLogDrawerRecordForm';
@@ -213,9 +214,17 @@ export const JobLogDrawer: React.FC = () => {
 
   const handleSaveJobLog = async () => {
     setIsSavingNotes(true);
-    updateTicketDescription(ticket.id, notesDraft);
-    await updateTicketStatusApi(ticket.id, ticket.status, ticket.mode);
-    setIsSavingNotes(false);
+    try {
+      await ticketsApi.updateServiceRecord(ticket.id, {
+        diagnosis: notesDraft,
+      });
+      updateTicketDescription(ticket.id, notesDraft);
+      addToast('Service Record Saved', 'Diagnosis & resolution saved to database', 'success');
+    } catch (err) {
+      addToast('Save Failed', err instanceof Error ? err.message : 'Failed to save service record', 'warning');
+    } finally {
+      setIsSavingNotes(false);
+    }
   };
 
   return (

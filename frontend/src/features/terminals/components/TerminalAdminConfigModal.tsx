@@ -13,6 +13,7 @@ import {
   Loader2,
   Layers,
   MapPin,
+  Building,
 } from 'lucide-react';
 import { adminApi, type DictionaryItem } from '../../../api/client';
 import { useAppStore } from '../../../store/useAppStore';
@@ -23,7 +24,7 @@ interface TerminalAdminConfigModalProps {
   onRefreshHubs: () => Promise<void> | void;
 }
 
-type ConfigTab = 'HUBS' | 'DEPARTMENTS' | 'MEMBERSHIPS';
+type ConfigTab = 'HUBS' | 'DEPARTMENTS' | 'MEMBERSHIPS' | 'COMPANIES';
 
 export const TerminalAdminConfigModal: React.FC<TerminalAdminConfigModalProps> = ({
   isOpen,
@@ -62,6 +63,14 @@ export const TerminalAdminConfigModal: React.FC<TerminalAdminConfigModalProps> =
 
   // Deactivation confirmation target for Department
   const [deactivatingDept, setDeactivatingDept] = useState<DictionaryItem | null>(null);
+
+  // Companies state
+  const companies = serverDictionaries?.companies || [];
+  const [newCompanyCode, setNewCompanyCode] = useState('');
+  const [newCompanyName, setNewCompanyName] = useState('');
+  const [editingCompanyId, setEditingCompanyId] = useState<string | null>(null);
+  const [editCompanyName, setEditCompanyName] = useState('');
+  const [deactivatingCompany, setDeactivatingCompany] = useState<DictionaryItem | null>(null);
 
   // Membership Form
   const [selectedHubId, setSelectedHubId] = useState('');
@@ -294,6 +303,109 @@ export const TerminalAdminConfigModal: React.FC<TerminalAdminConfigModalProps> =
     }
   };
 
+  // ==================== COMPANY HANDLERS ====================
+  const handleCreateCompany = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCompanyCode.trim() || !newCompanyName.trim()) {
+      setError('Please provide both Company Code and Company Name.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
+    setConflictMessage(null);
+
+    try {
+      await adminApi.createCompany({
+        code: newCompanyCode.trim().toUpperCase(),
+        name: newCompanyName.trim(),
+      });
+
+      setSuccessMessage(`Company '${newCompanyName.trim()}' created successfully.`);
+      setNewCompanyCode('');
+      setNewCompanyName('');
+      await fetchDictionaries();
+      await onRefreshHubs();
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { status?: number; data?: { detail?: string } }; message?: string };
+      if (axiosErr.response?.status === 409) {
+        setConflictMessage(
+          axiosErr.response?.data?.detail || 'Conflict (409): Company code or name already exists.'
+        );
+      } else {
+        setError(axiosErr.response?.data?.detail || axiosErr.message || 'Failed to create company.');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleUpdateCompany = async (id: string) => {
+    if (!editCompanyName.trim()) {
+      setError('Company name cannot be blank.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
+    setConflictMessage(null);
+
+    try {
+      await adminApi.updateCompany(id, {
+        name: editCompanyName.trim(),
+      });
+
+      setSuccessMessage('Company updated successfully.');
+      setEditingCompanyId(null);
+      await fetchDictionaries();
+      await onRefreshHubs();
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { status?: number; data?: { detail?: string } }; message?: string };
+      if (axiosErr.response?.status === 409) {
+        setConflictMessage(
+          axiosErr.response?.data?.detail || 'Conflict (409): Company name already in use.'
+        );
+      } else {
+        setError(axiosErr.response?.data?.detail || axiosErr.message || 'Failed to update company.');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleToggleCompanyActive = async (comp: DictionaryItem, targetActive: boolean) => {
+    if (!comp.id) return;
+
+    setIsSubmitting(true);
+    setError(null);
+    setConflictMessage(null);
+
+    try {
+      await adminApi.updateCompany(comp.id, {
+        is_active: targetActive,
+      });
+
+      setSuccessMessage(
+        `Company '${comp.name}' has been ${targetActive ? 'reactivated' : 'deactivated'} successfully.`
+      );
+      setDeactivatingCompany(null);
+      await fetchDictionaries();
+      await onRefreshHubs();
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { status?: number; data?: { detail?: string } }; message?: string };
+      if (axiosErr.response?.status === 409) {
+        setConflictMessage(
+          axiosErr.response?.data?.detail ||
+            `Conflict (409): Company '${comp.name}' has active assigned tickets or employees.`
+        );
+      } else {
+        setError(axiosErr.response?.data?.detail || axiosErr.message || 'Failed to change company status.');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   // ==================== MEMBERSHIP HANDLER ====================
   const handleAssignScope = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -417,6 +529,23 @@ export const TerminalAdminConfigModal: React.FC<TerminalAdminConfigModalProps> =
           >
             <MapPin className="w-4 h-4" />
             <span>Hub-Dept Memberships ({locationDepartments.length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('COMPANIES');
+              setError(null);
+              setConflictMessage(null);
+            }}
+            className={`py-3.5 border-b-2 transition-all flex items-center gap-1.5 ${
+              activeTab === 'COMPANIES'
+                ? 'border-orange-600 text-orange-600'
+                : 'border-transparent text-zinc-500 hover:text-zinc-800'
+            }`}
+          >
+            <Building className="w-4 h-4" />
+            <span>Companies ({companies.length})</span>
           </button>
         </div>
 
@@ -867,15 +996,174 @@ export const TerminalAdminConfigModal: React.FC<TerminalAdminConfigModalProps> =
                       return (
                         <tr key={`${m.location_id}-${m.department_id}-${idx}`} className="hover:bg-zinc-50/60 transition-colors">
                           <td className="py-3 px-4 font-bold text-ink">
-                            {matchedLoc ? `${matchedLoc.name} (${matchedLoc.code})` : m.location_id}
+                            {matchedLoc?.name || m.location_id}
                           </td>
-                          <td className="py-3 px-4 font-medium text-zinc-700">
-                            {matchedDept ? `${matchedDept.name} (${matchedDept.code})` : m.department_id}
+                          <td className="py-3 px-4 text-zinc-700">
+                            {matchedDept?.name || m.department_id}
                           </td>
                           <td className="py-3 px-4">
                             <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold">
-                              Linked
+                              Linked Active
                             </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* ================= TAB 4: COMPANIES ================= */}
+          {activeTab === 'COMPANIES' && (
+            <div className="space-y-6">
+              {/* Create Company Form */}
+              <form onSubmit={handleCreateCompany} className="p-4 bg-indigo-50/40 border border-indigo-200/60 rounded-2xl space-y-3">
+                <div className="flex items-center gap-2 text-xs font-bold text-indigo-900">
+                  <Plus className="w-4 h-4 text-indigo-600" />
+                  <span>Add New Transit Entity / Bus Company</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-zinc-600 mb-1">Company Code *</label>
+                    <input
+                      type="text"
+                      value={newCompanyCode}
+                      onChange={(e) => setNewCompanyCode(e.target.value.toUpperCase())}
+                      placeholder="e.g. VIC"
+                      disabled={isSubmitting}
+                      className="w-full px-3 py-2 bg-white border border-zinc-200 rounded-xl text-xs font-mono uppercase focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-zinc-600 mb-1">Company Full Name *</label>
+                    <input
+                      type="text"
+                      value={newCompanyName}
+                      onChange={(e) => setNewCompanyName(e.target.value)}
+                      placeholder="e.g. Victory Liner Inc."
+                      disabled={isSubmitting}
+                      className="w-full px-3 py-2 bg-white border border-zinc-200 rounded-xl text-xs focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="submit"
+                    disabled={isSubmitting || !newCompanyCode.trim() || !newCompanyName.trim()}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all inline-flex items-center gap-1.5
+                    disabled:opacity-50 press-fx"
+                  >
+                    {isSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                    <span>Create Company</span>
+                  </button>
+                </div>
+              </form>
+
+              {/* Companies Table */}
+              <div className="border border-[#ECEEF2] rounded-2xl overflow-hidden shadow-xs">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead className="bg-[#F8F9FA] text-zinc-500 border-b border-[#ECEEF2]">
+                    <tr>
+                      <th className="py-3 px-4 font-bold">Code</th>
+                      <th className="py-3 px-4 font-bold">Company Name</th>
+                      <th className="py-3 px-4 font-bold">Status</th>
+                      <th className="py-3 px-4 font-bold text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#ECEEF2]">
+                    {companies.map((comp: DictionaryItem) => {
+                      const isEditing = editingCompanyId === comp.id;
+                      const isActive = comp.is_active !== false;
+
+                      return (
+                        <tr key={comp.id || comp.code} className="hover:bg-zinc-50/60 transition-colors">
+                          <td className="py-3 px-4 font-mono font-bold text-ink whitespace-nowrap">
+                            <span className="px-2 py-0.5 rounded bg-zinc-100 text-zinc-800 border border-zinc-200">
+                              {comp.code}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            {isEditing ? (
+                              <input
+                                type="text"
+                                value={editCompanyName}
+                                onChange={(e) => setEditCompanyName(e.target.value)}
+                                className="w-full max-w-sm px-2.5 py-1.5 border border-indigo-300 rounded-lg text-xs"
+                              />
+                            ) : (
+                              <span className="font-bold text-ink block">{comp.name}</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4">
+                            {isActive ? (
+                              <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold">
+                                Active
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600 border border-zinc-200 text-[10px] font-bold">
+                                Inactive
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            {isEditing ? (
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  type="button"
+                                  disabled={isSubmitting}
+                                  onClick={() => handleUpdateCompany(comp.id!)}
+                                  className="px-2.5 py-1 bg-indigo-600 text-white rounded-lg font-bold text-[11px] hover:bg-indigo-700 transition-colors"
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingCompanyId(null)}
+                                  className="px-2.5 py-1 bg-zinc-100 text-zinc-600 rounded-lg font-semibold text-[11px] hover:bg-zinc-200 transition-colors"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingCompanyId(comp.id!);
+                                    setEditCompanyName(comp.name);
+                                  }}
+                                  className="p-1.5 rounded-lg text-zinc-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                                  title="Edit company"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+
+                                {isActive ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => setDeactivatingCompany(comp)}
+                                    className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                                    title="Deactivate company"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleCompanyActive(comp, true)}
+                                    className="p-1.5 rounded-lg text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
+                                    title="Reactivate company"
+                                  >
+                                    <RotateCcw className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            )}
                           </td>
                         </tr>
                       );
@@ -1001,7 +1289,57 @@ export const TerminalAdminConfigModal: React.FC<TerminalAdminConfigModalProps> =
           </div>
         </div>
       )}
+
+      {/* Deactivation Confirmation Dialog for Company */}
+      {deactivatingCompany && (
+        <div
+          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-zinc-950/70 backdrop-blur-xs animate-fade-in"
+          role="dialog"
+          aria-labelledby="deactivate-comp-dialog-title"
+        >
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-rose-200 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 id="deactivate-comp-dialog-title" className="text-sm font-bold text-ink">
+                  Confirm Company Deactivation
+                </h3>
+                <p className="text-xs text-zinc-500">
+                  Company: <strong>{deactivatingCompany.name} ({deactivatingCompany.code})</strong>
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-zinc-600 leading-relaxed">
+              Are you sure you want to deactivate company <strong>{deactivatingCompany.name}</strong>?
+              Inactive companies cannot be assigned to new tickets. Any active tickets or employees must be reassigned first.
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={() => setDeactivatingCompany(null)}
+                className="px-4 py-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-xs font-semibold rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={() => handleToggleCompanyActive(deactivatingCompany, false)}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition-colors inline-flex items-center gap-1.5 press-fx"
+              >
+                {isSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                <span>Confirm Deactivation</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>,
-      document.body
+    document.body
   );
 };

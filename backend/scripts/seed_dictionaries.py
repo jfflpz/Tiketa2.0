@@ -27,6 +27,7 @@ COMPANIES = [
 ]
 
 LOCATIONS = [
+    ("TBD", "Unassigned / Pending Review"),
     ("AVN", "Avenida"),
     ("BTM", "Bataan Mirasol"),
     ("CAL", "Caloocan"),
@@ -101,6 +102,22 @@ async def seed(demo=False):
                         .on_conflict_do_nothing(index_elements=[model.code])
                     )
                     await session.execute(statement)
+
+            # Provision TBD location to all departments so foreign keys pass on unassigned imports
+            tbd_loc = await session.scalar(
+                select(Location).where(Location.code == "TBD")
+            )
+            if tbd_loc:
+                depts = (await session.scalars(select(Department))).all()
+                for d in depts:
+                    await session.execute(
+                        insert(LocationDepartment)
+                        .values(
+                            location_id=tbd_loc.id, department_id=d.id, is_active=True
+                        )
+                        .on_conflict_do_nothing()
+                    )
+
             # Do not invent production department mappings or employees.
             if demo:
                 from app.core.config import settings

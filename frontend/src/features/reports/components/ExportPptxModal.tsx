@@ -401,7 +401,7 @@ export const ExportPptxModal: React.FC<ExportPptxModalProps> = ({
                           : 'bg-white border border-zinc-200 text-zinc-600 hover:bg-zinc-100'
                       }`}
                     >
-                      {tab?.code || `R${id}`}
+                      {tab?.shortTitle || `R${id}`}
                     </button>
                   );
                 })}

@@ -21,6 +21,7 @@ export interface TicketChecklistSectionProps {
   ticketId: string;
   ticketStatus: TicketStatus;
   ticketTaskCode: TaskCategoryCode;
+  assignedTechId?: string | null;
   compact?: boolean;
 }
 
@@ -28,11 +29,26 @@ export const TicketChecklistSection: React.FC<TicketChecklistSectionProps> = ({
   ticketId,
   ticketStatus,
   ticketTaskCode,
+  assignedTechId,
   compact = false,
 }) => {
+  const currentUser = useAppStore((state) => state.currentUser);
   const checklistsByTicketId = useAppStore((state) => state.checklistsByTicketId);
   const isLoadingChecklists = useAppStore((state) => state.isLoadingChecklists);
   const fetchTicketChecklist = useAppStore((state) => state.fetchTicketChecklist);
+
+  const checklist = checklistsByTicketId[ticketId];
+  const isLoading = isLoadingChecklists[ticketId];
+  const isEditable = ticketStatus === 'PROG';
+
+  const isSupervisor = currentUser?.role === 'supervisor';
+  const isAssignedToOther = Boolean(
+    assignedTechId && currentUser?.id && assignedTechId !== currentUser.id
+  );
+  const isUnassignedNonAdmin = assignedTechId === null && currentUser?.role !== 'admin';
+  const isRestricted = isSupervisor || isAssignedToOther || isUnassignedNonAdmin;
+  const canAccessChecklist = Boolean(checklist) || (assignedTechId === undefined ? !isSupervisor : !isRestricted);
+
   const setTicketChecklistStepCompleted = useAppStore(
     (state) => state.setTicketChecklistStepCompleted
   );
@@ -46,10 +62,6 @@ export const TicketChecklistSection: React.FC<TicketChecklistSectionProps> = ({
   const savedRepairNotes = useAppStore((state) => state.savedRepairNotes);
   const fetchSavedRepairNotes = useAppStore((state) => state.fetchSavedRepairNotes);
   const setActiveView = useAppStore((state) => state.setActiveView);
-
-  const checklist = checklistsByTicketId[ticketId];
-  const isLoading = isLoadingChecklists[ticketId];
-  const isEditable = ticketStatus === 'PROG';
 
   // Inline Step Editing State
   const [editingStepId, setEditingStepId] = useState<string | null>(null);
@@ -67,8 +79,33 @@ export const TicketChecklistSection: React.FC<TicketChecklistSectionProps> = ({
   const [isSubmittingApply, setIsSubmittingApply] = useState(false);
 
   useEffect(() => {
-    fetchTicketChecklist(ticketId);
-  }, [ticketId, fetchTicketChecklist]);
+    if (canAccessChecklist) {
+      fetchTicketChecklist(ticketId);
+    }
+  }, [ticketId, canAccessChecklist, fetchTicketChecklist]);
+
+  if (!canAccessChecklist) {
+    return (
+      <div className="bg-canvas border border-line rounded-2xl p-4 space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold text-ink">SOP Checklist &amp; Repair Guide</span>
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-100 text-zinc-500">
+            {currentUser?.role === 'supervisor' ? 'Supervisory Read-Only' : 'Restricted'}
+          </span>
+        </div>
+        <div className="py-4 text-center rounded-xl border border-dashed border-line bg-surface p-3 text-zinc-400 space-y-1">
+          <CheckSquare className="w-4 h-4 mx-auto text-zinc-300" />
+          <p className="text-xs text-zinc-500">
+            {currentUser?.role === 'supervisor'
+              ? 'Checklists are operational tools executed by field technicians.'
+              : !assignedTechId
+              ? 'Ticket is currently unassigned. Claim ticket to activate SOP checklists.'
+              : 'Checklist is assigned to and managed by the assigned technician.'}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const steps = checklist?.steps ?? [];
   const totalSteps = steps.length;
