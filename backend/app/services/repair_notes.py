@@ -40,12 +40,12 @@ def check_guide_edit_permission(user: User, note: RepairNote):
 
 
 def check_ticket_access(user: User, ticket: Ticket):
-    if user.role == "admin":
-        return True
     if user.role == "supervisor":
         return False
-    if user.role == "intern":
-        return ticket.assigned_tech_id == user.id
+    if ticket.assigned_tech_id and ticket.assigned_tech_id != user.id:
+        return False
+    if user.role == "admin" and not ticket.assigned_tech_id:
+        return True
     return ticket.assigned_tech_id == user.id
 
 

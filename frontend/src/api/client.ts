@@ -538,6 +538,13 @@ export const ticketsApi = {
     );
     return res.data;
     },
+    downloadJobLogsXLSX: async (signal?: AbortSignal) => {
+    const res = await apiClient.get('/tickets/job-logs/export', {
+        responseType: 'blob',
+        signal,
+    });
+    return res.data;
+    },
 };
 
 export interface ReportKPIs {
@@ -591,6 +598,24 @@ export const reportsApi = {
     ) => {
     const res = await apiClient.get(`/reports/${reportName}`, {
         params: { ...params, format: 'csv' },
+        responseType: 'blob',
+        signal,
+    });
+    return res.data;
+    },
+    downloadReportXLSX: async (
+    reportName: string,
+    params?: {
+        date_from?: string;
+        date_to?: string;
+        company_id?: string;
+        location_id?: string;
+        department_id?: string;
+    },
+    signal?: AbortSignal
+    ) => {
+    const res = await apiClient.get(`/reports/${reportName}`, {
+        params: { ...params, format: 'xlsx' },
         responseType: 'blob',
         signal,
     });

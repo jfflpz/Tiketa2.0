@@ -13,7 +13,6 @@ import { COMPANIES } from '../../constants/domain';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { ticketsApi } from '../../api/client';
 import { mapStaffTicket } from '../../utils/mapStaffTicket';
-import { sanitizeCsvCell } from './utils/csvSanitizer';
 import type { Ticket } from '../../types/ticket';
 
 export const JobLogSheetView: React.FC = () => {
@@ -121,66 +120,35 @@ export const JobLogSheetView: React.FC = () => {
     });
   }, [candidateTickets, companyFilter, modeFilter, sheetSearch]);
 
-  // @spec F-08: Safe CSV Export with Formula Injection Neutralization & Actual Worker Attribution
-  const exportJobLogsCsv = () => {
-    const headers = [
-      '01_Company',
-      '02_Mode',
-      '03_Department',
-      '04_Requestor',
-      '05_Task',
-      '06_Description',
-      '07_Month',
-      '08_Date_Started',
-      '09_Time_Started',
-      '10_Time_Finished',
-      '11_Duration_Hrs',
-      '12_Date_Finished',
-      '13_Status',
-      '14_Location',
-      '15_Worked_By',
-    ].join(',');
 
-    const rows = filteredLogs.map((t) => {
-      // Use each row's actual worker; output 'Unassigned' when empty
-      const actualWorker = t.workedBy?.trim() ? t.workedBy : 'Unassigned';
+  // @spec F-08 & B-07: Executive Styled XLSX Export with 15 Canonical Columns
+  const exportJobLogsXlsx = async () => {
+    try {
+      const blob = await ticketsApi.downloadJobLogsXLSX();
+      const url = window.URL.createObjectURL(new Blob([blob]));
+      const link = document.createElement('a');
+      link.href = url;
+      const fileName = isSupervisorOrAdmin
+        ? `all_staff_job_logs_${Date.now()}.xlsx`
+        : `${(currentUser?.username || 'my')}_job_logs.xlsx`;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
 
-      return [
-        sanitizeCsvCell(`${t.company} (${t.companyCode})`),
-        sanitizeCsvCell(t.mode),
-        sanitizeCsvCell(t.department),
-        sanitizeCsvCell(t.requestor),
-        sanitizeCsvCell(t.task),
-        sanitizeCsvCell(t.description),
-        sanitizeCsvCell(t.month),
-        sanitizeCsvCell(t.dateStarted),
-        sanitizeCsvCell(t.timeStarted ?? ''),
-        sanitizeCsvCell(t.timeFinished ?? ''),
-        sanitizeCsvCell(t.duration != null ? t.duration.toFixed(2) : ''),
-        sanitizeCsvCell(t.dateFinished ?? ''),
-        sanitizeCsvCell(t.status),
-        sanitizeCsvCell(`${t.location} (${t.locationCode})`),
-        sanitizeCsvCell(actualWorker),
-      ].join(',');
-    });
-
-    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers, ...rows].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    const fileName = isSupervisorOrAdmin
-      ? `all_staff_job_logs_${Date.now()}.csv`
-      : `${(currentUser?.username || 'my')}_job_logs.csv`;
-    link.setAttribute('download', fileName);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    addToast(
-      'Export Complete',
-      `Exported ${filteredLogs.length} verified job log records to ${fileName}`,
-      'success'
-    );
+      addToast(
+        'Export Complete',
+        `Exported verified job log records to ${fileName}`,
+        'success'
+      );
+    } catch (err: any) {
+      addToast(
+        'Export Failed',
+        err.response?.data?.detail || 'Failed to download Excel job logs',
+        'warning'
+      );
+    }
   };
 
   return (
@@ -208,12 +176,12 @@ export const JobLogSheetView: React.FC = () => {
 
         <div className="flex flex-wrap items-center gap-2.5">
           <button
-            onClick={exportJobLogsCsv}
+            onClick={exportJobLogsXlsx}
             disabled={filteredLogs.length === 0}
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white text-xs font-bold shadow-sm transition-colors press-fx"
           >
             <Download className="w-3.5 h-3.5" />
-            <span>Export Filtered Job Logs (CSV) • {filteredLogs.length} Records</span>
+            <span>Export Filtered Job Logs (XLSX) • {filteredLogs.length} Records</span>
           </button>
         </div>
       </div>
@@ -245,7 +213,8 @@ export const JobLogSheetView: React.FC = () => {
                 value={sheetSearch}
                 onChange={(e) => setSheetSearch(e.target.value)}
                 placeholder="Filter job logs..."
-                className="pl-8 pr-3 py-1.5 bg-[#F4F6F9] rounded-lg text-xs text-ink focus:outline-none focus:bg-white focus:ring-1 focus:ring-orange-400 w-48"
+                className="pl-8 pr-3 py-1.5 bg-[#F4F6F9] rounded-lg text-xs text-ink focus:outline-none focus:bg-white focus:ring-1
+                focus:ring-orange-400 w-48"
               />
             </div>
 
@@ -406,3 +375,4 @@ export const JobLogSheetView: React.FC = () => {
     </div>
   );
 };
+

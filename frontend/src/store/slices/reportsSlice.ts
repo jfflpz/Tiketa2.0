@@ -221,18 +221,18 @@ export const createReportsSlice: AppSliceCreator<ReportsSlice> = (set, get) => {
     downloadReportCSVApi: async (reportName: string) => {
       try {
         const filters = get().reportFilters;
-        const blob = await reportsApi.downloadReportCSV(reportName, filters);
+        const blob = await reportsApi.downloadReportXLSX(reportName, filters);
         const url = window.URL.createObjectURL(new Blob([blob]));
         const link = document.createElement('a');
         link.href = url;
-        link.setAttribute('download', `${reportName}-${new Date().toISOString().split('T')[0]}.csv`);
+        link.setAttribute('download', `${reportName}-${new Date().toISOString().split('T')[0]}.xlsx`);
         document.body.appendChild(link);
         link.click();
         link.remove();
         window.URL.revokeObjectURL(url);
-        get().addToast('Export Complete', `Downloaded ${reportName}.csv`, 'success');
+        get().addToast('Export Complete', `Downloaded ${reportName}.xlsx`, 'success');
       } catch (err: any) {
-        get().addToast('Export Failed', err.response?.data?.detail || 'Failed to download CSV', 'warning');
+        get().addToast('Export Failed', err.response?.data?.detail || 'Failed to download Excel report', 'warning');
       }
     },
   };

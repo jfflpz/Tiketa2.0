@@ -36,6 +36,16 @@ class UserUpdate(Input):
     password: str | None = Field(default=None, min_length=12, max_length=128)
 
 
+class AdminResetPasswordRequest(Input):
+    admin_current_password: str = Field(min_length=1)
+    new_password: str = Field(min_length=12, max_length=128)
+    confirm_password: str = Field(min_length=12, max_length=128)
+
+
+class AdminUsernameUpdateRequest(Input):
+    username: str = Field(min_length=3, max_length=50, pattern=r"^[a-zA-Z0-9_.-]+$")
+
+
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: UUID
