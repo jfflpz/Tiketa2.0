@@ -155,6 +155,10 @@ class ServiceRecordUpdate(BaseModel):
     task_code: str | None = Field(default=None, max_length=50)
     diagnosis: str | None = Field(default=None, max_length=20000)
     resolution_notes: str | None = Field(default=None, max_length=20000)
+    company_id: UUID | None = Field(default=None)
+    location_id: UUID | None = Field(default=None)
+    department_id: UUID | None = Field(default=None)
+    requester_name: str | None = Field(default=None, max_length=150)
 
     @model_validator(mode="after")
     def check_at_least_one_field_present(self):
@@ -172,6 +176,18 @@ class ServiceRecordUpdate(BaseModel):
             if self.resolution_notes is not None:
                 cleaned = self.resolution_notes.strip()
                 self.resolution_notes = cleaned if cleaned else None
+        if "company_id" in self.model_fields_set and self.company_id is None:
+            raise ValueError("company_id cannot be null")
+        if "location_id" in self.model_fields_set and self.location_id is None:
+            raise ValueError("location_id cannot be null")
+        if "department_id" in self.model_fields_set and self.department_id is None:
+            raise ValueError("department_id cannot be null")
+        if (
+            "requester_name" in self.model_fields_set
+            and self.requester_name is not None
+        ):
+            cleaned_req = self.requester_name.strip()
+            self.requester_name = cleaned_req if cleaned_req else "Unspecified"
         return self
 
 
@@ -476,6 +492,27 @@ class LocationOut(BaseModel):
     code: str
     name: str
     address: str | None = None
+    is_active: bool
+
+
+class CompanyCreate(Input):
+    code: str = Field(min_length=1, max_length=20, pattern=r"^[A-Z0-9_-]+$")
+    name: str = Field(min_length=1, max_length=255)
+    is_active: bool = True
+
+
+class CompanyUpdate(Input):
+    code: str | None = Field(
+        default=None, min_length=1, max_length=20, pattern=r"^[A-Z0-9_-]+$"
+    )
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    is_active: bool | None = None
+
+
+class CompanyOut(BaseModel):
+    id: UUID
+    code: str
+    name: str
     is_active: bool
 
 

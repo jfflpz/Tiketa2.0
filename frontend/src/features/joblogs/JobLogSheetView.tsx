@@ -253,21 +253,22 @@ export const JobLogSheetView: React.FC = () => {
             <thead>
               <tr className="bg-[#F4F6F9] text-zinc-600 text-[11px] font-bold border-y border-[#ECEEF2]">
                 <th className="py-2.5 px-3">Ticket ID</th>
-                <th className="py-2.5 px-3">#01 Company</th>
-                <th className="py-2.5 px-3">#02 Mode</th>
-                <th className="py-2.5 px-3">#03 Department</th>
-                <th className="py-2.5 px-3">#04 Requestor</th>
-                <th className="py-2.5 px-3">#05 Task</th>
-                <th className="py-2.5 px-3">#06 Description</th>
-                <th className="py-2.5 px-3">#07 Month</th>
-                <th className="py-2.5 px-3">#08 Date Started</th>
-                <th className="py-2.5 px-3">#09 Time Started</th>
-                <th className="py-2.5 px-3">#10 Time Finished</th>
-                <th className="py-2.5 px-3">#11 Duration</th>
-                <th className="py-2.5 px-3">#12 Date Finished</th>
-                <th className="py-2.5 px-3">#13 Status</th>
-                <th className="py-2.5 px-3">#14 Location</th>
-                <th className="py-2.5 px-3">#15 Worked By</th>
+                <th className="py-2.5 px-3">Company</th>
+                <th className="py-2.5 px-3">Mode</th>
+                <th className="py-2.5 px-3">Department</th>
+                <th className="py-2.5 px-3">Requestor</th>
+                <th className="py-2.5 px-3">Task</th>
+                <th className="py-2.5 px-3">Description</th>
+                <th className="py-2.5 px-3">Month</th>
+                <th className="py-2.5 px-3">Date Started</th>
+                <th className="py-2.5 px-3">Time Started</th>
+                <th className="py-2.5 px-3">Time Finished</th>
+                <th className="py-2.5 px-3">Duration</th>
+                <th className="py-2.5 px-3">Date Finished</th>
+                <th className="py-2.5 px-3">Status</th>
+                <th className="py-2.5 px-3">Location</th>
+                <th className="py-2.5 px-3">Worked By</th>
+                <th className="py-2.5 px-3 text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#ECEEF2]">
@@ -364,6 +365,19 @@ export const JobLogSheetView: React.FC = () => {
                     </td>
                     <td className="py-3 px-3 font-semibold text-ink">
                       {t.workedBy?.trim() ? t.workedBy : 'Unassigned'}
+                    </td>
+                    <td className="py-3 px-3 text-right">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedTicketId(t.id);
+                        }}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 text-xs
+                        font-semibold transition-colors press-fx"
+                      >
+                        Edit
+                      </button>
                     </td>
                   </tr>
                 ))

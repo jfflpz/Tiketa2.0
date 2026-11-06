@@ -90,7 +90,7 @@ export const HourlyPeakDemandChart: React.FC<HourlyPeakDemandChartProps> = ({ ti
       <div>
         <div className="flex items-center justify-between mb-1">
           <h2 className="text-sm font-bold text-ink">
-            Hourly Support Surge Histogram (FR-DASH-04)
+            Hourly Support Surge Histogram
           </h2>
           <span className="text-[11px] font-mono text-ink-subtle">06:00–17:00 Window</span>
         </div>
