@@ -4,6 +4,38 @@ import type { Ticket } from '../../types/ticket';
 import { mapStaffTicket } from '../../utils/mapStaffTicket';
 import { ticketsApi } from '../../api/client';
 
+export const PRIORITY_ORDER: Record<string, number> = {
+  CRIT: 4,
+  Critical: 4,
+  HIGH: 3,
+  High: 3,
+  NORM: 2,
+  Medium: 2,
+  LOW: 1,
+  Low: 1,
+};
+
+export function sortTicketsSprint5(tickets: Ticket[]): Ticket[] {
+  const parseTime = (val: unknown): number => {
+    if (!val) return 0;
+    const t = new Date(val as any).getTime();
+    return Number.isNaN(t) ? 0 : t;
+  };
+
+  return [...tickets].sort((a, b) => {
+    // 1. Priority Descending
+    const pDiff = (PRIORITY_ORDER[b.priority] || 0) - (PRIORITY_ORDER[a.priority] || 0);
+    if (pDiff !== 0) return pDiff;
+    // 2. Created At Ascending (Oldest First)
+    const tA = parseTime((a as any).created_at || a.createdAt);
+    const tB = parseTime((b as any).created_at || b.createdAt);
+    const tDiff = tA - tB;
+    if (tDiff !== 0) return tDiff;
+    // 3. Deterministic Tie-Breaker: UUID Lexicographical
+    return a.id.localeCompare(b.id);
+  });
+}
+
 export interface TicketQueueSlice {
   tickets: Ticket[];
   selectedTicketId: string | null;
@@ -87,6 +119,7 @@ export const createTicketQueueSlice: AppSliceCreator<TicketQueueSlice> = (set, g
         dicts,
         itMembers.find((member) => member.id === row.assigned_tech_id)?.name,
       );
+      mapped.technicianDiagnosis = (row as any).technician_diagnosis || (row as any).diagnosis || (row as any).technicianDiagnosis || mapped.technicianDiagnosis;
       // @spec F-03: Retain existing loaded messages for this ticket
       const existingMsgs = get().inspectedTicket?.id === id
         ? get().inspectedTicket?.messages
@@ -163,6 +196,7 @@ export const createTicketQueueSlice: AppSliceCreator<TicketQueueSlice> = (set, g
         dicts,
         itMembers.find((member) => member.id === row.assigned_tech_id)?.name,
       );
+      mapped.technicianDiagnosis = (row as any).technician_diagnosis || (row as any).diagnosis || (row as any).technicianDiagnosis || mapped.technicianDiagnosis;
       // @spec F-03: Retain existing loaded messages for this ticket
       const existingWorkbenchMsgs = get().workbenchTicket?.id === id
         ? get().workbenchTicket?.messages
@@ -248,6 +282,7 @@ export const createTicketQueueSlice: AppSliceCreator<TicketQueueSlice> = (set, g
             dicts,
             itMembers.find((member) => member.id === row.assigned_tech_id)?.name,
           );
+          t.technicianDiagnosis = (row as any).technician_diagnosis || (row as any).diagnosis || (row as any).technicianDiagnosis || t.technicianDiagnosis;
           const savedMsgs = messagesMap.get(t.id);
           if (savedMsgs && savedMsgs.length > 0) {
             t.messages = savedMsgs;
@@ -255,10 +290,12 @@ export const createTicketQueueSlice: AppSliceCreator<TicketQueueSlice> = (set, g
           return t;
         });
 
+        const sortedTickets = sortTicketsSprint5(mapped);
+
         // Also synchronize inspectedTicket and workbenchTicket metadata without clearing messages
         let updatedInspected = currentInspected;
         if (currentInspected) {
-          const matchingInQueue = mapped.find((t) => t.id === currentInspected.id);
+          const matchingInQueue = sortedTickets.find((t) => t.id === currentInspected.id);
           if (matchingInQueue) {
             updatedInspected = { ...matchingInQueue, messages: currentInspected.messages || matchingInQueue.messages };
           }
@@ -266,14 +303,14 @@ export const createTicketQueueSlice: AppSliceCreator<TicketQueueSlice> = (set, g
 
         let updatedWorkbench = currentWorkbench;
         if (currentWorkbench) {
-          const matchingInQueue = mapped.find((t) => t.id === currentWorkbench.id);
+          const matchingInQueue = sortedTickets.find((t) => t.id === currentWorkbench.id);
           if (matchingInQueue) {
             updatedWorkbench = { ...matchingInQueue, messages: currentWorkbench.messages || matchingInQueue.messages };
           }
         }
 
         set({
-          tickets: mapped,
+          tickets: sortedTickets,
           inspectedTicket: updatedInspected,
           workbenchTicket: updatedWorkbench,
           isFetchingQueue: false,

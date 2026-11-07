@@ -10,6 +10,31 @@ import type {
 import { TASK_CATEGORIES } from '../../constants/domain';
 import { ticketsApi, extractApiErrorMessage } from '../../api/client';
 import { mapStaffTicket } from '../../utils/mapStaffTicket';
+import { sortTicketsSprint5 } from './ticketQueueSlice';
+
+/**
+ * @spec F-03 / S5-08: Work Assignment Ownership Predicate
+ * Strict ownership: Only the assigned technician may edit (mode, notes, checklist, resolve, comments).
+ * Unassigned tickets can be claimed, but not edited until claimed.
+ * Admin users must explicitly reassign via TicketAssignModal before gaining editing rights.
+ */
+export function canEditTicket(
+  currentUser: { id?: string; role?: string; name?: string } | null,
+  ticket: Ticket | null | undefined
+): boolean {
+  if (!currentUser || !ticket) return false;
+  if (ticket.status === 'OPEN' && !ticket.workedById && !ticket.assigned_tech_id && !ticket.workedBy) {
+    return true;
+  }
+  const techId = ticket.assigned_tech_id || ticket.workedById;
+  const matchId = Boolean(techId && currentUser.id && currentUser.id === techId);
+  const matchName = Boolean(
+    ticket.workedBy &&
+    currentUser.name &&
+    ticket.workedBy.trim().toLowerCase() === currentUser.name.trim().toLowerCase()
+  );
+  return matchId || matchName;
+}
 
 export interface TicketOperationsSlice {
   // Staff Quick Intake modal & mutation
@@ -103,7 +128,7 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
       };
 
       set((state) => ({
-        tickets: [newTicket, ...state.tickets.filter((ticket) => ticket.id !== newTicket.id)],
+        tickets: sortTicketsSprint5([newTicket, ...state.tickets.filter((ticket) => ticket.id !== newTicket.id)]),
       }));
 
       get().addToast(
@@ -186,6 +211,12 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
 
     const target = findTargetTicket(get(), ticketId);
     if (!target) return false;
+
+    // Strict ownership: assigned tickets may only be updated by the assigned owner
+    if (target.status !== 'OPEN' && (target.assigned_tech_id || target.workedById) && !canEditTicket(sessionUser, target)) {
+      get().addToast('Permission Denied', `Ticket is assigned to ${target.workedBy || 'another technician'}. Only the assigned owner may update status.`, 'warning');
+      return false;
+    }
 
     if (target.status === 'CLSD' && status === 'PROG') {
       const closedTime = target.dateFinished
@@ -366,6 +397,12 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
     const target = findTargetTicket(get(), ticketId);
     if (!target) return false;
 
+    // Strict ownership: assigned tickets may only receive staff comments from the assigned owner
+    if ((target.assigned_tech_id || target.workedById) && !canEditTicket(sessionUser, target)) {
+      get().addToast('Permission Denied', `Ticket is assigned to ${target.workedBy || 'another technician'}. Only the assigned owner may post comments.`, 'warning');
+      return false;
+    }
+
     const currentSenderName = isInternal
       ? '🔒 Internal Note'
       : (sessionUser.name || 'IT Support');
@@ -462,6 +499,12 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
 
   updateTicketMode: (ticketId, mode) => {
     const target = findTargetTicket(get(), ticketId);
+    if (!target) return;
+    const sessionUser = get().currentUser;
+    if ((target.assigned_tech_id || target.workedById) && !canEditTicket(sessionUser, target)) {
+      get().addToast('Permission Denied', `Ticket is assigned to ${target.workedBy || 'another technician'}. Only the assigned owner may update support mode.`, 'warning');
+      return;
+    }
     set((state) =>
       updateTicketInState(state, ticketId, (t) => ({
         ...t,
@@ -496,10 +539,17 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
   },
 
   updateTicketDescription: (ticketId, description) => {
+    const target = findTargetTicket(get(), ticketId);
+    const sessionUser = get().currentUser;
+    if (target && (target.assigned_tech_id || target.workedById) && !canEditTicket(sessionUser, target)) {
+      get().addToast('Permission Denied', `Ticket is assigned to ${target.workedBy || 'another technician'}. Only the assigned owner may update notes.`, 'warning');
+      return;
+    }
     set((state) =>
       updateTicketInState(state, ticketId, (t) => ({
         ...t,
         description,
+        technicianDiagnosis: description,
       }))
     );
     get().addToast(
@@ -532,6 +582,11 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
   resolveTicket: async (ticketId) => {
     const target = findTargetTicket(get(), ticketId);
     if (!target) return;
+    const sessionUser = get().currentUser;
+    if ((target.assigned_tech_id || target.workedById) && !canEditTicket(sessionUser, target)) {
+      get().addToast('Permission Denied', `Ticket is assigned to ${target.workedBy || 'another technician'}. Only the assigned owner may resolve.`, 'warning');
+      return;
+    }
     const mode = target.mode || 'SITE';
     const taskCode = target.taskCode;
     await get().updateTicketStatusApi(ticketId, 'RESL', mode, taskCode);
@@ -698,7 +753,7 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
     };
 
     set((state) => ({
-      tickets: [newTicket, ...state.tickets],
+      tickets: sortTicketsSprint5([newTicket, ...state.tickets]),
     }));
 
     get().addToast(

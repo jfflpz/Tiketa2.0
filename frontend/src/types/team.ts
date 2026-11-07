@@ -30,6 +30,8 @@ export interface TeamMember {
   activeTickets: number;
   flameScore: number;
   is_active?: boolean;
+  last_username_change_at?: string;
+  username_cooldown_until?: string;
 }
 
 export interface WorkflowActivityItem {

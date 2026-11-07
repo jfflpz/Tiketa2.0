@@ -54,6 +54,19 @@ export const RepairNotesLibraryView: React.FC = () => {
     fetchSavedRepairNotes();
   }, [fetchSavedRepairNotes]);
 
+  // Handle ESC key dismiss for delete modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && noteToDelete && !isDeleting) {
+        setNoteToDelete(null);
+      }
+    };
+    if (noteToDelete) {
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [noteToDelete, isDeleting]);
+
   const filteredNotes = savedRepairNotes.filter((n) => {
     if (categoryFilter !== 'ALL' && n.taskCode !== categoryFilter) return false;
     const q = search.trim().toLowerCase();
@@ -515,7 +528,7 @@ export const RepairNotesLibraryView: React.FC = () => {
       {/* Dedicated Custom Delete Confirmation Modal */}
       {noteToDelete && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto animate-fade-in"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
           role="dialog"
           aria-modal="true"
           aria-labelledby="delete-note-title"
@@ -525,7 +538,7 @@ export const RepairNotesLibraryView: React.FC = () => {
             onClick={() => !isDeleting && setNoteToDelete(null)}
             aria-hidden="true"
           />
-          <div className="relative z-10 w-full max-w-md bg-white border border-[#ECEEF2] rounded-3xl p-6 shadow-2xl space-y-4 animate-scale-up">
+          <div className="relative z-10 w-full max-w-md bg-white border border-[#ECEEF2] rounded-3xl p-6 shadow-2xl space-y-4 flex flex-col max-h-[85vh] overflow-y-auto animate-scale-up">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center shrink-0">
                 <AlertTriangle className="w-5 h-5 stroke-[2.2]" />

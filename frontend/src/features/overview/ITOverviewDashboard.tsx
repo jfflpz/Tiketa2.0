@@ -23,32 +23,20 @@ import {
 import { useAppStore } from '../../store/useAppStore';
 import { StatusBadge } from '../../components/common/StatusBadge';
 
-const MY_PERSONAL_MONTHLY_OUTPUT = [
-  { month: 'Jan', resolved: 14, remote: 9, onsite: 5 },
-  { month: 'Feb', resolved: 17, remote: 11, onsite: 6 },
-  { month: 'Mar', resolved: 15, remote: 10, onsite: 5 },
-  { month: 'Apr', resolved: 21, remote: 13, onsite: 8 },
-  { month: 'May', resolved: 19, remote: 12, onsite: 7 },
-  { month: 'Jun', resolved: 24, remote: 15, onsite: 9 },
-  { month: 'Jul', resolved: 22, remote: 14, onsite: 8 },
-  { month: 'Aug', resolved: 27, remote: 17, onsite: 10 },
-  { month: 'Sep', resolved: 23, remote: 15, onsite: 8 },
-  { month: 'Oct', resolved: 26, remote: 17, onsite: 9 },
-  { month: 'Nov', resolved: 24, remote: 16, onsite: 8 },
-  { month: 'Dec', resolved: 21, remote: 14, onsite: 7 },
-];
-
-
-
-const MY_WEEKLY_HOURS_BARS = [
-  { day: 'S', target: 6, logged: 5.2 },
-  { day: 'M', target: 8, logged: 7.6 },
-  { day: 'T', target: 8, logged: 6.8 },
-  { day: 'W', target: 8, logged: 7.9 },
-  { day: 'T', target: 8, logged: 7.1 },
-  { day: 'F', target: 8, logged: 7.5 },
-  { day: 'S', target: 6, logged: 4.8 },
-];
+const MONTH_NAMES = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+] as const;
 
 export const ITOverviewDashboard: React.FC = () => {
     const currentUser = useAppStore((state) => state.currentUser);
@@ -100,7 +88,6 @@ export const ITOverviewDashboard: React.FC = () => {
   const avgDurationHrs = resolvedWithDuration.length > 0
     ? resolvedWithDuration.reduce((acc, t) => acc + (t.duration || 0), 0) / resolvedWithDuration.length
     : null;
-  const avgDurationDisplay = avgDurationHrs !== null ? `${avgDurationHrs.toFixed(2)} hrs` : '0.00 hrs';
   const avgDurationMinutes = avgDurationHrs !== null ? `${Math.round(avgDurationHrs * 60)} mins` : '0 mins';
 
   // Dynamic Mode breakdown from actual authorized tickets
@@ -137,6 +124,56 @@ export const ITOverviewDashboard: React.FC = () => {
     }
     return data;
   }, [modeCounts]);
+
+  // F-06: Real monthly output trend for 2026 aggregated from authorized tickets
+  const monthlyOutputTrendData = React.useMemo(() => {
+    const months = MONTH_NAMES.map((month) => ({
+      month,
+      resolved: 0,
+      remote: 0,
+      onsite: 0,
+    }));
+
+    myTickets.forEach((t) => {
+      if (t.status !== 'RESL' && t.status !== 'CLSD') return;
+
+      let monthIdx = -1;
+      if (t.month) {
+        const lower = t.month.toLowerCase();
+        const shortMonths = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+        monthIdx = shortMonths.findIndex((m) => lower.includes(m));
+      }
+      if (monthIdx === -1 && t.dateFinished) {
+        const d = new Date(t.dateFinished);
+        if (!isNaN(d.getTime())) monthIdx = d.getMonth();
+      }
+      if (monthIdx === -1 && t.dateStarted) {
+        const d = new Date(t.dateStarted);
+        if (!isNaN(d.getTime())) monthIdx = d.getMonth();
+      }
+      if (monthIdx === -1 && (t as any).created_at) {
+        const d = new Date((t as any).created_at);
+        if (!isNaN(d.getTime())) monthIdx = d.getMonth();
+      }
+
+      if (monthIdx >= 0 && monthIdx < 12) {
+        const m = (t.mode || '').toLowerCase();
+        const isRemote = m.includes('rem') || m.includes('remote') || m.includes('anydesk');
+        if (isRemote) {
+          months[monthIdx].remote += 1;
+        } else {
+          months[monthIdx].onsite += 1;
+        }
+        months[monthIdx].resolved += 1;
+      }
+    });
+
+    return months;
+  }, [myTickets]);
+
+  const totalResolvedInYear = React.useMemo(() => {
+    return monthlyOutputTrendData.reduce((acc, curr) => acc + curr.resolved, 0);
+  }, [monthlyOutputTrendData]);
 
   // Real Ticket Resolution Rate without fake 40/36 fallbacks or empty 100%
   const totalFleetFromTickets = tickets.length;
@@ -640,69 +677,12 @@ export const ITOverviewDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* ROW 2: Weekly Repair Hours (3 Cols) | Monthly Output Trend Area Chart (6 Cols) | Saved Repair Notes (3 Cols) */}
+        {/* ROW 2: Monthly Output Trend Area Chart (Expanded Full Width) & Saved Repair Notes */}
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-stretch">
-          {/* LEFT: Weekly Repair Hours Card */}
-          <div className="xl:col-span-3">
-            <div className="bg-white border border-[#ECEEF2] rounded-2xl p-5 shadow-card space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="w-1 h-4 rounded-full bg-orange-500" />
-                  <h3 className="text-sm font-bold text-ink">My Weekly Repair Hours</h3>
-                </div>
-                <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                  38.4 hrs logged
-                </span>
-              </div>
-
-              {/* Duration Metric & 7-Day Histogram Bars */}
-              <div className="flex items-end justify-between gap-3 pt-1">
-                <div className="space-y-1">
-                  <span className="text-3xl font-extrabold text-ink tabular-nums block">
-                    {avgDurationDisplay}
-                  </span>
-                  <p className="text-[11px] text-zinc-400 font-medium">
-                    Avg. Repair Duration (#11)
-                  </p>
-                  <span className="inline-block mt-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                    Target &le; 45m Met
-                  </span>
-                </div>
-
-                <div className="flex items-end gap-2 h-24">
-                  {MY_WEEKLY_HOURS_BARS.map((bar, idx) => (
-                    <div key={idx} className="flex flex-col items-center gap-1.5">
-                      <div className="w-3 h-18 rounded-full bg-orange-100 relative overflow-hidden flex items-end">
-                        <div
-                          className="w-full rounded-full bg-orange-500 transition-all duration-300"
-                          style={{ height: `${(bar.logged / bar.target) * 100}%` }}
-                        />
-                      </div>
-                      <span className="text-[10px] font-bold text-zinc-400">
-                        {bar.day}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Weekly Target Progress Indicator */}
-              <div className="p-3 rounded-xl bg-[#F8F9FA] border border-[#ECEEF2] space-y-1.5 mt-2">
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-zinc-500 font-medium">Weekly Target Progress</span>
-                  <span className="font-bold text-ink font-mono">96% (38.4 / 40.0h)</span>
-                </div>
-                <div className="w-full h-2 rounded-full bg-zinc-200 overflow-hidden">
-                  <div className="h-full rounded-full bg-gradient-to-r from-orange-400 to-orange-500 transition-all duration-500" style={{ width: '96%' }} />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* CENTER: Area Chart: My Personal Monthly Ticket Output */}
-          <div className="xl:col-span-6">
+          {/* Area Chart: My Personal Monthly Ticket Output (Expanded Full Width) */}
+          <div className="col-span-12 xl:col-span-12">
             <div className="bg-white border border-[#ECEEF2] rounded-2xl p-5 shadow-card flex flex-col justify-between h-full space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <span className="w-1 h-4 rounded-full bg-orange-500" />
                   <div>
@@ -726,71 +706,84 @@ export const ITOverviewDashboard: React.FC = () => {
                 </div>
               </div>
 
-              <div className="h-60 w-full pt-2">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart
-                    data={MY_PERSONAL_MONTHLY_OUTPUT}
-                    margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                  >
-                    <defs>
-                      <linearGradient id="colorRemote" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#F97316" stopOpacity={0.25} />
-                        <stop offset="95%" stopColor="#F97316" stopOpacity={0.0} />
-                      </linearGradient>
-                      <linearGradient id="colorOnsite" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#FDBA74" stopOpacity={0.25} />
-                        <stop offset="95%" stopColor="#FDBA74" stopOpacity={0.0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      vertical={false}
-                      stroke="#F4F6F9"
-                    />
-                    <XAxis
-                      dataKey="month"
-                      tickLine={false}
-                      axisLine={false}
-                      tick={{ fontSize: 11, fill: '#71717A' }}
-                    />
-                    <YAxis
-                      tickLine={false}
-                      axisLine={false}
-                      tick={{ fontSize: 11, fill: '#71717A' }}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: '#18181B',
-                        borderRadius: '8px',
-                        border: 'none',
-                        color: '#FFF',
-                        fontSize: '11px',
-                      }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="remote"
-                      stroke="#F97316"
-                      strokeWidth={2}
-                      fillOpacity={1}
-                      fill="url(#colorRemote)"
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="onsite"
-                      stroke="#FB923C"
-                      strokeWidth={2}
-                      fillOpacity={1}
-                      fill="url(#colorOnsite)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
+              {totalResolvedInYear === 0 ? (
+                <div className="h-60 w-full flex flex-col items-center justify-center text-center p-6 bg-zinc-50/50 rounded-xl border border-dashed border-zinc-200">
+                  <Inbox className="w-8 h-8 text-zinc-300 mb-2" />
+                  <p className="text-xs font-semibold text-zinc-600">
+                    No ticket resolution activity recorded for 2026
+                  </p>
+                  <p className="text-[11px] text-zinc-400 mt-0.5">
+                    Resolved Remote and On-Site tickets will appear in this trend breakdown.
+                  </p>
+                </div>
+              ) : (
+                <div className="h-60 w-full pt-2">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                    <AreaChart
+                      data={monthlyOutputTrendData}
+                      margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                    >
+                      <defs>
+                        <linearGradient id="colorRemote" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#F97316" stopOpacity={0.25} />
+                          <stop offset="95%" stopColor="#F97316" stopOpacity={0.0} />
+                        </linearGradient>
+                        <linearGradient id="colorOnsite" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#FDBA74" stopOpacity={0.25} />
+                          <stop offset="95%" stopColor="#FDBA74" stopOpacity={0.0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        vertical={false}
+                        stroke="#F4F6F9"
+                      />
+                      <XAxis
+                        dataKey="month"
+                        tickLine={false}
+                        axisLine={false}
+                        tick={{ fontSize: 11, fill: '#71717A' }}
+                      />
+                      <YAxis
+                        tickLine={false}
+                        axisLine={false}
+                        tick={{ fontSize: 11, fill: '#71717A' }}
+                        allowDecimals={false}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#18181B',
+                          borderRadius: '8px',
+                          border: 'none',
+                          color: '#FFF',
+                          fontSize: '11px',
+                        }}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="remote"
+                        stroke="#F97316"
+                        strokeWidth={2}
+                        fillOpacity={1}
+                        fill="url(#colorRemote)"
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="onsite"
+                        stroke="#FB923C"
+                        strokeWidth={2}
+                        fillOpacity={1}
+                        fill="url(#colorOnsite)"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
             </div>
           </div>
 
           {/* RIGHT: Saved Repair Notes & Quick Guides Card */}
-          <div className="xl:col-span-3">
+          <div className="col-span-12 xl:col-span-12">
             <div className="bg-white border border-[#ECEEF2] rounded-2xl p-5 shadow-card flex flex-col justify-between h-full space-y-3.5">
               <div className="flex items-center justify-between pb-2 border-b border-[#ECEEF2]">
                 <div className="flex items-center gap-2">

@@ -1,19 +1,20 @@
 import React, { useState } from 'react';
-import { Check, Edit2, Save, X } from 'lucide-react';
+import { Check, Edit2, X } from 'lucide-react';
 import { useAppStore } from '../../../store/useAppStore';
 import { ticketsApi } from '../../../api/client';
-import type { Ticket, SupportMode } from '../../../types/ticket';
+import { canEditTicket } from '../../../store/slices/ticketOperationsSlice';
+import type { Ticket, SupportMode, TicketStatus } from '../../../types/ticket';
 import type { TeamMember } from '../../../types/team';
 import { DiagnosedTaskSelector } from '../DiagnosedTaskSelector';
 import { TicketChecklistSection } from '../checklist/TicketChecklistSection';
 
 export interface JobLogDrawerRecordFormProps {
   ticket: Ticket;
-  notesDraft: string;
-  onNotesDraftChange: (val: string) => void;
-  isSavingNotes: boolean;
-  onSaveJobLog: () => void;
-  onUpdateMode: (mode: SupportMode) => void;
+  notesDraft?: string;
+  onNotesDraftChange?: (val: string) => void;
+  isSavingNotes?: boolean;
+  onSaveJobLog?: () => void;
+  onUpdateMode?: (mode: SupportMode) => void;
   isAdmin: boolean;
   itTeamMembers: TeamMember[];
   onAssignTicket: (ticketId: string, techName: string, techId: string) => void;
@@ -21,69 +22,66 @@ export interface JobLogDrawerRecordFormProps {
 
 export const JobLogDrawerRecordForm: React.FC<JobLogDrawerRecordFormProps> = ({
   ticket,
-  notesDraft,
-  onNotesDraftChange,
-  isSavingNotes,
-  onSaveJobLog,
-  onUpdateMode,
   isAdmin,
   itTeamMembers,
   onAssignTicket,
 }) => {
+  const currentUser = useAppStore((state) => state.currentUser);
+  const isOwner = canEditTicket(currentUser, ticket);
   const serverDictionaries = useAppStore((state) => state.serverDictionaries);
   const addToast = useAppStore((state) => state.addToast);
 
-    const [isEditingInfo, setIsEditingInfo] = useState(false);
-    const [editCompanyId, setEditCompanyId] = useState(
-      ticket.companyId ||
-        serverDictionaries?.companies.find(
-          (c) => c.code === ticket.companyCode || c.name === ticket.company
-        )?.id ||
-        ''
-    );
-    const [editLocationId, setEditLocationId] = useState(ticket.locationId || '');
-    const [editDepartmentId, setEditDepartmentId] = useState(ticket.departmentId || '');
-    const [editRequestor, setEditRequestor] = useState(ticket.requestor === 'Unspecified' ? '' : ticket.requestor);
-    const [isSavingInfo, setIsSavingInfo] = useState(false);
+  const [isEditingInfo, setIsEditingInfo] = useState(false);
+  const [editCompanyId, setEditCompanyId] = useState(
+    ticket.companyId ||
+      serverDictionaries?.companies.find(
+        (c) => c.code === ticket.companyCode || c.name === ticket.company
+      )?.id ||
+      ''
+  );
+  const [editLocationId, setEditLocationId] = useState(ticket.locationId || '');
+  const [editDepartmentId, setEditDepartmentId] = useState(ticket.departmentId || '');
+  const [editRequestor, setEditRequestor] = useState(ticket.requestor === 'Unspecified' ? '' : ticket.requestor);
+  const [isSavingInfo, setIsSavingInfo] = useState(false);
 
-    const [isEditingDiagnosis, setIsEditingDiagnosis] = useState(false);
-    const [editDiagnosis, setEditDiagnosis] = useState(ticket.technicianDiagnosis || ticket.description || '');
-    const [isSavingDiagnosis, setIsSavingDiagnosis] = useState(false);
+  const [isEditingDiagnosis, setIsEditingDiagnosis] = useState(false);
+  const [editDiagnosis, setEditDiagnosis] = useState(ticket.technicianDiagnosis || ticket.description || '');
+  const [isSavingDiagnosis, setIsSavingDiagnosis] = useState(false);
 
-    const handleSaveDiagnosis = async () => {
-      setIsSavingDiagnosis(true);
-      try {
-        await ticketsApi.updateServiceRecord(ticket.id, {
-          diagnosis: editDiagnosis.trim() || undefined,
-        });
-        addToast('Record Updated', 'Diagnosis & resolution updated successfully', 'success');
-        setIsEditingDiagnosis(false);
-        window.location.reload();
-      } catch (err) {
-        addToast('Update Failed', err instanceof Error ? err.message : 'Failed to update diagnosis', 'warning');
-      } finally {
-        setIsSavingDiagnosis(false);
-      }
-    };
+  const handleSaveDiagnosis = async () => {
+    setIsSavingDiagnosis(true);
+    try {
+      await ticketsApi.updateServiceRecord(ticket.id, {
+        diagnosis: editDiagnosis.trim() || undefined,
+      });
+      addToast('Record Updated', 'Diagnosis & resolution updated successfully', 'success');
+      setIsEditingDiagnosis(false);
+      window.location.reload();
+    } catch (err) {
+      addToast('Update Failed', err instanceof Error ? err.message : 'Failed to update diagnosis', 'warning');
+    } finally {
+      setIsSavingDiagnosis(false);
+    }
+  };
 
-    const handleSaveInfo = async () => {
-      setIsSavingInfo(true);
-      try {
-        await ticketsApi.updateServiceRecord(ticket.id, {
-          company_id: editCompanyId || undefined,
-          location_id: editLocationId || undefined,
-          department_id: editDepartmentId || undefined,
-          requester_name: editRequestor.trim() || 'Unspecified',
-        });
-        addToast('Record Updated', 'Terminal and requestor details updated successfully', 'success');
-        setIsEditingInfo(false);
-        window.location.reload();
-      } catch (err) {
-        addToast('Update Failed', err instanceof Error ? err.message : 'Failed to save record info', 'warning');
-      } finally {
-        setIsSavingInfo(false);
-      }
-    };
+  const handleSaveInfo = async () => {
+    setIsSavingInfo(true);
+    try {
+      await ticketsApi.updateServiceRecord(ticket.id, {
+        company_id: editCompanyId || undefined,
+        location_id: editLocationId || undefined,
+        department_id: editDepartmentId || undefined,
+        requester_name: editRequestor.trim() || 'Unspecified',
+      });
+      addToast('Record Updated', 'Terminal and requestor details updated successfully', 'success');
+      setIsEditingInfo(false);
+      window.location.reload();
+    } catch (err) {
+      addToast('Update Failed', err instanceof Error ? err.message : 'Failed to save record info', 'warning');
+    } finally {
+      setIsSavingInfo(false);
+    }
+  };
 
   const issueFields = [
     { no: '05', label: 'Task Category', value: `${ticket.task} (${ticket.taskCode})` },
@@ -118,54 +116,6 @@ export const JobLogDrawerRecordForm: React.FC<JobLogDrawerRecordFormProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Technician Quick Controls: Support Mode & Repair Notes */}
-      <div className="bg-canvas border border-line rounded-2xl p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-bold text-ink">
-            Technician Work Controls
-          </span>
-          <div className="inline-flex items-center bg-surface p-0.5 rounded-xl border border-line">
-            {(['REM', 'SITE'] as SupportMode[]).map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => onUpdateMode(m)}
-                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all press-fx ${
-                  ticket.mode === m
-                    ? 'bg-zinc-900 text-white shadow-sm'
-                    : 'text-ink-subtle hover:text-ink'
-                }`}
-              >
-                {m === 'REM' ? 'Remote (REM)' : 'On-Site (SITE)'}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="space-y-1.5">
-          <label className="block text-[11px] font-medium text-ink-subtle">
-            Technician Diagnosis &amp; Findings (Job Log Column #06)
-          </label>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={notesDraft}
-              onChange={(e) => onNotesDraftChange(e.target.value)}
-              className="flex-1 px-3 py-1.5 bg-surface border border-line rounded-xl text-xs text-ink focus:outline-none focus:border-zinc-500"
-            />
-            <button
-              type="button"
-              disabled={isSavingNotes}
-              onClick={onSaveJobLog}
-              className="px-3 py-1.5 rounded-xl bg-surface hover:bg-zinc-100 text-ink border border-line text-xs font-semibold inline-flex items-center gap-1 transition-colors press-fx"
-            >
-              <Save className="w-3.5 h-3.5 text-ink-subtle" />
-              <span>{isSavingNotes ? 'Saving...' : 'Save Service Record'}</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* Original Employee Report & Context */}
       <div className="bg-canvas border border-line rounded-2xl p-4 space-y-2">
         <div className="flex items-center justify-between">
@@ -180,7 +130,7 @@ export const JobLogDrawerRecordForm: React.FC<JobLogDrawerRecordFormProps> = ({
       {/* Persistent SOP Checklist & Saved Repair Guides */}
       <TicketChecklistSection
         ticketId={ticket.id}
-        ticketStatus={ticket.status}
+        ticketStatus={isOwner ? ticket.status : ('CLSD' as TicketStatus)}
         ticketTaskCode={ticket.taskCode}
         assignedTechId={ticket.workedById ?? ticket.assigned_tech_id ?? null}
       />
@@ -450,5 +400,4 @@ export const JobLogDrawerRecordForm: React.FC<JobLogDrawerRecordFormProps> = ({
       </div>
     </div>
   );
-};  
-
+};
