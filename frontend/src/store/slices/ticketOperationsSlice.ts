@@ -11,30 +11,8 @@ import { TASK_CATEGORIES } from '../../constants/domain';
 import { ticketsApi, extractApiErrorMessage } from '../../api/client';
 import { mapStaffTicket } from '../../utils/mapStaffTicket';
 import { sortTicketsSprint5 } from './ticketQueueSlice';
-
-/**
- * @spec F-03 / S5-08: Work Assignment Ownership Predicate
- * Strict ownership: Only the assigned technician may edit (mode, notes, checklist, resolve, comments).
- * Unassigned tickets can be claimed, but not edited until claimed.
- * Admin users must explicitly reassign via TicketAssignModal before gaining editing rights.
- */
-export function canEditTicket(
-  currentUser: { id?: string; role?: string; name?: string } | null,
-  ticket: Ticket | null | undefined
-): boolean {
-  if (!currentUser || !ticket) return false;
-  if (ticket.status === 'OPEN' && !ticket.workedById && !ticket.assigned_tech_id && !ticket.workedBy) {
-    return true;
-  }
-  const techId = ticket.assigned_tech_id || ticket.workedById;
-  const matchId = Boolean(techId && currentUser.id && currentUser.id === techId);
-  const matchName = Boolean(
-    ticket.workedBy &&
-    currentUser.name &&
-    ticket.workedBy.trim().toLowerCase() === currentUser.name.trim().toLowerCase()
-  );
-  return matchId || matchName;
-}
+import { canEditTicket } from '../../utils/ticketPermissions';
+export { canEditTicket };
 
 export interface TicketOperationsSlice {
   // Staff Quick Intake modal & mutation

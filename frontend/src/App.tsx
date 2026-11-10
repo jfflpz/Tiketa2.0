@@ -1,18 +1,16 @@
-// @spec UI-SHELL-01: Role-Separated Application Flow (Employee Screen -> Staff Login -> Role-Isolated Workspace)
-// @spec BF-02: URL-Aware Employee and Staff Routing, Deep Links & Public Page Preservation
-// @spec FR-VERIF-02: Interactive Closure Verification Modal Mount
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { Sidebar } from './components/layout/Sidebar';
 import { TopHeader } from './components/layout/TopHeader';
-import { ITOverviewDashboard } from './features/overview/ITOverviewDashboard';
-import { TicketListsView } from './features/tickets/TicketListsView';
-import { ITWorkbenchBoardView } from './features/workbench/ITWorkbenchBoardView';
-import { RepairNotesLibraryView } from './features/notes/RepairNotesLibraryView';
-import { JobLogSheetView } from './features/joblogs/JobLogSheetView';
-import { TerminalHubsView } from './features/terminals/TerminalHubsView';
-import { TeamWorkbenchView } from './features/workbench/TeamWorkbenchView';
-import { ExecutiveAnalyticsView } from './features/analytics/ExecutiveAnalyticsView';
-import { StandardizedReportsView } from './features/reports/StandardizedReportsView';
+
+const ITOverviewDashboard = lazy(() => import('./features/overview/ITOverviewDashboard').then(m => ({ default: m.ITOverviewDashboard })));
+const TicketListsView = lazy(() => import('./features/tickets/TicketListsView').then(m => ({ default: m.TicketListsView })));
+const ITWorkbenchBoardView = lazy(() => import('./features/workbench/ITWorkbenchBoardView').then(m => ({ default: m.ITWorkbenchBoardView })));
+const RepairNotesLibraryView = lazy(() => import('./features/notes/RepairNotesLibraryView').then(m => ({ default: m.RepairNotesLibraryView })));
+const JobLogSheetView = lazy(() => import('./features/joblogs/JobLogSheetView').then(m => ({ default: m.JobLogSheetView })));
+const TerminalHubsView = lazy(() => import('./features/terminals/TerminalHubsView').then(m => ({ default: m.TerminalHubsView })));
+const TeamWorkbenchView = lazy(() => import('./features/workbench/TeamWorkbenchView').then(m => ({ default: m.TeamWorkbenchView })));
+const ExecutiveAnalyticsView = lazy(() => import('./features/analytics/ExecutiveAnalyticsView').then(m => ({ default: m.ExecutiveAnalyticsView })));
+const StandardizedReportsView = lazy(() => import('./features/reports/StandardizedReportsView').then(m => ({ default: m.StandardizedReportsView })));
 import { EmployeeTicketScreen } from './features/kiosk/EmployeeTicketScreen';
 import { StaffLoginModal } from './features/auth/StaffLoginModal';
 import { LogoutConfirmationModal } from './features/auth/LogoutConfirmationModal';
@@ -165,15 +163,23 @@ export default function App() {
 
         <main className="flex-1 overflow-y-auto px-6 py-5">
           <div className="max-w-[1440px] mx-auto">
-            {resolvedView === 'overview' && <ITOverviewDashboard />}
-            {resolvedView === 'tickets' && <TicketListsView />}
-            {resolvedView === 'workbench' && <ITWorkbenchBoardView />}
-            {resolvedView === 'notes' && <RepairNotesLibraryView />}
-            {resolvedView === 'joblogs' && <JobLogSheetView />}
-            {resolvedView === 'terminals' && <TerminalHubsView />}
-            {resolvedView === 'analytics' && <ExecutiveAnalyticsView />}
-            {resolvedView === 'reports' && <StandardizedReportsView />}
-            {resolvedView === 'team' && <TeamWorkbenchView />}
+            <Suspense
+              fallback={
+                <div className="flex items-center justify-center min-h-[350px]">
+                  <div className="w-6 h-6 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+                </div>
+              }
+            >
+              {resolvedView === 'overview' && <ITOverviewDashboard />}
+              {resolvedView === 'tickets' && <TicketListsView />}
+              {resolvedView === 'workbench' && <ITWorkbenchBoardView />}
+              {resolvedView === 'notes' && <RepairNotesLibraryView />}
+              {resolvedView === 'joblogs' && <JobLogSheetView />}
+              {resolvedView === 'terminals' && <TerminalHubsView />}
+              {resolvedView === 'analytics' && <ExecutiveAnalyticsView />}
+              {resolvedView === 'reports' && <StandardizedReportsView />}
+              {resolvedView === 'team' && <TeamWorkbenchView />}
+            </Suspense>
           </div>
         </main>
       </div>
