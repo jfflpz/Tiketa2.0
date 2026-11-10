@@ -79,9 +79,9 @@ describe('PPTX Export Suite — Tiketa Executive Standards', () => {
     });
     const addText = vi.mocked(slide.addText);
     expect(addText.mock.calls[0][0]).toBe('Monthly SLA');
-    expect(addText.mock.calls[0][1]).toMatchObject({ fontSize: 36, fontFace: expect.stringMatching(/Arial|Verdana/) });
+    expect(addText.mock.calls[0][1]).toMatchObject({ fontSize: 36, fontFace: expect.stringMatching(/Helvetica Neue|Arial|Verdana/) });
     expect(addText.mock.calls[1][0]).toBe('Oct 2026');
-    expect(addText.mock.calls[1][1]).toMatchObject({ fontSize: 22, fontFace: expect.stringMatching(/Arial|Verdana/) });
+    expect(addText.mock.calls[1][1]).toMatchObject({ fontSize: 22, fontFace: expect.stringMatching(/Helvetica Neue|Arial|Verdana/) });
     expect(SLIDE_GEOMETRY.periodY + SLIDE_GEOMETRY.periodH).toBeLessThan(SLIDE_GEOMETRY.chartY);
     expect(SLIDE_GEOMETRY.explY - (SLIDE_GEOMETRY.chartY + SLIDE_GEOMETRY.chartH)).toBeGreaterThanOrEqual(0.2);
   });

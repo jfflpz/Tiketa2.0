@@ -75,7 +75,7 @@ export const EmployeeTicketScreen: React.FC = () => {
   return (
     <div className="min-h-screen bg-canvas text-ink flex flex-col justify-between">
       {/* 1. Header Bar */}
-      <KioskTopBar hubName={intake.activeHub.name} />
+      <KioskTopBar />
 
       {/* 2. Main Content Area */}
       <main className="max-w-4xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex-1 space-y-6">

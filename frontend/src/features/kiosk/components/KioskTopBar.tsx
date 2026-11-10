@@ -1,10 +1,10 @@
 // @spec BF-02: Single Login Button for Staff Authentication
 import React, { useState, useEffect } from 'react';
-import {Clock, Lock, ArrowRight } from 'lucide-react';
+import { Clock, Lock, ArrowRight } from 'lucide-react';
 import { useAppStore } from '../../../store/useAppStore';
 
 export interface KioskTopBarProps {
-  hubName: string;
+  hubName?: string;
 }
 
 export const KioskTopBar: React.FC<KioskTopBarProps> = () => {

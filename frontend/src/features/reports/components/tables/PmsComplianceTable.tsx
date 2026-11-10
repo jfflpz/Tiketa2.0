@@ -12,29 +12,29 @@ export const PmsComplianceTable: React.FC<PmsComplianceTableProps> = ({ data }) 
       <table className="w-full text-left border-collapse text-xs">
         <thead>
           <tr className="bg-canvas text-ink-subtle text-[11px] font-semibold border-y border-line">
-            <th className="py-2.5 px-3">Terminal Location</th>
-            <th className="py-2.5 px-3">Department</th>
-            <th className="py-2.5 px-3">Expected Services</th>
-            <th className="py-2.5 px-3">Services Conducted</th>
-            <th className="py-2.5 px-3">Coverage %</th>
-            <th className="py-2.5 px-3">Last Completed</th>
-            <th className="py-2.5 px-3">Serviced By</th>
-            <th className="py-2.5 px-3">Service Plan Status</th>
+            <th className="py-2.5 px-3 text-left">Terminal Location</th>
+            <th className="py-2.5 px-3 text-left">Department</th>
+            <th className="py-2.5 px-3 text-right">Expected Services</th>
+            <th className="py-2.5 px-3 text-right">Services Conducted</th>
+            <th className="py-2.5 px-3 text-right">Coverage %</th>
+            <th className="py-2.5 px-3 text-center">Last Completed</th>
+            <th className="py-2.5 px-3 text-left">Serviced By</th>
+            <th className="py-2.5 px-3 text-center">Service Plan Status</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-line/60">
           {data.map((r, i) => (
             <tr key={`${r.terminalLocation}-${r.department}-${i}`} className="hover:bg-zinc-50/60 transition-colors">
-              <td className="py-3 px-3 font-bold text-ink">{r.terminalLocation}</td>
-              <td className="py-3 px-3">{r.department}</td>
-              <td className="py-3 px-3 font-mono">{r.expectedServices != null ? r.expectedServices : '—'}</td>
-              <td className="py-3 px-3 font-mono">{r.pmsConducted}</td>
-              <td className="py-3 px-3 font-mono font-bold text-emerald-700">
+              <td className="py-3 px-3 font-bold text-ink align-middle text-left">{r.terminalLocation}</td>
+              <td className="py-3 px-3 align-middle text-left">{r.department}</td>
+              <td className="py-3 px-3 font-mono align-middle text-right">{r.expectedServices != null ? r.expectedServices : '—'}</td>
+              <td className="py-3 px-3 font-mono align-middle text-right">{r.pmsConducted}</td>
+              <td className="py-3 px-3 font-mono font-bold text-emerald-700 align-middle text-right">
                 {r.complianceRate != null ? `${r.complianceRate.toFixed(1)}%` : '—'}
               </td>
-              <td className="py-3 px-3 font-mono">{r.lastCompletedDate || '—'}</td>
-              <td className="py-3 px-3">{r.servicedBy || '—'}</td>
-              <td className="py-3 px-3">
+              <td className="py-3 px-3 font-mono align-middle text-center">{r.lastCompletedDate || '—'}</td>
+              <td className="py-3 px-3 align-middle text-left">{r.servicedBy || '—'}</td>
+              <td className="py-3 px-3 align-middle text-center">
                 {r.status === 'compliant' && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-semibold text-[11px]">
                     <CheckCircle2 className="w-3 h-3" /> Compliant
