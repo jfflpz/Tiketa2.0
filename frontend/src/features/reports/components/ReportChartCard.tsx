@@ -9,6 +9,7 @@ import {
   CartesianGrid,
   Legend,
 } from 'recharts';
+import { BP_COLORS, BP_TYPOGRAPHY } from '../export/bpPresentationStandards';
 import type {
   MonthlySlaRow,
   StaffUtilizationRow,
@@ -39,11 +40,33 @@ const tooltipStyle = {
   borderColor: '#ECEEF2',
   borderRadius: '12px',
   fontSize: '12px',
+  fontFamily: BP_TYPOGRAPHY.FONT_FAMILY,
+  fontFeatureSettings: 'normal',
+  fontVariant: 'normal',
+  color: BP_COLORS.TEXT,
 };
 
-const tickStyle = { fontSize: 11, fill: '#6B7280' };
-const smallTickStyle = { fontSize: 10, fill: '#6B7280' };
-const legendStyle = { fontSize: '11px', paddingTop: '10px' };
+const tickStyle = {
+  fontSize: 11,
+  fill: BP_COLORS.TEXT,
+  fontFamily: BP_TYPOGRAPHY.FONT_FAMILY,
+  fontFeatureSettings: 'normal',
+  fontVariant: 'normal',
+};
+const smallTickStyle = {
+  fontSize: 10,
+  fill: BP_COLORS.TEXT,
+  fontFamily: BP_TYPOGRAPHY.FONT_FAMILY,
+  fontFeatureSettings: 'normal',
+  fontVariant: 'normal',
+};
+const legendStyle = {
+  fontSize: '11px',
+  paddingTop: '10px',
+  fontFamily: BP_TYPOGRAPHY.FONT_FAMILY,
+  fontFeatureSettings: 'normal',
+  fontVariant: 'normal',
+};
 
 export const ReportChartCard: React.FC<ReportChartCardProps> = ({
   activeReportId,
@@ -75,9 +98,9 @@ export const ReportChartCard: React.FC<ReportChartCardProps> = ({
               <YAxis tick={tickStyle} />
               <Tooltip contentStyle={tooltipStyle} />
               <Legend wrapperStyle={legendStyle} />
-              <Bar dataKey="totalRequests" name="Total Requests" fill="#18181B" radius={[6, 6, 0, 0]} />
-              <Bar dataKey="completed" name="Completed" fill="#10B981" radius={[6, 6, 0, 0]} />
-              <Bar dataKey="pending" name="Pending" fill="#F59E0B" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="totalRequests" name="Total Requests" fill={BP_COLORS.SEQUENCE[0]} radius={[6, 6, 0, 0]} />
+              <Bar dataKey="completed" name="Completed" fill={BP_COLORS.SEQUENCE[1]} radius={[6, 6, 0, 0]} />
+              <Bar dataKey="pending" name="Pending" fill={BP_COLORS.SEQUENCE[4]} radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         )}
@@ -90,9 +113,9 @@ export const ReportChartCard: React.FC<ReportChartCardProps> = ({
               <YAxis tick={tickStyle} />
               <Tooltip contentStyle={tooltipStyle} />
               <Legend wrapperStyle={legendStyle} />
-              <Bar dataKey="totalAssigned" name="Assigned Tickets" fill="#6366F1" radius={[6, 6, 0, 0]} />
-              <Bar dataKey="completed" name="Completed" fill="#10B981" radius={[6, 6, 0, 0]} />
-              <Bar dataKey="totalHoursLogged" name="Labor Hours" fill="#EA580C" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="totalAssigned" name="Assigned Tickets" fill={BP_COLORS.SEQUENCE[0]} radius={[6, 6, 0, 0]} />
+              <Bar dataKey="completed" name="Completed" fill={BP_COLORS.SEQUENCE[1]} radius={[6, 6, 0, 0]} />
+              <Bar dataKey="totalHoursLogged" name="Labor Hours" fill={BP_COLORS.SEQUENCE[2]} radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         )}
@@ -105,8 +128,8 @@ export const ReportChartCard: React.FC<ReportChartCardProps> = ({
               <YAxis tick={tickStyle} />
               <Tooltip contentStyle={tooltipStyle} />
               <Legend wrapperStyle={legendStyle} />
-              <Bar dataKey="totalTickets" name="Incidents Logged" fill="#EA580C" radius={[6, 6, 0, 0]} />
-              <Bar dataKey="totalHoursConsumed" name="Labor Hours Consumed" fill="#18181B" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="totalTickets" name="Incidents Logged" fill={BP_COLORS.SEQUENCE[0]} radius={[6, 6, 0, 0]} />
+              <Bar dataKey="totalHoursConsumed" name="Labor Hours Consumed" fill={BP_COLORS.SEQUENCE[1]} radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         )}
@@ -119,7 +142,7 @@ export const ReportChartCard: React.FC<ReportChartCardProps> = ({
               <YAxis tick={tickStyle} />
               <Tooltip contentStyle={tooltipStyle} />
               <Legend wrapperStyle={legendStyle} />
-              <Bar dataKey="daysOpen" name="Days Open / Stagnant (>48h)" fill="#E11D48" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="daysOpen" name="Days Open / Stagnant (>48h)" fill={BP_COLORS.SEQUENCE[1]} radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         )}
@@ -132,8 +155,8 @@ export const ReportChartCard: React.FC<ReportChartCardProps> = ({
               <YAxis tick={tickStyle} />
               <Tooltip contentStyle={tooltipStyle} />
               <Legend wrapperStyle={legendStyle} />
-              <Bar dataKey="meanTurnaroundDays" name="Total Turnaround Days" fill="#18181B" radius={[6, 6, 0, 0]} />
-              <Bar dataKey="meanTransitLagDays" name="Courier Transit Lag Days" fill="#10B981" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="meanTurnaroundDays" name="Total Turnaround Days" fill={BP_COLORS.SEQUENCE[0]} radius={[6, 6, 0, 0]} />
+              <Bar dataKey="meanTransitLagDays" name="Courier Transit Lag Days" fill={BP_COLORS.SEQUENCE[1]} radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         )}
@@ -146,8 +169,8 @@ export const ReportChartCard: React.FC<ReportChartCardProps> = ({
               <YAxis tick={tickStyle} />
               <Tooltip contentStyle={tooltipStyle} />
               <Legend wrapperStyle={legendStyle} />
-              <Bar dataKey="incidentsLogged" name="Failures Logged" fill="#EA580C" radius={[6, 6, 0, 0]} />
-              <Bar dataKey="severityRiskScore" name="Severity Risk Score (/10)" fill="#E11D48" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="incidentsLogged" name="Failures Logged" fill={BP_COLORS.SEQUENCE[0]} radius={[6, 6, 0, 0]} />
+              <Bar dataKey="severityRiskScore" name="Severity Risk Score (/10)" fill={BP_COLORS.SEQUENCE[1]} radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         )}
@@ -160,8 +183,8 @@ export const ReportChartCard: React.FC<ReportChartCardProps> = ({
               <YAxis tick={tickStyle} />
               <Tooltip contentStyle={tooltipStyle} />
               <Legend wrapperStyle={legendStyle} />
-              <Bar dataKey="expectedServices" name="Expected Services" fill="#18181B" radius={[6, 6, 0, 0]} />
-              <Bar dataKey="pmsConducted" name="Services Conducted" fill="#10B981" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="expectedServices" name="Expected Services" fill={BP_COLORS.SEQUENCE[0]} radius={[6, 6, 0, 0]} />
+              <Bar dataKey="pmsConducted" name="Services Conducted" fill={BP_COLORS.SEQUENCE[1]} radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         )}
@@ -174,8 +197,8 @@ export const ReportChartCard: React.FC<ReportChartCardProps> = ({
               <YAxis tick={tickStyle} />
               <Tooltip contentStyle={tooltipStyle} />
               <Legend wrapperStyle={legendStyle} />
-              <Bar dataKey="repeatIncidents" name="Repeat Incidents" fill="#E11D48" radius={[6, 6, 0, 0]} />
-              <Bar dataKey="remoteResolutionRate" name="Remote Fix %" fill="#6366F1" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="repeatIncidents" name="Repeat Incidents" fill={BP_COLORS.SEQUENCE[1]} radius={[6, 6, 0, 0]} />
+              <Bar dataKey="remoteResolutionRate" name="Remote Fix %" fill={BP_COLORS.SEQUENCE[0]} radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         )}

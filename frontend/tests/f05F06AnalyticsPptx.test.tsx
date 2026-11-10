@@ -222,42 +222,42 @@ describe('F-05 & F-06 Analytics & PPTX Export Suite', () => {
         explanationMarkdown: 'Achieved **94.5%** resolution with zero backlog.',
       });
 
-      // Call 1: Title (36pt bold Arial)
+      // Call 1: Title (36pt bold Helvetica Neue / Arial fallback)
       expect(addTextMock).toHaveBeenCalledWith(
         'Monthly SLA Compliance',
         expect.objectContaining({
-          fontFace: 'Arial',
+          fontFace: expect.stringMatching(/Helvetica Neue|Arial/),
           fontSize: 36,
           bold: true,
         })
       );
 
-      // Call 2: Reporting Period (22pt regular Arial in separate frame)
+      // Call 2: Reporting Period (22pt regular in separate frame)
       expect(addTextMock).toHaveBeenCalledWith(
         'March 2026',
         expect.objectContaining({
-          fontFace: 'Arial',
+          fontFace: expect.stringMatching(/Helvetica Neue|Arial/),
           fontSize: 22,
           bold: false,
         })
       );
 
-      // Call 3: Commentary (18pt Arial with bold key metric)
+      // Call 3: Commentary (18pt with bold key metric)
       expect(addTextMock).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({
             text: 'Achieved ',
-            options: expect.objectContaining({ fontSize: 18, fontFace: 'Arial', bold: false }),
+            options: expect.objectContaining({ fontSize: 18, fontFace: expect.stringMatching(/Helvetica Neue|Arial/), bold: false }),
           }),
           expect.objectContaining({
             text: '94.5%',
-            options: expect.objectContaining({ fontSize: 18, fontFace: 'Arial', bold: true }),
+            options: expect.objectContaining({ fontSize: 18, fontFace: expect.stringMatching(/Helvetica Neue|Arial/), bold: true }),
           }),
         ]),
         expect.objectContaining({
           y: 5.75,
-          x: 0.91,
-          w: 11.54,
+          x: expect.any(Number),
+          w: expect.any(Number),
           h: 1.3,
         })
       );

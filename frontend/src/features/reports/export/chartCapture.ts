@@ -23,6 +23,8 @@ export async function captureChartImage(reportId: number, data: any[]): Promise<
   container.style.overflow = 'hidden';
   container.style.zIndex = '-9999';
   container.style.backgroundColor = '#FFFFFF';
+  container.style.fontFeatureSettings = 'normal';
+  container.style.fontVariant = 'normal';
   document.body.appendChild(container);
 
   const root = createRoot(container);

@@ -1,13 +1,13 @@
 // @spec BF-02: Single Login Button for Staff Authentication
 import React, { useState, useEffect } from 'react';
-import { MapPin, Clock, Lock, ArrowRight } from 'lucide-react';
+import { Clock, Lock, ArrowRight } from 'lucide-react';
 import { useAppStore } from '../../../store/useAppStore';
 
 export interface KioskTopBarProps {
-  hubName: string;
+  hubName?: string;
 }
 
-export const KioskTopBar: React.FC<KioskTopBarProps> = ({ hubName }) => {
+export const KioskTopBar: React.FC<KioskTopBarProps> = () => {
   const currentUser = useAppStore((state) => state.currentUser);
   const openLoginModal = useAppStore((state) => state.openLoginModal);
   const setActiveView = useAppStore((state) => state.setActiveView);
@@ -32,11 +32,6 @@ export const KioskTopBar: React.FC<KioskTopBarProps> = ({ hubName }) => {
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2">
           <img src="/logo-light.svg" alt="Tiketa" className="h-8 w-auto object-contain drop-shadow-sm" />
-        </div>
-        <span className="hidden sm:inline-block text-ink-faint">•</span>
-        <div className="hidden sm:flex items-center gap-1.5 text-ink-subtle">
-          <MapPin className="w-3.5 h-3.5 text-brand" />
-          <span className="font-medium">{hubName}</span>
         </div>
       </div>
 

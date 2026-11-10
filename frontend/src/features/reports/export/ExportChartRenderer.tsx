@@ -10,6 +10,7 @@ import {
   ResponsiveContainer,
   Text as ChartText,
 } from 'recharts';
+import { BP_COLORS, BP_TYPOGRAPHY } from './bpPresentationStandards';
 import type {
   MonthlySlaRow,
   StaffUtilizationRow,
@@ -26,11 +27,11 @@ export interface ExportChartRendererProps {
   data: any[];
 }
 
-const COLOR_BLUE = '#156082';
-const COLOR_ORANGE = '#E97132';
-const COLOR_TEXT = '#333333';
-const COLOR_GRID = '#D9D9D9';
-const COLOR_BORDER = '#7F7F7F';
+const COLOR_BLUE = BP_COLORS.SEQUENCE[0];   // #246FF0 (Vibrant Blue)
+const COLOR_ORANGE = BP_COLORS.SEQUENCE[1]; // #FF3F3D (Vivid Red-Orange)
+const COLOR_TEXT = BP_COLORS.TEXT;          // #333333 (Dark Charcoal / Gray20)
+const COLOR_GRID = BP_COLORS.GRID;          // #E8E8E8
+const COLOR_BORDER = BP_COLORS.BORDER;      // #333333 (Mandatory Graph Border)
 
 interface ExportTickProps {
   x?: number;
@@ -60,8 +61,10 @@ const WrappedTick: React.FC<ExportTickProps> = ({
     textAnchor="middle"
     verticalAnchor="start"
     style={{
-      fontFamily: 'Verdana, sans-serif',
+      fontFamily: BP_TYPOGRAPHY.FONT_FAMILY,
       fontSize: 18,
+      fontFeatureSettings: 'normal',
+      fontVariant: 'normal',
     }}
     fill={COLOR_TEXT}
   >
@@ -84,8 +87,10 @@ const DepartmentExportTick: React.FC<ExportTickProps> = ({
     textAnchor="end"
     verticalAnchor="middle"
     style={{
-      fontFamily: 'Verdana, sans-serif',
+      fontFamily: BP_TYPOGRAPHY.FONT_FAMILY,
       fontSize: 18,
+      fontFeatureSettings: 'normal',
+      fontVariant: 'normal',
     }}
     fill={COLOR_TEXT}
   >
@@ -109,7 +114,7 @@ export const ExportChartRenderer: React.FC<ExportChartRendererProps> = ({ report
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          fontFamily: 'Verdana, sans-serif',
+          fontFamily: BP_TYPOGRAPHY.FONT_FAMILY,
           color: COLOR_TEXT,
         }}
       >
@@ -133,7 +138,9 @@ export const ExportChartRenderer: React.FC<ExportChartRendererProps> = ({ report
         padding: '16px 24px',
         display: 'flex',
         flexDirection: 'column',
-        fontFamily: 'Verdana, sans-serif',
+        fontFamily: BP_TYPOGRAPHY.FONT_FAMILY,
+        fontFeatureSettings: 'normal',
+        fontVariant: 'normal',
       }}
     >
       {/* Report 1: Monthly SLA (Volume & 48h Resolution SLA) */}
@@ -181,8 +188,10 @@ export const ExportChartRenderer: React.FC<ExportChartRendererProps> = ({ report
             textAnchor="end"
             verticalAnchor="middle"
             style={{
-              fontFamily: 'Verdana, sans-serif',
+              fontFamily: BP_TYPOGRAPHY.FONT_FAMILY,
               fontSize: 18,
+              fontFeatureSettings: 'normal',
+              fontVariant: 'normal',
             }}
             fill={COLOR_TEXT}
           >
