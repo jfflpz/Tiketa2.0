@@ -51,13 +51,6 @@ export const ReportTabSelector: React.FC<ReportTabSelectorProps> = ({
           >
             <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-orange-400' : 'text-zinc-400'}`} />
             <span>{tab.shortTitle}</span>
-            <span
-              className={`font-mono text-[9px] px-1.5 py-0.2 rounded-md ${
-                isActive ? 'bg-zinc-800 text-zinc-300' : 'bg-zinc-100 text-zinc-500'
-              }`}
-            >
-              #{tab.id}
-            </span>
           </button>
         );
       })}

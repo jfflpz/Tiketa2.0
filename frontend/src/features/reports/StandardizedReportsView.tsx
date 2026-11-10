@@ -27,11 +27,14 @@ import { HardwareVulnerabilityTable } from './components/tables/HardwareVulnerab
 import { PmsComplianceTable } from './components/tables/PmsComplianceTable';
 import { ChronicRequestorTable } from './components/tables/ChronicRequestorTable';
 import { ExportPptxModal } from './components/ExportPptxModal';
+import { ExecutiveSummaryKpiCards } from '../analytics/components/ExecutiveSummaryKpiCards';
 import { formatPeriodDisplay } from './export/pmsDateValidation';
 
 export const StandardizedReportsView: React.FC = () => {
   const activeReportId = useAppStore((state) => state.activeReportId);
   const setActiveReportId = useAppStore((state) => state.setActiveReportId);
+  const kpis = useAppStore((state) => state.kpis);
+  const fetchKPIsApi = useAppStore((state) => state.fetchKPIsApi);
   const fetchReportApi = useAppStore((state) => state.fetchReportApi);
   const downloadReportCSVApi = useAppStore((state) => state.downloadReportCSVApi);
   const activeReportData = useAppStore((state) => state.activeReportData);
@@ -43,6 +46,10 @@ export const StandardizedReportsView: React.FC = () => {
 
   const activeTabMeta = REPORT_TABS.find((t) => t.id === activeReportId) || REPORT_TABS[0];
   const currentSlug = REPORT_SLUGS[activeReportId] || 'monthly-sla';
+
+  useEffect(() => {
+    fetchKPIsApi();
+  }, [fetchKPIsApi]);
 
   useEffect(() => {
     fetchReportApi(currentSlug);
@@ -78,10 +85,10 @@ export const StandardizedReportsView: React.FC = () => {
             </span>
           </div>
           <h1 className="text-xl font-bold tracking-tight text-ink mt-1">
-            8 Standardized Operational &amp; Strategic Reports Suite
+            Standard Reports
           </h1>
           <p className="text-xs text-zinc-500 mt-0.5">
-            Verified monthly metrics, labor distributions, and hardware vulnerability matrices with visual charts.
+            Consolidated executive metrics, verified monthly labor distributions, and hardware vulnerability matrices with visual charts.
           </p>
         </div>
 
@@ -108,6 +115,12 @@ export const StandardizedReportsView: React.FC = () => {
 
       {/* Synchronized Month/Year Period Selector (F-05) */}
       <ReportPeriodSelector />
+
+      {/* 4 Executive Summary Cards (Consolidated from Executive Analytics) */}
+      <ExecutiveSummaryKpiCards
+        kpis={kpis}
+        onSelectReport={setActiveReportId}
+      />
 
       {/* 8-Report Selector Tabs Bar */}
       <ReportTabSelector

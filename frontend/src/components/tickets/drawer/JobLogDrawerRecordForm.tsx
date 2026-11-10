@@ -183,9 +183,9 @@ export const JobLogDrawerRecordForm: React.FC<JobLogDrawerRecordFormProps> = ({
                     align="right"
                   />
                 </div>
-              ) : f.no === '15' && isAdmin ? (
+              ) : f.no === '15' && isAdmin && ticket.status === 'OPEN' && !ticket.workedById && !ticket.assigned_tech_id && !ticket.workedBy ? (
                 <select
-                  value={ticket.workedById ?? ''}
+                  value=""
                   onChange={(e) => {
                     const tech = itTeamMembers.find((m) => m.id === e.target.value);
                     if (tech) onAssignTicket(ticket.id, tech.name, tech.id);
@@ -201,6 +201,10 @@ export const JobLogDrawerRecordForm: React.FC<JobLogDrawerRecordFormProps> = ({
                       </option>
                     ))}
                 </select>
+              ) : f.no === '15' ? (
+                <span className="font-semibold text-ink leading-snug">
+                  {ticket.workedBy ?? 'Unassigned (General Pool)'}
+                </span>
               ) : f.no === '06' ? (
                 !isEditingDiagnosis ? (
                   <div className="flex items-center justify-end gap-2 max-w-[70%] text-right">

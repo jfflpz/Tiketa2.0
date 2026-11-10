@@ -172,9 +172,9 @@ export const TicketQueueTable: React.FC<TicketQueueTableProps> = ({
 
                   {/* Assigned Tech with Admin Selector */}
                   <td className="py-3 px-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                    {isAdmin ? (
+                    {isAdmin && ticket.status === 'OPEN' && !ticket.workedById && !ticket.assigned_tech_id && !ticket.workedBy ? (
                       <select
-                        value={ticket.workedById ?? ''}
+                        value=""
                         onChange={(e) => {
                           const tech = itTeamMembers.find((m) => m.id === e.target.value);
                           if (tech) {
@@ -213,7 +213,7 @@ export const TicketQueueTable: React.FC<TicketQueueTableProps> = ({
                           onClick={(e) => onClaimAndWork(e, ticket)}
                           className="px-2.5 py-1 rounded-lg bg-orange-500 hover:bg-orange-600 active:scale-95 text-white text-[11px] font-bold transition-all shadow-xs"
                         >
-                          Claim &amp; Work
+                          Claim Ticket
                         </button>
                       )}
                       {ticket.status === 'PROG' && (

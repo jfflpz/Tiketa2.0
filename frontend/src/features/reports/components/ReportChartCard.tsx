@@ -2,6 +2,7 @@ import React from 'react';
 import {
   BarChart,
   Bar,
+  Cell,
   XAxis,
   YAxis,
   Tooltip,
@@ -100,7 +101,7 @@ export const ReportChartCard: React.FC<ReportChartCardProps> = ({
               <Legend wrapperStyle={legendStyle} />
               <Bar dataKey="totalRequests" name="Total Requests" fill={BP_COLORS.SEQUENCE[0]} radius={[6, 6, 0, 0]} />
               <Bar dataKey="completed" name="Completed" fill={BP_COLORS.SEQUENCE[1]} radius={[6, 6, 0, 0]} />
-              <Bar dataKey="pending" name="Pending" fill={BP_COLORS.SEQUENCE[4]} radius={[6, 6, 0, 0]} />
+              <Bar dataKey="pending" name="Pending" fill={BP_COLORS.SEQUENCE[2]} radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         )}
@@ -142,7 +143,14 @@ export const ReportChartCard: React.FC<ReportChartCardProps> = ({
               <YAxis tick={tickStyle} />
               <Tooltip contentStyle={tooltipStyle} />
               <Legend wrapperStyle={legendStyle} />
-              <Bar dataKey="daysOpen" name="Days Open / Stagnant (>48h)" fill={BP_COLORS.SEQUENCE[1]} radius={[6, 6, 0, 0]} />
+              <Bar dataKey="daysOpen" name="Days Open / Stagnant (>48h)" fill={BP_COLORS.SEQUENCE[1]} radius={[6, 6, 0, 0]}>
+                {report4Data.map((_, index) => (
+                  <Cell
+                    key={`cell-web-aging-${index}`}
+                    fill={BP_COLORS.SEQUENCE[index % BP_COLORS.SEQUENCE.length]}
+                  />
+                ))}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         )}

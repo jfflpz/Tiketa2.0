@@ -2,6 +2,7 @@ import React from 'react';
 import {
   BarChart,
   Bar,
+  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -27,8 +28,10 @@ export interface ExportChartRendererProps {
   data: any[];
 }
 
-const COLOR_BLUE = BP_COLORS.SEQUENCE[0];   // #246FF0 (Vibrant Blue)
-const COLOR_ORANGE = BP_COLORS.SEQUENCE[1]; // #FF3F3D (Vivid Red-Orange)
+const COLOR_SEQUENCE = BP_COLORS.SEQUENCE;
+const COLOR_BLUE = BP_COLORS.SEQUENCE[0];   // #246FF0 (1. Vibrant Blue)
+const COLOR_ORANGE = BP_COLORS.SEQUENCE[1]; // #FF3F3D (2. Vivid Red-Orange)
+const COLOR_GREEN = BP_COLORS.SEQUENCE[2];  // #76BA1B (3. Bright Lime Green)
 const COLOR_TEXT = BP_COLORS.TEXT;          // #333333 (Dark Charcoal / Gray20)
 const COLOR_GRID = BP_COLORS.GRID;          // #E8E8E8
 const COLOR_BORDER = BP_COLORS.BORDER;      // #333333 (Mandatory Graph Border)
@@ -157,6 +160,9 @@ export const ExportChartRenderer: React.FC<ExportChartRendererProps> = ({ report
               </Bar>
               <Bar dataKey="completed" name="Completed Tickets" fill={COLOR_ORANGE} radius={[0, 0, 0, 0]} isAnimationActive={false}>
                 <LabelList dataKey="completed" position="top" fill={COLOR_TEXT} fontSize={18} />
+              </Bar>
+              <Bar dataKey="pending" name="Pending Tickets" fill={COLOR_GREEN} radius={[0, 0, 0, 0]} isAnimationActive={false}>
+                <LabelList dataKey="pending" position="top" fill={COLOR_TEXT} fontSize={18} />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
@@ -315,6 +321,13 @@ export const ExportChartRenderer: React.FC<ExportChartRendererProps> = ({ report
                           fill={series.color}
                           isAnimationActive={false}
                         >
+                          {panel.hours &&
+                            top10.map((_, index) => (
+                              <Cell
+                                key={`cell-hours-${index}`}
+                                fill={COLOR_SEQUENCE[index % COLOR_SEQUENCE.length]}
+                              />
+                            ))}
                           <LabelList
                             dataKey={series.key}
                             position="right"
@@ -444,6 +457,12 @@ export const ExportChartRenderer: React.FC<ExportChartRendererProps> = ({ report
                         fill={panel.color}
                         isAnimationActive={false}
                       >
+                        {top10.map((_, index) => (
+                          <Cell
+                            key={`cell-dept-${panel.dataKey}-${index}`}
+                            fill={COLOR_SEQUENCE[index % COLOR_SEQUENCE.length]}
+                          />
+                        ))}
                         <LabelList
                           dataKey={panel.dataKey}
                           position="right"
@@ -485,6 +504,12 @@ export const ExportChartRenderer: React.FC<ExportChartRendererProps> = ({ report
                 <YAxis tick={{ fill: COLOR_TEXT, fontSize: 18 }} stroke={COLOR_TEXT} label={{ value: 'Days Stagnant', angle: -90, position: 'insideLeft', fill: COLOR_TEXT, fontSize: 18 }} />
                 <Legend verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: 12, fontSize: '18px' }} />
                 <Bar dataKey="daysOpen" name="Dwell Time (>48h SLA Days)" fill={COLOR_ORANGE} radius={[0, 0, 0, 0]} isAnimationActive={false}>
+                  {top10.map((_, index) => (
+                    <Cell
+                      key={`cell-aging-${index}`}
+                      fill={COLOR_SEQUENCE[index % COLOR_SEQUENCE.length]}
+                    />
+                  ))}
                   <LabelList dataKey="daysOpen" position="top" fill={COLOR_TEXT} fontSize={18} />
                 </Bar>
               </BarChart>
@@ -544,6 +569,12 @@ export const ExportChartRenderer: React.FC<ExportChartRendererProps> = ({ report
                   <YAxis tick={{ fill: COLOR_TEXT, fontSize: 17 }} stroke={COLOR_TEXT} />
                   <Legend verticalAlign="bottom" align="center" wrapperStyle={{ fontSize: '17px' }} />
                   <Bar dataKey="incidentsLogged" name="Incidents Logged" fill={COLOR_BLUE} radius={[0, 0, 0, 0]} isAnimationActive={false}>
+                    {top10.map((_, index) => (
+                      <Cell
+                        key={`cell-vuln-inc-${index}`}
+                        fill={COLOR_SEQUENCE[index % COLOR_SEQUENCE.length]}
+                      />
+                    ))}
                     <LabelList dataKey="incidentsLogged" position="top" fill={COLOR_TEXT} fontSize={16} />
                   </Bar>
                 </BarChart>
@@ -560,6 +591,12 @@ export const ExportChartRenderer: React.FC<ExportChartRendererProps> = ({ report
                   <YAxis domain={[0, 10]} tick={{ fill: COLOR_TEXT, fontSize: 17 }} stroke={COLOR_TEXT} />
                   <Legend verticalAlign="bottom" align="center" wrapperStyle={{ fontSize: '17px' }} />
                   <Bar dataKey="severityRiskScore" name="Severity Risk (/10)" fill={COLOR_ORANGE} radius={[0, 0, 0, 0]} isAnimationActive={false}>
+                    {top10.map((_, index) => (
+                      <Cell
+                        key={`cell-vuln-sev-${index}`}
+                        fill={COLOR_SEQUENCE[index % COLOR_SEQUENCE.length]}
+                      />
+                    ))}
                     <LabelList dataKey="severityRiskScore" position="top" fill={COLOR_TEXT} fontSize={16} />
                   </Bar>
                 </BarChart>
@@ -616,6 +653,12 @@ export const ExportChartRenderer: React.FC<ExportChartRendererProps> = ({ report
                 <YAxis tick={{ fill: COLOR_TEXT, fontSize: 18 }} stroke={COLOR_TEXT} label={{ value: 'Repeat Tickets (Count - 1)', angle: -90, position: 'insideLeft', fill: COLOR_TEXT, fontSize: 18 }} />
                 <Legend verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: 12, fontSize: '18px' }} />
                 <Bar dataKey="repeatIncidents" name="Repeat Incidents (Count - 1)" fill={COLOR_ORANGE} radius={[0, 0, 0, 0]} isAnimationActive={false}>
+                  {top10.map((_, index) => (
+                    <Cell
+                      key={`cell-chronic-${index}`}
+                      fill={COLOR_SEQUENCE[index % COLOR_SEQUENCE.length]}
+                    />
+                  ))}
                   <LabelList dataKey="repeatIncidents" position="top" fill={COLOR_TEXT} fontSize={18} />
                 </Bar>
               </BarChart>

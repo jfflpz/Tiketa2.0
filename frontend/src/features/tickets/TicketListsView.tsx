@@ -57,18 +57,20 @@ export const TicketListsView: React.FC = () => {
   const progTickets = tickets.filter((t) => t.status === 'PROG');
   const reslTickets = tickets.filter((t) => t.status === 'RESL');
   const clsdTickets = tickets.filter((t) => t.status === 'CLSD');
-  const myActiveCount = progTickets.filter(
-    (t) => t.workedBy === currentTechName || !t.workedBy
-  ).length;
+
+  const isMyActiveTicket = (t: Ticket) =>
+    t.status === 'PROG' &&
+    (Boolean(t.workedById && currentUser?.id && t.workedById === currentUser.id) ||
+      t.workedBy === currentTechName ||
+      !t.workedBy);
+
+  const myActiveCount = progTickets.filter(isMyActiveTicket).length;
 
   // Filtered tickets for Table View
   const filteredTickets = tickets.filter((t) => {
     // 1. Tab filter
     if (queueFilter === 'OPEN' && t.status !== 'OPEN') return false;
-    if (
-      queueFilter === 'MY_ACTIVE' &&
-      !(t.status === 'PROG' && (t.workedBy === currentTechName || !t.workedBy))
-    ) {
+    if (queueFilter === 'MY_ACTIVE' && !isMyActiveTicket(t)) {
       return false;
     }
     if (queueFilter === 'RESL' && t.status !== 'RESL') return false;
@@ -110,12 +112,13 @@ export const TicketListsView: React.FC = () => {
     fetchQueueApi();
   }, [fetchQueueApi, fetchITMembers, fetchDictionaries, currentUser?.role]);
 
+  // @spec FR-QUEUE-02: Technician one-click ticket claiming opens drawer in place without workbench redirect
   const handleClaimAndWork = async (e: React.MouseEvent, ticket: Ticket) => {
     e.stopPropagation();
     const success = await claimTicketApi(ticket.id);
     if (success) {
       setActiveWorkbenchTicketId(ticket.id);
-      setActiveView('workbench');
+      setSelectedTicketId(ticket.id);
     }
   };
 
@@ -127,6 +130,9 @@ export const TicketListsView: React.FC = () => {
 
   const handleRequestAssign = (ticketId: string, techName: string, techId: string) => {
     const ticket = tickets.find((t) => t.id === ticketId);
+    if (!ticket || ticket.status !== 'OPEN' || ticket.workedById || ticket.assigned_tech_id || ticket.workedBy) {
+      return;
+    }
     setPendingAssignment({
       ticketId,
       ticketCode: ticket?.ticketCode || 'Ticket',

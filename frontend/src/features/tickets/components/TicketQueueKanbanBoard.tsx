@@ -129,25 +129,37 @@ export const TicketQueueKanbanBoard: React.FC<TicketQueueKanbanBoardProps> = ({
                 </div>
 
                 {isAdmin ? (
-                  <div className="pt-2 border-t border-zinc-200/70" onClick={(e) => e.stopPropagation()}>
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">
-                      Assign IT Specialist:
-                    </label>
-                    <select
-                      value=""
-                      onChange={(e) => {
-                        const tech = itTeamMembers.find((m) => m.id === e.target.value);
-                        if (tech) onAssignTicket(t.id, tech.name, tech.id);
-                      }}
-                      className="w-full px-2.5 py-1.5 bg-white border border-[#ECEEF2] rounded-lg text-xs font-semibold text-ink focus:border-orange-500 focus:outline-none"
+                  <div className="pt-2 border-t border-zinc-200/70 space-y-2" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      onClick={(e) => onClaimAndWork(e, t)}
+                      className="w-full py-2 px-3 rounded-lg bg-orange-500 hover:bg-orange-600 active:scale-95 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all"
                     >
-                      <option value="" disabled>Dispatch Tech...</option>
-                      {itTeamMembers.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.name}
-                        </option>
-                      ))}
-                    </select>
+                      <UserCheck className="w-3.5 h-3.5" />
+                      <span>Claim Ticket</span>
+                    </button>
+                    <div>
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">
+                        Or Assign IT Specialist:
+                      </label>
+                      <select
+                        value=""
+                        onChange={(e) => {
+                          const tech = itTeamMembers.find((m) => m.id === e.target.value);
+                          if (tech) onAssignTicket(t.id, tech.name, tech.id);
+                        }}
+                        className="w-full px-2.5 py-1.5 bg-white border border-[#ECEEF2] rounded-lg text-xs font-semibold text-ink focus:border-orange-500 focus:outline-none"
+                      >
+                        <option value="" disabled>Dispatch Tech...</option>
+                        {itTeamMembers
+                          .filter((m) => (m.systemRole === 'it' || m.systemRole === 'intern') && m.is_active !== false)
+                          .map((m) => (
+                            <option key={m.id} value={m.id}>
+                              {m.name}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
                   </div>
                 ) : (
                   <button
@@ -156,7 +168,7 @@ export const TicketQueueKanbanBoard: React.FC<TicketQueueKanbanBoardProps> = ({
                     className="w-full py-2 px-3 rounded-lg bg-orange-500 hover:bg-orange-600 active:scale-95 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all"
                   >
                     <UserCheck className="w-3.5 h-3.5" />
-                    <span>Claim &amp; Open Workbench</span>
+                    <span>Claim Ticket</span>
                   </button>
                 )}
               </div>
@@ -222,26 +234,6 @@ export const TicketQueueKanbanBoard: React.FC<TicketQueueKanbanBoardProps> = ({
                     {t.workedBy ?? 'Assigned'}
                   </span>
                 </div>
-
-                {isAdmin && (
-                  <div className="pt-1.5" onClick={(e) => e.stopPropagation()}>
-                    <select
-                      value={t.workedById ?? ''}
-                      onChange={(e) => {
-                        const tech = itTeamMembers.find((m) => m.id === e.target.value);
-                        if (tech) onAssignTicket(t.id, tech.name, tech.id);
-                      }}
-                      className="w-full px-2 py-1 bg-white border border-[#ECEEF2] rounded-lg text-[11px] font-medium text-zinc-700 focus:border-orange-500 focus:outline-none"
-                    >
-                      <option value="" disabled>Reassign Tech...</option>
-                      {itTeamMembers.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
 
                 {canEditTicket(currentUser, t) ? (
                   <div
