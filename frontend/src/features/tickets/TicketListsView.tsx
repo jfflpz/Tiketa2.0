@@ -108,10 +108,6 @@ export const TicketListsView: React.FC = () => {
       fetchITMembers();
     }
     fetchQueueApi();
-    const interval = setInterval(() => {
-      fetchQueueApi();
-    }, 15000);
-    return () => clearInterval(interval);
   }, [fetchQueueApi, fetchITMembers, fetchDictionaries, currentUser?.role]);
 
   const handleClaimAndWork = async (e: React.MouseEvent, ticket: Ticket) => {

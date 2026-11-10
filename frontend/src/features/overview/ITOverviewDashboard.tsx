@@ -60,11 +60,7 @@ export const ITOverviewDashboard: React.FC = () => {
     useEffect(() => {
     fetchQueueApi();
     fetchKPIsApi();
-    const interval = setInterval(() => {
-      fetchQueueApi();
-    }, 15000);
-    return () => clearInterval(interval);
-  }, []);
+  }, [fetchQueueApi, fetchKPIsApi]);
 
   // Personal KPI calculations for the logged-in IT Specialist (Strict UUID matching first)
   const myTickets = React.useMemo(() => {
