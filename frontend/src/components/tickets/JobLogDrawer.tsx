@@ -120,12 +120,6 @@ export const JobLogDrawer: React.FC = () => {
   useEffect(() => {
     if (!ticket) return;
     fetchTicketCommentsApi(ticket.id);
-
-    const interval = setInterval(() => {
-      fetchTicketCommentsApi(ticket.id);
-    }, 5000);
-
-    return () => clearInterval(interval);
   }, [ticket?.id, fetchTicketCommentsApi]);
 
   useEffect(() => {
