@@ -67,59 +67,57 @@ export const QuickIntakeModal = () => {
           </div>
         ) : (
           <form onSubmit={form.handleSubmit} className="flex-1 flex flex-col min-h-0 overflow-hidden">
-            <fieldset disabled={form.isSubmitting} className="flex-1 flex flex-col min-h-0 disabled:opacity-70">
-              <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                <label className="block text-xs font-semibold text-ink">
-                  Employee ID
-                  <input autoFocus required type="text" inputMode="numeric" maxLength={50} pattern="[0-9]{1,50}"
-                    value={form.employeeId} onChange={(event) => form.changeEmployeeId(event.target.value)}
-                    placeholder="e.g. 1042" aria-describedby="quick-intake-lookup" className={fieldClass + ' mt-1'} />
-                </label>
-                <div id="quick-intake-lookup" role="status" className="text-xs text-ink-subtle">
-                  {form.lookupMessage}
-                  {!form.employee && !form.lookupPending && /^[0-9]{1,50}$/.test(form.employeeId.trim()) && (
-                    <button type="button" onClick={form.retryLookup} className="ml-2 underline text-ink">Retry lookup</button>
-                  )}
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  {[
-                    ['Requestor', form.employee?.full_name],
-                    ['Company', form.employee?.company_name],
-                    ['Terminal Hub', form.employee?.location_name],
-                    ['Department', form.employee?.department_name],
-                  ].map(([label, value]) => (
-                    <label key={label} className="text-xs text-ink-subtle">{label}
-                      <input readOnly value={value ?? ''} placeholder="From employee profile" className={fieldClass + ' mt-1'} />
-                    </label>
-                  ))}
-                </div>
-                <label className="block text-xs font-semibold text-ink">Issue / Task Category
-                  <select value={form.taskCode} onChange={(event) => form.setTaskCode(event.target.value as TaskCategoryCode)} className={fieldClass + ' mt-1'}>
-                    {tasks.map((task) => <option key={task.code} value={task.code}>{task.name}</option>)}
-                  </select>
-                </label>
-                <label className="block text-xs font-semibold text-ink">Support Mode
-                  <select value={form.mode} onChange={(event) => form.setMode(event.target.value === 'REM' ? 'REM' : 'SITE')} className={fieldClass + ' mt-1'}>
-                    <option value="REM">Remote</option><option value="SITE">On-Site</option>
-                  </select>
-                </label>
-                <label className="block text-xs font-semibold text-ink">Technical Symptoms &amp; Details
-                  <textarea required minLength={10} maxLength={20000} rows={3} value={form.description}
-                    onChange={(event) => form.setDescription(event.target.value)} aria-describedby="quick-intake-details-help"
-                    placeholder="Describe the issue, booth number, or error message…" className={fieldClass + ' mt-1'} />
-                </label>
-                <p id="quick-intake-details-help" className="text-xs text-ink-subtle">10–20,000 characters. Saved in the ticket description.</p>
-                {form.error && <p role="alert" className="text-sm text-red-600">{form.error}</p>}
+            <div className={`flex-1 overflow-y-auto p-6 space-y-4 min-h-0 ${form.isSubmitting ? 'opacity-70 pointer-events-none' : ''}`}>
+              <label className="block text-xs font-semibold text-ink">
+                Employee ID
+                <input autoFocus required type="text" inputMode="numeric" maxLength={50} pattern="[0-9]{1,50}"
+                  value={form.employeeId} onChange={(event) => form.changeEmployeeId(event.target.value)}
+                  placeholder="e.g. 1042" aria-describedby="quick-intake-lookup" className={fieldClass + ' mt-1'} />
+              </label>
+              <div id="quick-intake-lookup" role="status" className="text-xs text-ink-subtle">
+                {form.lookupMessage}
+                {!form.employee && !form.lookupPending && /^[0-9]{1,50}$/.test(form.employeeId.trim()) && (
+                  <button type="button" onClick={form.retryLookup} className="ml-2 underline text-ink">Retry lookup</button>
+                )}
               </div>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  ['Requestor', form.employee?.full_name],
+                  ['Company', form.employee?.company_name],
+                  ['Terminal Hub', form.employee?.location_name],
+                  ['Department', form.employee?.department_name],
+                ].map(([label, value]) => (
+                  <label key={label} className="text-xs text-ink-subtle">{label}
+                    <input readOnly value={value ?? ''} placeholder="From employee profile" className={fieldClass + ' mt-1'} />
+                  </label>
+                ))}
+              </div>
+              <label className="block text-xs font-semibold text-ink">Issue / Task Category
+                <select value={form.taskCode} onChange={(event) => form.setTaskCode(event.target.value as TaskCategoryCode)} className={fieldClass + ' mt-1'}>
+                  {tasks.map((task) => <option key={task.code} value={task.code}>{task.name}</option>)}
+                </select>
+              </label>
+              <label className="block text-xs font-semibold text-ink">Support Mode
+                <select value={form.mode} onChange={(event) => form.setMode(event.target.value === 'REM' ? 'REM' : 'SITE')} className={fieldClass + ' mt-1'}>
+                  <option value="REM">Remote</option><option value="SITE">On-Site</option>
+                </select>
+              </label>
+              <label className="block text-xs font-semibold text-ink">Technical Symptoms &amp; Details
+                <textarea required minLength={10} maxLength={20000} rows={3} value={form.description}
+                  onChange={(event) => form.setDescription(event.target.value)} aria-describedby="quick-intake-details-help"
+                  placeholder="Describe the issue, booth number, or error message…" className={fieldClass + ' mt-1'} />
+              </label>
+              <p id="quick-intake-details-help" className="text-xs text-ink-subtle">10–20,000 characters. Saved in the ticket description.</p>
+              {form.error && <p role="alert" className="text-sm text-red-600">{form.error}</p>}
+            </div>
 
-              <div className="px-6 py-4 border-t border-line bg-canvas flex justify-end gap-2 shrink-0">
-                <button type="button" onClick={form.close} className="px-4 py-2 rounded-xl border border-line text-sm text-ink">Cancel</button>
-                <button type="submit" disabled={!form.employee || form.lookupPending || form.isSubmitting}
-                  className="px-4 py-2 rounded-xl bg-zinc-900 text-white text-sm disabled:opacity-50">
-                  {form.isSubmitting ? 'Adding to Queue…' : 'Add Ticket to Queue'}
-                </button>
-              </div>
-            </fieldset>
+            <div className="px-6 py-4 border-t border-line bg-canvas flex justify-end gap-2 shrink-0">
+              <button type="button" onClick={form.close} disabled={form.isSubmitting} className="px-4 py-2 rounded-xl border border-line text-sm text-ink hover:bg-surface disabled:opacity-50">Cancel</button>
+              <button type="submit" disabled={!form.employee || form.lookupPending || form.isSubmitting}
+                className="px-4 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white text-sm font-semibold disabled:opacity-50">
+                {form.isSubmitting ? 'Adding to Queue…' : 'Add Ticket to Queue'}
+              </button>
+            </div>
           </form>
         )}
       </section>

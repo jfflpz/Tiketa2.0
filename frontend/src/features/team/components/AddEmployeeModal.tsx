@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Fingerprint, X, AlertCircle, Loader2, Building2, Briefcase } from 'lucide-react';
 import { useAppStore } from '../../../store/useAppStore';
 import type { EmployeeCreateInput } from '../../../api/client';
@@ -131,7 +132,10 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
     }
   };
 
-  return (
+  if (!isOpen) return null;
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
       <div className="fixed inset-0" onClick={isSubmitting ? undefined : onClose} aria-hidden="true" />
       <div className="relative z-10 w-full max-w-md bg-white border border-[#ECEEF2] rounded-3xl shadow-2xl overflow-hidden p-6 space-y-4 max-h-[90vh] overflow-y-auto">
@@ -303,6 +307,7 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

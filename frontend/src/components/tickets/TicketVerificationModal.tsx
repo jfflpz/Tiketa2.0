@@ -1,6 +1,7 @@
 // @spec FR-VERIF-02: Interactive Closure Verification & Validation Modal
 // @spec SR-07: Digital Closure Verification Sign-Off Loop
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   ShieldCheck,
@@ -21,15 +22,47 @@ export const TicketVerificationModal: React.FC = () => {
     (state) => state.closeVerificationModal
   );
   const tickets = useAppStore((state) => state.tickets);
+  const employeeTickets = useAppStore((state) => state.employeeTickets);
   const verifiedTicket = useAppStore((state) => state.verifiedTicket);
+  const inspectedTicket = useAppStore((state) => state.inspectedTicket);
+  const workbenchTicket = useAppStore((state) => state.workbenchTicket);
   const currentUser = useAppStore((state) => state.currentUser);
   const confirmVerifiedClosure = useAppStore((state) => state.confirmVerifiedClosure);
   const reopenVerifiedTicket = useAppStore((state) => state.reopenVerifiedTicket);
 
   const ticket =
-    (verifiedTicket && verifiedTicket.id === verificationModalTicketId
+    (verifiedTicket && (verifiedTicket.id === verificationModalTicketId || verifiedTicket.ticketCode === verificationModalTicketId)
       ? verifiedTicket
-      : tickets.find((t) => t.id === verificationModalTicketId)) ?? null;
+      : null) ||
+    (inspectedTicket && (inspectedTicket.id === verificationModalTicketId || inspectedTicket.ticketCode === verificationModalTicketId)
+      ? inspectedTicket
+      : null) ||
+    (workbenchTicket && (workbenchTicket.id === verificationModalTicketId || workbenchTicket.ticketCode === verificationModalTicketId)
+      ? workbenchTicket
+      : null) ||
+    employeeTickets.find(
+      (t) => t.id === verificationModalTicketId || t.ticketCode === verificationModalTicketId
+    ) ||
+    tickets.find(
+      (t) => t.id === verificationModalTicketId || t.ticketCode === verificationModalTicketId
+    ) ||
+    null;
+
+  const verifyToken = useAppStore((state) => state.verifyToken);
+
+  const tokenFromClosureUrl = React.useMemo(() => {
+    if (ticket?.closureUrl) {
+      try {
+        const u = new URL(ticket.closureUrl);
+        return u.searchParams.get('token');
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }, [ticket?.closureUrl]);
+
+  const autoToken = verifyToken || tokenFromClosureUrl || '';
 
   // Local state for verification checks and feedback (started unchecked by default)
   const [equipmentTested, setEquipmentTested] = useState(false);
@@ -67,6 +100,7 @@ export const TicketVerificationModal: React.FC = () => {
   }, [verificationModalTicketId, isSubmitting, closeVerificationModal]);
 
   if (!verificationModalTicketId || !ticket) return null;
+  if (typeof document === 'undefined') return null;
 
   const isStaff = Boolean(currentUser);
   const activeTechName = ticket.workedBy || 'Assigned Technician';
@@ -85,7 +119,8 @@ export const TicketVerificationModal: React.FC = () => {
     setIsSubmitting(true);
     setErrorMsg(null);
     try {
-      const success = await confirmVerifiedClosure(ticket.id, remarks.trim() || undefined);
+      const effectiveToken = autoToken || undefined;
+      const success = await confirmVerifiedClosure(ticket.id, remarks.trim() || undefined, effectiveToken);
       if (success) {
         closeVerificationModal();
       } else {
@@ -116,7 +151,7 @@ export const TicketVerificationModal: React.FC = () => {
     }
   };
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto animate-fade-in"
       role="dialog"
@@ -249,6 +284,7 @@ export const TicketVerificationModal: React.FC = () => {
               </div>
             </div>
           )}
+
 
           {/* Optional Resolution Remarks */}
           {!showReopenPrompt && (
@@ -387,6 +423,7 @@ export const TicketVerificationModal: React.FC = () => {
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

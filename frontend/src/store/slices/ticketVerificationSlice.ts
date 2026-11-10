@@ -37,7 +37,7 @@ export interface TicketVerificationSlice {
   initiateVerificationFlow: (code: string, token?: string | null) => Promise<void>;
   verifyEmployeeIdentity: (employeeId: string, email?: string) => Promise<boolean>;
   fetchMyEmployeeTickets: () => Promise<void>;
-  confirmVerifiedClosure: (ticketId: string, remarks?: string) => Promise<boolean>;
+  confirmVerifiedClosure: (ticketId: string, remarks?: string, token?: string) => Promise<boolean>;
   reopenVerifiedTicket: (ticketId: string, reason: string) => Promise<boolean>;
   clearVerificationContext: () => void;
 }
@@ -289,8 +289,8 @@ export const createTicketVerificationSlice: AppSliceCreator<TicketVerificationSl
       }
     },
 
-    confirmVerifiedClosure: async (ticketId: string, remarks?: string) => {
-      const token = get().verifyToken || undefined;
+    confirmVerifiedClosure: async (ticketId: string, remarks?: string, explicitToken?: string) => {
+      const token = explicitToken?.trim() || get().verifyToken || undefined;
       try {
         const res = await ticketsApi.confirmClosure(ticketId, { token, remarks });
         const mapped = mapStaffTicket(res, get().serverDictionaries);

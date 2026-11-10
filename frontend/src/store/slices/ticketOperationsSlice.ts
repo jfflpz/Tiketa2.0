@@ -522,6 +522,11 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
     const category = TASK_CATEGORIES.find((c) => c.code === taskCode);
     const target = findTargetTicket(get(), ticketId);
     if (!target) return;
+    const sessionUser = get().currentUser;
+    if (target && (target.assigned_tech_id || target.workedById) && !canEditTicket(sessionUser, target)) {
+      get().addToast('Permission Denied', `Ticket is assigned to ${target.workedBy || 'another technician'}. Only the assigned owner may update the diagnosed task.`, 'warning');
+      return;
+    }
     const taskName = category?.name ?? target.task;
     set((state) =>
       updateTicketInState(state, ticketId, (t) => ({

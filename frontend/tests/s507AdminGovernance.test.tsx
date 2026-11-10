@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 // @spec S5-12 & S5-13: Admin Governance Security Test Suite (Password Reset & Username Cooldown)
-import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import { EditITStaffModal } from '../src/features/team/components/EditITStaffModal';

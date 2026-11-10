@@ -84,6 +84,25 @@ export const TicketChecklistSection: React.FC<TicketChecklistSectionProps> = ({
     }
   }, [ticketId, canAccessChecklist, fetchTicketChecklist]);
 
+  // Handle Escape key dismissing or stepping back
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isSubmittingApply) {
+        if (confirmReplaceOpen) {
+          setConfirmReplaceOpen(false);
+          setIsApplyModalOpen(true);
+        } else if (isApplyModalOpen) {
+          setIsApplyModalOpen(false);
+          setSelectedGuideId(null);
+        }
+      }
+    };
+    if (isApplyModalOpen || confirmReplaceOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [isApplyModalOpen, confirmReplaceOpen, isSubmittingApply]);
+
   if (!canAccessChecklist) {
     return (
       <div className="bg-canvas border border-line rounded-2xl p-4 space-y-2">
@@ -169,25 +188,6 @@ export const TicketChecklistSection: React.FC<TicketChecklistSectionProps> = ({
       fetchSavedRepairNotes();
     }
   };
-
-  // Handle Escape key dismissing or stepping back
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !isSubmittingApply) {
-        if (confirmReplaceOpen) {
-          setConfirmReplaceOpen(false);
-          setIsApplyModalOpen(true);
-        } else if (isApplyModalOpen) {
-          setIsApplyModalOpen(false);
-          setSelectedGuideId(null);
-        }
-      }
-    };
-    if (isApplyModalOpen || confirmReplaceOpen) {
-      window.addEventListener('keydown', handleKeyDown);
-      return () => window.removeEventListener('keydown', handleKeyDown);
-    }
-  }, [isApplyModalOpen, confirmReplaceOpen, isSubmittingApply]);
 
   // Perform Apply Guide - Single active dialog: close picker before opening confirm
   const handleSelectAndApplyGuide = async (guideId: string) => {
@@ -357,7 +357,18 @@ export const TicketChecklistSection: React.FC<TicketChecklistSectionProps> = ({
             return (
               <div
                 key={step.id}
+                onClick={(e) => {
+                  if (
+                    isEditable &&
+                    !isEditing &&
+                    !(e.target as HTMLElement).closest('button, input, textarea, select')
+                  ) {
+                    handleToggle(step.id, step.completed);
+                  }
+                }}
                 className={`group flex items-start gap-2.5 p-2.5 rounded-xl border transition-all ${
+                  isEditable && !isEditing ? 'cursor-pointer hover:border-orange-300' : ''
+                } ${
                   step.completed
                     ? 'bg-emerald-50/40 border-emerald-200/60'
                     : 'bg-surface border-line hover:border-zinc-300'
