@@ -753,6 +753,11 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
     const target = findTargetTicket(get(), ticketId);
     if (!target) return false;
 
+    if (target.status !== 'OPEN' || target.assigned_tech_id || target.workedById || target.workedBy) {
+      get().addToast('Assignment Blocked', 'Tickets can only be assigned before they are claimed.', 'warning');
+      return false;
+    }
+
     const prevWorkedBy = target.workedBy;
     const prevWorkedById = target.workedById;
     const prevStatus = target.status;

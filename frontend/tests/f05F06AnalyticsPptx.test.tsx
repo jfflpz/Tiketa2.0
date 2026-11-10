@@ -115,7 +115,7 @@ describe('F-05 & F-06 Analytics & PPTX Export Suite', () => {
       expect(dashes.length).toBeGreaterThanOrEqual(3);
 
       // Keyboard navigation via Enter key
-      const card1 = screen.getByRole('button', { name: /view report 1/i });
+      const card1 = screen.getByRole('button', { name: /view.*monthly sla/i });
       fireEvent.keyDown(card1, { key: 'Enter', code: 'Enter' });
       expect(onSelectReport).toHaveBeenCalledWith(1);
 

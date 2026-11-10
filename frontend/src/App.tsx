@@ -9,7 +9,6 @@ const RepairNotesLibraryView = lazy(() => import('./features/notes/RepairNotesLi
 const JobLogSheetView = lazy(() => import('./features/joblogs/JobLogSheetView').then(m => ({ default: m.JobLogSheetView })));
 const TerminalHubsView = lazy(() => import('./features/terminals/TerminalHubsView').then(m => ({ default: m.TerminalHubsView })));
 const TeamWorkbenchView = lazy(() => import('./features/workbench/TeamWorkbenchView').then(m => ({ default: m.TeamWorkbenchView })));
-const ExecutiveAnalyticsView = lazy(() => import('./features/analytics/ExecutiveAnalyticsView').then(m => ({ default: m.ExecutiveAnalyticsView })));
 const StandardizedReportsView = lazy(() => import('./features/reports/StandardizedReportsView').then(m => ({ default: m.StandardizedReportsView })));
 import { EmployeeTicketScreen } from './features/kiosk/EmployeeTicketScreen';
 import { StaffLoginModal } from './features/auth/StaffLoginModal';
@@ -176,8 +175,9 @@ export default function App() {
               {resolvedView === 'notes' && <RepairNotesLibraryView />}
               {resolvedView === 'joblogs' && <JobLogSheetView />}
               {resolvedView === 'terminals' && <TerminalHubsView />}
-              {resolvedView === 'analytics' && <ExecutiveAnalyticsView />}
-              {resolvedView === 'reports' && <StandardizedReportsView />}
+              {(resolvedView === 'analytics' || resolvedView === 'reports') && (
+                <StandardizedReportsView />
+              )}
               {resolvedView === 'team' && <TeamWorkbenchView />}
             </Suspense>
           </div>

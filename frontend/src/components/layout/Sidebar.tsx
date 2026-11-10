@@ -7,7 +7,6 @@ import {
   BookOpen,
   FileSpreadsheet,
   Building2,
-  LineChart,
   Users,
   BarChart3,
 } from 'lucide-react';
@@ -32,7 +31,7 @@ export const Sidebar: React.FC = () => {
 
   const handleBrandClick = () => {
     if (isAdmin || isSupervisor) {
-      setActiveView('analytics');
+      setActiveView('reports');
     } else if (isIntern) {
       setActiveView('workbench');
     } else {
@@ -61,7 +60,7 @@ export const Sidebar: React.FC = () => {
     iconColor: string,
     badge?: number | string
   ) => {
-    const isActive = activeView === view;
+    const isActive = activeView === view || (view === 'reports' && activeView === 'analytics');
     return (
       <button
         type="button"
@@ -172,7 +171,7 @@ export const Sidebar: React.FC = () => {
                 </div>
               )}
               {renderNavButton('overview', 'Personal KPIs', Home, 'text-orange-400')}
-              {renderNavButton('joblogs', '15-Col Job Logs', FileSpreadsheet, 'text-emerald-400')}
+              {renderNavButton('joblogs', 'Job Logs', FileSpreadsheet, 'text-emerald-400')}
             </div>
 
             {/* CATEGORY 2: REPAIR OPERATIONS */}
@@ -184,7 +183,7 @@ export const Sidebar: React.FC = () => {
               )}
               {renderNavButton(
                 'tickets',
-                'Active Ticket Lists',
+                'Active Tickets',
                 Inbox,
                 'text-sky-400',
                 activeTicketsCount
@@ -207,19 +206,18 @@ export const Sidebar: React.FC = () => {
 
         {/* ============================================================
             TIER 3: SUPERVISOR NAVIGATION (role === 'supervisor')
-            Executive analytics, 8 standard reports, IT team & ticket logs
+            Standard reports, IT team & ticket logs
            ============================================================ */}
         {isSupervisor && (
           <>
-            {/* CATEGORY 1: OPERATIONAL ANALYTICS */}
+            {/* CATEGORY 1: OPERATIONAL REPORTS */}
             <div className="space-y-1.5">
               {!sidebarCollapsed && (
                 <div className="px-2.5 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-                  OPERATIONAL ANALYTICS
+                  OPERATIONAL REPORTS
                 </div>
               )}
-              {renderNavButton('analytics', 'Executive Analytics', LineChart, 'text-orange-400')}
-              {renderNavButton('reports', '8 Standard Reports', BarChart3, 'text-amber-400')}
+              {renderNavButton('reports', 'Standard Reports', BarChart3, 'text-amber-400')}
             </div>
 
             {/* CATEGORY 2: GOVERNANCE & AUDIT */}
@@ -231,7 +229,7 @@ export const Sidebar: React.FC = () => {
               )}
               {renderNavButton('terminals', 'Terminal Hubs', Building2, 'text-teal-400')}
               {renderNavButton('team', 'IT Team & Accounts', Users, 'text-emerald-400')}
-              {renderNavButton('joblogs', '15-Col Master Sheet', FileSpreadsheet, 'text-emerald-400')}
+              {renderNavButton('joblogs', 'Job Logs', FileSpreadsheet, 'text-emerald-400')}
             </div>
           </>
         )}
@@ -252,16 +250,15 @@ export const Sidebar: React.FC = () => {
               {renderNavButton('overview', 'Personal KPIs', Home, 'text-orange-400')}
             </div>
 
-            {/* ADMIN CATEGORY 2: EXECUTIVE ANALYTICS */}
+            {/* ADMIN CATEGORY 2: EXECUTIVE REPORTS */}
             <div className="space-y-1.5">
               {!sidebarCollapsed && (
                 <div className="px-2.5 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-                  EXECUTIVE ANALYTICS
+                  EXECUTIVE REPORTS
                 </div>
               )}
-              {renderNavButton('analytics', 'Executive Analytics', LineChart, 'text-orange-400')}
-              {renderNavButton('reports', '8 Standard Reports', BarChart3, 'text-amber-400')}
-              {renderNavButton('joblogs', '15-Col Master Sheet', FileSpreadsheet, 'text-emerald-400')}
+              {renderNavButton('reports', 'Standard Reports', BarChart3, 'text-amber-400')}
+              {renderNavButton('joblogs', 'Job Logs', FileSpreadsheet, 'text-emerald-400')}
             </div>
 
             {/* ADMIN CATEGORY 3: OPERATIONS & TICKETS */}
@@ -273,13 +270,13 @@ export const Sidebar: React.FC = () => {
               )}
               {renderNavButton(
                 'tickets',
-                'Active Ticket Lists',
+                'Active Tickets',
                 Inbox,
                 'text-sky-400',
                 activeTicketsCount
               )}
               {renderNavButton('workbench', 'My Active Workbench', Wrench, 'text-orange-400')}
-              {renderNavButton('terminals', 'Terminal Hubs Monitor', Building2, 'text-teal-400')}
+              {renderNavButton('terminals', 'Terminal Hubs', Building2, 'text-teal-400')}
             </div>
 
             {/* ADMIN CATEGORY 4: STAFF GOVERNANCE */}

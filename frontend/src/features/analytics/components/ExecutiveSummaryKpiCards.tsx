@@ -20,15 +20,15 @@ export const ExecutiveSummaryKpiCards: React.FC<ExecutiveSummaryKpiCardsProps> =
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {/* Card 1: Report 1 - Monthly SLA Compliance */}
+      {/* Card 1: Monthly SLA Compliance */}
       <div
         role="button"
         tabIndex={0}
         onClick={() => onSelectReport(1)}
         onKeyDown={(e) => handleKeyDown(e, 1)}
-        aria-label="View Report 1: Monthly SLA & Resolution Summary"
+        aria-label="View Monthly SLA & Resolution Summary"
         className="bg-surface border border-line rounded-2xl p-4 shadow-card hover:border-orange-500/50 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between focus:outline-none focus:ring-2 focus:ring-orange-500"
-        title="Click to view Report 1: Monthly SLA & Volume Summary"
+        title="Click to view Monthly SLA & Volume Summary"
       >
         <div>
           <div className="flex items-center justify-between mb-3">
@@ -62,7 +62,7 @@ export const ExecutiveSummaryKpiCards: React.FC<ExecutiveSummaryKpiCardsProps> =
         </div>
         <div className="mt-3 pt-2.5 border-t border-line/60 flex items-center justify-between">
           <span className="text-[11px] font-semibold text-zinc-500">
-            Report 1: Monthly SLA
+            Monthly SLA
           </span>
           <span className="text-[11px] font-bold text-orange-600 group-hover:translate-x-0.5 transition-transform">
             View Report &rarr;
@@ -70,15 +70,15 @@ export const ExecutiveSummaryKpiCards: React.FC<ExecutiveSummaryKpiCardsProps> =
         </div>
       </div>
 
-      {/* Card 2: Report 2 & 5 - Mean Active Labor */}
+      {/* Card 2: Mean Active Labor */}
       <div
         role="button"
         tabIndex={0}
         onClick={() => onSelectReport(2)}
         onKeyDown={(e) => handleKeyDown(e, 2)}
-        aria-label="View Report 2: Staff Labor & Bench Utilization"
+        aria-label="View Staff Labor & Bench Utilization"
         className="bg-surface border border-line rounded-2xl p-4 shadow-card hover:border-orange-500/50 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between focus:outline-none focus:ring-2 focus:ring-orange-500"
-        title="Click to view Report 2 & 5: Staff Labor & Transit Disaggregation"
+        title="Click to view Staff Labor & Transit Disaggregation"
       >
         <div>
           <div className="flex items-center justify-between mb-3">
@@ -108,7 +108,7 @@ export const ExecutiveSummaryKpiCards: React.FC<ExecutiveSummaryKpiCardsProps> =
         </div>
         <div className="mt-3 pt-2.5 border-t border-line/60 flex items-center justify-between">
           <span className="text-[11px] font-semibold text-zinc-500">
-            Report 2: Staff Productivity
+            Staff Productivity
           </span>
           <span className="text-[11px] font-bold text-orange-600 group-hover:translate-x-0.5 transition-transform">
             View Report &rarr;
@@ -116,15 +116,15 @@ export const ExecutiveSummaryKpiCards: React.FC<ExecutiveSummaryKpiCardsProps> =
         </div>
       </div>
 
-      {/* Card 3: Report 4 - Critical Aging Backlog */}
+      {/* Card 3: Critical Aging Backlog */}
       <div
         role="button"
         tabIndex={0}
         onClick={() => onSelectReport(4)}
         onKeyDown={(e) => handleKeyDown(e, 4)}
-        aria-label="View Report 4: Critical Aging Backlog Exception Report"
+        aria-label="View Critical Aging Backlog Exception Report"
         className="bg-surface border border-line rounded-2xl p-4 shadow-card hover:border-orange-500/50 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between focus:outline-none focus:ring-2 focus:ring-orange-500"
-        title="Click to view Report 4: Critical Aging Backlog Exception Report"
+        title="Click to view Critical Aging Backlog Exception Report"
       >
         <div>
           <div className="flex items-center justify-between mb-3">
@@ -154,7 +154,7 @@ export const ExecutiveSummaryKpiCards: React.FC<ExecutiveSummaryKpiCardsProps> =
         </div>
         <div className="mt-3 pt-2.5 border-t border-line/60 flex items-center justify-between">
           <span className="text-[11px] font-semibold text-zinc-500">
-            Report 4: Aging Exceptions
+            Aging Exceptions
           </span>
           <span className="text-[11px] font-bold text-orange-600 group-hover:translate-x-0.5 transition-transform">
             View Report &rarr;
@@ -168,9 +168,9 @@ export const ExecutiveSummaryKpiCards: React.FC<ExecutiveSummaryKpiCardsProps> =
         tabIndex={0}
         onClick={() => onSelectReport(7)}
         onKeyDown={(e) => handleKeyDown(e, 7)}
-        aria-label="View Report 7: Fleet PMS Compliance Audit"
+        aria-label="View Fleet PMS Compliance Audit"
         className="bg-surface border border-line rounded-2xl p-4 shadow-card hover:border-orange-500/50 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between focus:outline-none focus:ring-2 focus:ring-orange-500"
-        title="Click to view Report 7: Fleet PMS Compliance Audit"
+        title="Click to view Fleet PMS Compliance Audit"
       >
         <div>
           <div className="flex items-center justify-between mb-3">
@@ -200,7 +200,7 @@ export const ExecutiveSummaryKpiCards: React.FC<ExecutiveSummaryKpiCardsProps> =
         </div>
         <div className="mt-3 pt-2.5 border-t border-line/60 flex items-center justify-between">
           <span className="text-[11px] font-semibold text-zinc-500">
-            Report 7: PMS Compliance
+            PMS Compliance
           </span>
           <span className="text-[11px] font-bold text-orange-600 group-hover:translate-x-0.5 transition-transform">
             View Report &rarr;
