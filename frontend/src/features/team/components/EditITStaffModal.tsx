@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { UserCheck, X, Eye, EyeOff, AlertCircle, ShieldCheck, Wrench, Shield, Lock, Clock } from 'lucide-react';
 import type { TeamMember, TeamRole } from '../../../types/team';
 import type { StaffRole } from '../../../types';
@@ -164,6 +165,21 @@ export const EditITStaffModal: React.FC<EditITStaffModalProps> = ({
       }
     }
 
+    // B-03 Governed Actions Validation
+    if (systemRole !== member.systemRole) {
+      setFormError(
+        'Direct role changes are disabled (B-03 Governance). Role tier modifications must be submitted via the Pending Approvals Queue.'
+      );
+      return;
+    }
+
+    if (!isActive && member.is_active) {
+      setFormError(
+        'Direct account deactivation is disabled (B-03 Governance). Deactivation requests must be submitted via the Pending Approvals Queue.'
+      );
+      return;
+    }
+
     const selectedLoc = availableLocations.find((l) => l.code === locationCode);
     const primaryLocationLabel = selectedLoc
       ? `${selectedLoc.name} (${selectedLoc.code})`
@@ -192,13 +208,19 @@ export const EditITStaffModal: React.FC<EditITStaffModalProps> = ({
         setPassword('');
         setConfirmPassword('');
         onClose();
+      } else {
+        const storeError = useAppStore.getState().teamError;
+        setFormError(storeError || 'Failed to update credentials. Please check your admin password.');
       }
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  return (
+  if (!isOpen || !member) return null;
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
       role="dialog"
@@ -351,6 +373,14 @@ export const EditITStaffModal: React.FC<EditITStaffModalProps> = ({
                   );
                 })}
               </div>
+              {systemRole !== member.systemRole && (
+                <div className="mt-2 p-2.5 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2 text-[11px] text-amber-800 animate-fade-in">
+                  <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                  <span>
+                    <strong>Governed Action (B-03):</strong> Direct RBAC tier changes require an account proposal submitted to the <strong>Pending Approvals Queue</strong> for Supervisor confirmation.
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Operational Title & Primary Terminal Hub */}
@@ -427,6 +457,14 @@ export const EditITStaffModal: React.FC<EditITStaffModalProps> = ({
                 <div className="w-10 h-6 bg-zinc-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600" />
               </label>
             </div>
+            {!isActive && member.is_active && (
+              <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2 text-[11px] text-amber-800 animate-fade-in">
+                <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                <span>
+                  <strong>Governed Action (B-03):</strong> Direct account deactivation is disabled. Please submit a deactivation proposal via the <strong>Pending Approvals Queue</strong>.
+                </span>
+              </div>
+            )}
 
             {/* Administrative Password Reset (S5-12: Requires Current Admin Password + Dual New Passwords) */}
             <div className="p-3.5 rounded-2xl bg-orange-50/50 border border-orange-200/60 space-y-3">
@@ -532,6 +570,7 @@ export const EditITStaffModal: React.FC<EditITStaffModalProps> = ({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

@@ -1,4 +1,5 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { UserPlus, X, Eye, EyeOff, AlertCircle, Loader2, ShieldCheck, Wrench, GraduationCap } from 'lucide-react';
 import type { TeamRole } from '../../../types/team';
 import { LOCATIONS } from '../../../constants/domain';
@@ -110,7 +111,10 @@ export const CreateITStaffModal: React.FC<CreateITStaffModalProps> = ({
     }
   };
 
-  return (
+  if (!isOpen) return null;
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
       <div className="fixed inset-0" onClick={isSubmitting ? undefined : onClose} aria-hidden="true" />
       <div className="relative z-10 w-full max-w-lg bg-white border border-[#ECEEF2] rounded-3xl shadow-2xl overflow-hidden p-6 space-y-4 max-h-[90vh] overflow-y-auto">
@@ -360,6 +364,7 @@ export const CreateITStaffModal: React.FC<CreateITStaffModalProps> = ({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

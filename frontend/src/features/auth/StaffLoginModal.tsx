@@ -37,7 +37,12 @@ export const StaffLoginModal: React.FC = () => {
         const stored = localStorage.getItem('tiketa_remembered_profile');
         if (stored) {
           const parsed = JSON.parse(stored);
-          if (parsed?.username && parsed?.name && parsed?.role) {
+          if (
+            parsed?.username &&
+            parsed?.name &&
+            parsed?.role &&
+            (!loginModalRole || parsed.role === loginModalRole)
+          ) {
             setRememberedProfile(parsed);
             setUsername(parsed.username);
             setPassword('');
@@ -48,7 +53,7 @@ export const StaffLoginModal: React.FC = () => {
         // Ignore localStorage read errors
       }
       setRememberedProfile(null);
-      setUsername('');
+      setUsername(loginModalRole === 'admin' ? 'admin' : '');
       setPassword('');
     }
   }, [loginModalRole]);

@@ -1,5 +1,6 @@
 // @spec UI-TEAM-02: Employee Profile Governance & Soft-Deactivation
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Fingerprint, X, AlertCircle, Loader2, Building2, Briefcase, CheckCircle2, MapPin } from 'lucide-react';
 import type { EmployeeProfile } from '../../../types';
 import type { AdminEmployeeItem } from '../../../api/client';
@@ -156,7 +157,10 @@ export const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
     }
   };
 
-  return (
+  if (!isOpen || !employee) return null;
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto animate-fade-in"
       role="dialog"
@@ -371,6 +375,7 @@ export const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

@@ -46,6 +46,8 @@ export const isPublicEndpoint = (url?: string): boolean => {
         url.startsWith('/tickets/track') ||
         url.startsWith('/tickets/my-tickets') ||
         url.startsWith('/tickets/public') ||
+        url.includes('/confirm-closure') ||
+        url.includes('/reopen') ||
         url.startsWith('/employees/lookup') ||
         url.startsWith('/employees/match') ||
         url.includes('/public')
@@ -64,6 +66,10 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig & { isPub
     }
     if (config.headers && inMemoryMatchToken && !config.headers['X-Match-Token']) {
         config.headers['X-Match-Token'] = inMemoryMatchToken;
+    }
+    const sessionId = getOrCreateKioskSessionId();
+    if (sessionId && config.headers && !config.headers['X-Kiosk-Session-ID']) {
+        config.headers['X-Kiosk-Session-ID'] = sessionId;
     }
     return config;
 });
@@ -742,6 +748,24 @@ export const adminApi = {
     },
     updateUser: async (userId: string, payload: UserUpdateInput): Promise<BackendUser> => {
         const res = await apiClient.patch<BackendUser>(`/admin/users/${userId}`, payload);
+        return res.data;
+    },
+    resetUserPassword: async (
+        userId: string,
+        payload: {
+            admin_current_password: string;
+            new_password: string;
+            confirm_password: string;
+        }
+    ): Promise<{ message: string }> => {
+        const res = await apiClient.post<{ message: string }>(`/admin/users/${userId}/reset-password`, payload);
+        return res.data;
+    },
+    updateUsername: async (
+        userId: string,
+        payload: { username: string }
+    ): Promise<{ username: string; next_eligible_at: string | null }> => {
+        const res = await apiClient.patch<{ username: string; next_eligible_at: string | null }>(`/admin/users/${userId}/username`, payload);
         return res.data;
     },
     getEmployees: async (params?: { offset?: number; limit?: number }): Promise<EmployeeLookupResult[]> => {

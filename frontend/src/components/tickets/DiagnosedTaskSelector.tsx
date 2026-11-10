@@ -85,6 +85,8 @@ interface DiagnosedTaskSelectorProps {
   currentTaskCode: TaskCategoryCode;
   currentTaskName: string;
   compact?: boolean;
+  disabled?: boolean;
+  align?: 'left' | 'right';
 }
 
 export const DiagnosedTaskSelector: React.FC<DiagnosedTaskSelectorProps> = ({
@@ -92,6 +94,8 @@ export const DiagnosedTaskSelector: React.FC<DiagnosedTaskSelectorProps> = ({
   currentTaskCode,
   currentTaskName,
   compact = false,
+  disabled = false,
+  align = compact ? 'right' : 'left',
 }) => {
   const updateTicketTask = useAppStore((state) => state.updateTicketTask);
   const [isOpen, setIsOpen] = useState(false);
@@ -172,16 +176,19 @@ export const DiagnosedTaskSelector: React.FC<DiagnosedTaskSelectorProps> = ({
       {/* Trigger Button */}
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className={`w-full text-left transition-all press-fx flex items-center justify-between gap-2 rounded-xl border ${
-          compact
-            ? 'px-2.5 py-1.5 bg-[#F4F6F9] hover:bg-[#EBEEF3] border-[#ECEEF2]'
-            : 'px-3.5 py-2 bg-[#F4F6F9] hover:bg-[#EBEEF3] border-[#ECEEF2] shadow-2xs'
+        disabled={disabled}
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        className={`w-full text-left transition-all flex items-center justify-between gap-2 rounded-xl border ${
+          disabled
+            ? 'px-3.5 py-2 bg-zinc-100/70 border-zinc-200 cursor-not-allowed opacity-80'
+            : compact
+            ? 'px-2.5 py-1.5 bg-[#F4F6F9] hover:bg-[#EBEEF3] border-[#ECEEF2] press-fx'
+            : 'px-3.5 py-2 bg-[#F4F6F9] hover:bg-[#EBEEF3] border-[#ECEEF2] shadow-2xs press-fx'
         } ${isOpen ? 'ring-2 ring-orange-500/30 border-orange-400' : ''}`}
-        title="Click to refine or reclassify diagnosed task"
+        title={disabled ? 'Task category is read-only for unassigned tickets' : 'Click to refine or reclassify diagnosed task'}
       >
         <div className="flex items-center gap-2.5 min-w-0">
-          <Tag className="w-4 h-4 text-orange-500 shrink-0" />
+          <Tag className={`w-4 h-4 shrink-0 ${disabled ? 'text-zinc-400' : 'text-orange-500'}`} />
           <div className="min-w-0">
             <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block leading-tight">
               Diagnosed Task &bull; Col #05
@@ -191,17 +198,23 @@ export const DiagnosedTaskSelector: React.FC<DiagnosedTaskSelectorProps> = ({
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-1 shrink-0 text-zinc-400">
-          <span className="text-[10px] uppercase font-semibold tracking-wider text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded border border-orange-200">
-            Change
-          </span>
-          <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isOpen ? 'rotate-180 text-orange-500' : ''}`} />
-        </div>
+        {!disabled && (
+          <div className="flex items-center gap-1 shrink-0 text-zinc-400">
+            <span className="text-[10px] uppercase font-semibold tracking-wider text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded border border-orange-200">
+              Change
+            </span>
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isOpen ? 'rotate-180 text-orange-500' : ''}`} />
+          </div>
+        )}
       </button>
 
       {/* Dropdown Popover */}
       {isOpen && (
-        <div className="absolute right-0 top-full mt-1.5 w-80 sm:w-96 bg-white border border-[#E4E7EB] rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div
+          className={`absolute ${
+            align === 'right' ? 'right-0' : 'left-0'
+          } top-full mt-1.5 w-80 sm:w-96 bg-white border border-[#E4E7EB] rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150`}
+        >
           {/* Header & Search */}
           <div className="p-3 bg-[#FAFBFD] border-b border-[#ECEEF2]">
             <div className="flex items-center justify-between mb-2">

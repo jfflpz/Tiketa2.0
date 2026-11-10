@@ -26,6 +26,7 @@ export interface TeamSlice {
     payload: {
       name: string;
       email: string;
+      username?: string;
       role: TeamRole;
       systemRole: StaffRole;
       department: string;
@@ -33,6 +34,7 @@ export interface TeamSlice {
       locationId?: string | null;
       is_active: boolean;
       password?: string;
+      acting_admin_password?: string;
     }
   ) => Promise<boolean>;
   deleteITMemberApi: (id: string, name?: string) => Promise<boolean>;
@@ -203,21 +205,50 @@ export const createTeamSlice: AppSliceCreator<TeamSlice> = (set, get) => ({
 
   updateITMemberApi: async (id, payload) => {
     try {
+      const existingMember = get().itTeamMembers.find((m) => m.id === id);
+
+      // 1. Administrative Password Reset (S5-12)
+      if (payload.password && payload.password.trim()) {
+        if (!payload.acting_admin_password || !payload.acting_admin_password.trim()) {
+          throw new Error('Your current Admin password is required to reset target credentials.');
+        }
+        await adminApi.resetUserPassword(id, {
+          admin_current_password: payload.acting_admin_password.trim(),
+          new_password: payload.password.trim(),
+          confirm_password: payload.password.trim(),
+        });
+      }
+
+      // 2. Governed Username Update (S5-13)
+      if (
+        payload.username &&
+        payload.username.trim() &&
+        existingMember?.username &&
+        payload.username.trim().toLowerCase() !== existingMember.username.toLowerCase()
+      ) {
+        await adminApi.updateUsername(id, {
+          username: payload.username.trim(),
+        });
+      }
+
+      // 3. General User Profile Fields (governed by B-03)
       const updateData: {
         full_name?: string;
         email?: string;
         role?: StaffRole;
         is_active?: boolean;
-        password?: string;
         location_id?: string | null;
       } = {
         full_name: payload.name,
         email: payload.email,
-        role: payload.systemRole,
-        is_active: payload.is_active,
       };
-      if (payload.password && payload.password.trim().length >= 12) {
-        updateData.password = payload.password.trim();
+      // Only include role if explicitly changed (backend rejects direct role changes per B-03)
+      if (payload.systemRole && existingMember?.systemRole && payload.systemRole !== existingMember.systemRole) {
+        updateData.role = payload.systemRole;
+      }
+      // Only include is_active if explicitly changed
+      if (payload.is_active !== undefined && existingMember?.is_active !== undefined && payload.is_active !== existingMember.is_active) {
+        updateData.is_active = payload.is_active;
       }
       if (payload.locationId !== undefined) {
         updateData.location_id = payload.locationId;
@@ -225,8 +256,7 @@ export const createTeamSlice: AppSliceCreator<TeamSlice> = (set, get) => ({
       await adminApi.updateUser(id, updateData as any);
 
       // Persist UI metadata locally
-      const existingMember = get().itTeamMembers.find((m) => m.id === id);
-      const key = existingMember?.username || id;
+      const key = payload.username?.trim() || existingMember?.username || id;
       try {
         localStorage.setItem(
           `tiketa_staff_meta_${key}`,
@@ -249,6 +279,7 @@ export const createTeamSlice: AppSliceCreator<TeamSlice> = (set, get) => ({
       return true;
     } catch (err: unknown) {
       const msg = extractApiErrorMessage(err, 'Failed to update staff account');
+      set({ teamError: msg });
       get().addToast('Account Update Failed', msg, 'warning');
       return false;
     }
