@@ -1,3 +1,4 @@
+import { StaffAvatar } from '../../../components/common/StaffAvatar';
 import React from 'react';
 import { MapPin, Briefcase, Trash2, ShieldAlert, Pencil } from 'lucide-react';
 import type { TeamMember } from '../../../types/team';
@@ -37,19 +38,22 @@ export const ITStaffTable: React.FC<ITStaffTableProps> = ({
           return (
             <div
               key={member.id}
-              className={`bg-white border rounded-2xl p-4 shadow-card transition-all flex flex-col justify-between space-y-3 ${
+              onClick={(e) => { e.stopPropagation(); onEditMember(member); }}
+              className={`bg-white border rounded-2xl p-4 shadow-card hover:shadow-md hover:border-orange-400 cursor-pointer transition-all flex flex-col justify-between space-y-3 group ${
                 isDeactivated
                   ? 'border-zinc-200 opacity-60 bg-zinc-50/50'
-                  : 'border-[#ECEEF2] hover:border-orange-300'
+                  : 'border-[#ECEEF2]'
               }`}
+              title="Click card to view details and edit specialist"
             >
               <div className="space-y-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
-                    <img
-                      src={member.avatar}
-                      alt={member.name}
-                      className="w-11 h-11 rounded-full border border-[#ECEEF2] bg-zinc-50 shrink-0"
+                    <StaffAvatar
+                      name={member.name}
+                      username={member.username}
+                      avatarUrl={member.avatar}
+                      size="lg"
                     />
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
@@ -138,7 +142,7 @@ export const ITStaffTable: React.FC<ITStaffTableProps> = ({
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
-                    onClick={() => onEditMember(member)}
+                    onClick={(e) => { e.stopPropagation(); onEditMember(member); }}
                     className="p-1.5 rounded-lg text-zinc-400 hover:text-orange-600 hover:bg-orange-50 transition-colors press-fx"
                     title="Edit Staff Account"
                   >

@@ -16,6 +16,7 @@ import {
   mapChronicRequestorRows,
 } from './utils/reportMappers';
 import { ReportTabSelector } from './components/ReportTabSelector';
+import { ReportPeriodSelector } from './components/ReportPeriodSelector';
 import { ReportChartCard } from './components/ReportChartCard';
 import { MonthlySlaTable } from './components/tables/MonthlySlaTable';
 import { StaffUtilizationTable } from './components/tables/StaffUtilizationTable';
@@ -34,6 +35,7 @@ export const StandardizedReportsView: React.FC = () => {
   const fetchReportApi = useAppStore((state) => state.fetchReportApi);
   const downloadReportCSVApi = useAppStore((state) => state.downloadReportCSVApi);
   const activeReportData = useAppStore((state) => state.activeReportData);
+  const isFetchingReport = useAppStore((state) => state.isFetchingReport);
   const reportDateRange = useAppStore((state) => state.reportDateRange);
   const reportFilters = useAppStore((state) => state.reportFilters);
 
@@ -74,7 +76,6 @@ export const StandardizedReportsView: React.FC = () => {
             <span className="px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-800 text-[10px] font-bold uppercase tracking-wider">
               Management Suite
             </span>
-            <span className="text-xs font-mono text-zinc-400">SR-02 Audit Ready</span>
           </div>
           <h1 className="text-xl font-bold tracking-tight text-ink mt-1">
             8 Standardized Operational &amp; Strategic Reports Suite
@@ -88,10 +89,11 @@ export const StandardizedReportsView: React.FC = () => {
           <button
             type="button"
             onClick={handleExportCSV}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-[#ECEEF2] text-xs font-semibold text-zinc-700 shadow-sm hover:bg-zinc-50 transition-colors press-fx"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-[#ECEEF2] text-xs font-semibold text-zinc-700
+            shadow-sm hover:bg-zinc-50 transition-colors press-fx"
           >
             <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Export CSV</span>
+            <span>Export XLSX</span>
           </button>
           <button
             type="button"
@@ -104,6 +106,9 @@ export const StandardizedReportsView: React.FC = () => {
         </div>
       </div>
 
+      {/* Synchronized Month/Year Period Selector (F-05) */}
+      <ReportPeriodSelector />
+
       {/* 8-Report Selector Tabs Bar */}
       <ReportTabSelector
         activeReportId={activeReportId}
@@ -115,9 +120,6 @@ export const StandardizedReportsView: React.FC = () => {
       <div className="bg-white border border-[#ECEEF2] rounded-2xl p-5 shadow-card flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <span className="font-mono text-xs font-extrabold px-2 py-0.5 rounded-lg bg-orange-50 text-orange-600 border border-orange-200">
-              {activeTabMeta.code}
-            </span>
             <h2 className="text-base font-bold text-ink">{activeTabMeta.title}</h2>
           </div>
           <p className="text-xs text-zinc-500 mt-1">{activeTabMeta.description}</p>
@@ -147,21 +149,40 @@ export const StandardizedReportsView: React.FC = () => {
       <div className="bg-white border border-[#ECEEF2] rounded-3xl p-5 shadow-card space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">
-            Canonical Audit Table • {activeTabMeta.code}
+             Audit Table
           </h3>
-          <span className="text-xs text-zinc-400 font-mono">Verified 15-Column Job Log Records</span>
+          <span className="text-xs text-zinc-400 font-mono"> Job Log Records</span>
         </div>
 
         <BarcodeDivider count={85} />
 
-        {activeReportId === 1 && <MonthlySlaTable data={report1Data} />}
-        {activeReportId === 2 && <StaffUtilizationTable data={report2Data} />}
-        {activeReportId === 3 && <DeptDemandTable data={report3Data} />}
-        {activeReportId === 4 && <AgingBacklogTable data={report4Data} />}
-        {activeReportId === 5 && <TransitLagTable data={report5Data} />}
-        {activeReportId === 6 && <HardwareVulnerabilityTable data={report6Data} />}
-        {activeReportId === 7 && <PmsComplianceTable data={report7Data} />}
-        {activeReportId === 8 && <ChronicRequestorTable data={report8Data} />}
+        {isFetchingReport && (
+          <div className="py-8 text-center text-xs text-ink-subtle font-mono animate-pulse">
+            Loading report records for {activeTabMeta.title}...
+          </div>
+        )}
+
+        {!isFetchingReport && rawRows.length === 0 && (
+          <div className="py-10 text-center space-y-2">
+            <p className="text-xs font-bold text-zinc-500">No records found for this period</p>
+            <p className="text-[11px] text-zinc-400">
+              No ticket data matched the selected month/year filter for {activeTabMeta.title}.
+            </p>
+          </div>
+        )}
+
+        {!isFetchingReport && rawRows.length > 0 && (
+          <>
+            {activeReportId === 1 && <MonthlySlaTable data={report1Data} />}
+            {activeReportId === 2 && <StaffUtilizationTable data={report2Data} />}
+            {activeReportId === 3 && <DeptDemandTable data={report3Data} />}
+            {activeReportId === 4 && <AgingBacklogTable data={report4Data} />}
+            {activeReportId === 5 && <TransitLagTable data={report5Data} />}
+            {activeReportId === 6 && <HardwareVulnerabilityTable data={report6Data} />}
+            {activeReportId === 7 && <PmsComplianceTable data={report7Data} />}
+            {activeReportId === 8 && <ChronicRequestorTable data={report8Data} />}
+          </>
+        )}
       </div>
 
       {/* Shared PPTX Export Configuration Modal */}

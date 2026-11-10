@@ -131,7 +131,7 @@ export const HeaderMessagesPopover: React.FC<HeaderMessagesPopoverProps> = ({
                           <span className="text-xs font-bold text-ink truncate">
                             {lastMsg.senderName}
                           </span>
-                          <span className="font-mono text-[10px] font-bold px-1.5 py-0.2 rounded bg-zinc-100 text-zinc-700 shrink-0">
+                          <span className="font-mono text-[10px] font-bold px-1.5 py-0.2 rounded bg-zinc-100 text-zinc-700 shrink-0 whitespace-nowrap">
                             {t.ticketCode}
                           </span>
                         </div>
@@ -171,7 +171,7 @@ export const HeaderMessagesPopover: React.FC<HeaderMessagesPopoverProps> = ({
                     }}
                   >
                     <div className="flex items-center gap-1.5">
-                      <span className="font-mono text-[11px] font-bold px-1.5 py-0.5 rounded bg-zinc-900 text-white">
+                      <span className="font-mono text-[11px] font-bold px-1.5 py-0.5 rounded bg-zinc-900 text-white shrink-0 whitespace-nowrap">
                         {t.ticketCode}
                       </span>
                       <span className="font-bold text-xs text-ink truncate">{t.task}</span>

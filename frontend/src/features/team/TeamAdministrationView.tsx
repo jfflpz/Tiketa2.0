@@ -1,6 +1,6 @@
 // @spec UI-TEAM-01: IT Support Specialist Roster, Employee Directory & Account Governance
 import React, { useState, useEffect, useMemo } from 'react';
-import { UserPlus, Plus, Briefcase, Fingerprint, Clock, Search, RefreshCw, Loader2 } from 'lucide-react';
+import { UserPlus, Plus, Briefcase, Fingerprint, Clock, Search, RefreshCw, Loader2, ShieldCheck } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import type { TeamMember } from '../../types/team';
 import type { EmployeeProfile } from '../../types';
@@ -12,11 +12,13 @@ import { CreateITStaffModal } from './components/CreateITStaffModal';
 import { EditITStaffModal } from './components/EditITStaffModal';
 import { AddEmployeeModal } from './components/AddEmployeeModal';
 import { EditEmployeeModal } from './components/EditEmployeeModal';
+import { PendingApprovalsQueue } from './components/PendingApprovalsQueue';
+import { accountRequestsApi } from '../../api/client';
+import { normalizeApiError } from '../../utils/errorUtils';
 
 export const TeamAdministrationView: React.FC = () => {
   const itTeamMembers = useAppStore((state) => state.itTeamMembers);
   const fetchITMembers = useAppStore((state) => state.fetchITMembers);
-  const createITMemberApi = useAppStore((state) => state.createITMemberApi);
   const updateITMemberApi = useAppStore((state) => state.updateITMemberApi);
   const deactivateITMemberApi = useAppStore((state) => state.deactivateITMemberApi);
 
@@ -36,8 +38,12 @@ export const TeamAdministrationView: React.FC = () => {
   const currentUser = useAppStore((state) => state.currentUser);
   const addToast = useAppStore((state) => state.addToast);
 
-  const [activeTab, setActiveTab] = useState<'IT_STAFF' | 'EMPLOYEES' | 'ACTIVITY'>('IT_STAFF');
+  const [activeTab, setActiveTab] = useState<'IT_STAFF' | 'EMPLOYEES' | 'ACTIVITY' | 'APPROVALS'>('IT_STAFF');
   const [employeeSearch, setEmployeeSearch] = useState('');
+  const [employeeCompanyFilter, setEmployeeCompanyFilter] = useState('ALL');
+  const [employeeDeptFilter, setEmployeeDeptFilter] = useState('ALL');
+  const [employeeLocationFilter, setEmployeeLocationFilter] = useState('ALL');
+  const [employeeStatusFilter, setEmployeeStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
   const [itSearch, setItSearch] = useState('');
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
 
@@ -63,7 +69,56 @@ export const TeamAdministrationView: React.FC = () => {
   const inProgressTicketsCount = tickets.filter((t) => t.status === 'PROG').length;
   const closedTicketsCount = tickets.filter((t) => t.status === 'CLSD' || t.status === 'RESL').length;
 
+  const uniqueCompanies = useMemo(() => {
+    const set = new Set<string>();
+    verifiedEmployeesList.forEach((e) => { if (e.company_name) set.add(e.company_name); });
+    return Array.from(set).sort();
+  }, [verifiedEmployeesList]);
+
+  const uniqueDepartments = useMemo(() => {
+    const set = new Set<string>();
+    verifiedEmployeesList.forEach((e) => { if (e.department_name) set.add(e.department_name); });
+    return Array.from(set).sort();
+  }, [verifiedEmployeesList]);
+
+  const uniqueLocations = useMemo(() => {
+    const set = new Set<string>();
+    verifiedEmployeesList.forEach((e) => { if (e.location_name) set.add(e.location_name); });
+    return Array.from(set).sort();
+  }, [verifiedEmployeesList]);
+
+  const hasActiveEmployeeFilters = Boolean(
+    employeeSearch.trim() ||
+    employeeCompanyFilter !== 'ALL' ||
+    employeeDeptFilter !== 'ALL' ||
+    employeeLocationFilter !== 'ALL' ||
+    employeeStatusFilter !== 'ALL'
+  );
+
+  const handleResetEmployeeFilters = () => {
+    setEmployeeSearch('');
+    setEmployeeCompanyFilter('ALL');
+    setEmployeeDeptFilter('ALL');
+    setEmployeeLocationFilter('ALL');
+    setEmployeeStatusFilter('ALL');
+  };
+
   const filteredEmployees = verifiedEmployeesList.filter((e) => {
+    if (employeeCompanyFilter !== 'ALL' && e.company_name !== employeeCompanyFilter) {
+      return false;
+    }
+    if (employeeDeptFilter !== 'ALL' && e.department_name !== employeeDeptFilter) {
+      return false;
+    }
+    if (employeeLocationFilter !== 'ALL' && e.location_name !== employeeLocationFilter) {
+      return false;
+    }
+    if (employeeStatusFilter === 'ACTIVE' && e.is_active === false) {
+      return false;
+    }
+    if (employeeStatusFilter === 'INACTIVE' && e.is_active !== false) {
+      return false;
+    }
     const q = employeeSearch.toLowerCase().trim();
     if (!q) return true;
     return (
@@ -228,6 +283,19 @@ export const TeamAdministrationView: React.FC = () => {
 
           <button
             type="button"
+            onClick={() => setActiveTab('APPROVALS')}
+            className={`py-2 px-3.5 rounded-xl text-xs font-bold transition-all press-fx flex items-center gap-2 ${
+              activeTab === 'APPROVALS'
+                ? 'bg-zinc-900 text-white shadow-sm'
+                : 'text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100/70'
+            }`}
+          >
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>Proposals &amp; Approvals</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setActiveTab('ACTIVITY')}
             className={`py-2 px-3.5 rounded-xl text-xs font-bold transition-all press-fx flex items-center gap-2 ${
               activeTab === 'ACTIVITY'
@@ -254,18 +322,7 @@ export const TeamAdministrationView: React.FC = () => {
           </div>
         )}
 
-        {activeTab === 'EMPLOYEES' && (
-          <div className="relative">
-            <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              type="text"
-              value={employeeSearch}
-              onChange={(e) => setEmployeeSearch(e.target.value)}
-              placeholder="Search employees or ID..."
-              className="pl-8 pr-3 py-1.5 bg-[#F8F9FA] border border-[#ECEEF2] rounded-xl text-xs text-ink focus:outline-none focus:border-orange-400 w-64"
-            />
-          </div>
-        )}
+        
       </div>
 
       {isLoadingTeam && itTeamMembers.length === 0 ? (
@@ -302,6 +359,21 @@ export const TeamAdministrationView: React.FC = () => {
               onDeleteEmployee={(empId, name) => {
                 deactivateEmployeeApi(empId, name);
               }}
+              employeeSearch={employeeSearch}
+              onSearchChange={setEmployeeSearch}
+              companyFilter={employeeCompanyFilter}
+              onCompanyFilterChange={setEmployeeCompanyFilter}
+              departmentFilter={employeeDeptFilter}
+              onDepartmentFilterChange={setEmployeeDeptFilter}
+              locationFilter={employeeLocationFilter}
+              onLocationFilterChange={setEmployeeLocationFilter}
+              statusFilter={employeeStatusFilter}
+              onStatusFilterChange={setEmployeeStatusFilter}
+              companiesList={uniqueCompanies}
+              departmentsList={uniqueDepartments}
+              locationsList={uniqueLocations}
+              hasActiveFilters={hasActiveEmployeeFilters}
+              onResetFilters={handleResetEmployeeFilters}
             />
           )}
 
@@ -313,6 +385,11 @@ export const TeamAdministrationView: React.FC = () => {
               onOpenQueue={() => setActiveView('tickets')}
             />
           )}
+
+          {/* TAB 4: ACCOUNT PROPOSALS & SUPERVISOR APPROVALS */}
+          {activeTab === 'APPROVALS' && (
+            <PendingApprovalsQueue />
+          )}
         </>
       )}
 
@@ -321,29 +398,32 @@ export const TeamAdministrationView: React.FC = () => {
         isOpen={isAddITModalOpen}
         onClose={() => setAddITModalOpen(false)}
         onSubmit={async (data) => {
-          const success = await createITMemberApi({
-            username: data.username,
-            password: data.password,
-            full_name: data.name,
-            email: data.email,
-            role: data.systemRole,
-          });
-          if (success) {
-            try {
-              localStorage.setItem(
-                `tiketa_staff_meta_${data.username}`,
-                JSON.stringify({
-                  roleTitle: data.role,
-                  department: data.department,
-                  primaryLocation: data.primaryLocation,
-                })
-              );
-              fetchITMembers();
-            } catch (e) {
-              // Ignore storage errors
+          try {
+            await accountRequestsApi.create({
+              username: data.username,
+              email: data.email,
+              full_name: data.name,
+              role: data.systemRole === 'admin' ? 'it' : (data.systemRole as 'intern' | 'it'),
+              department: data.department || undefined,
+              location_id: data.locationId,
+            });
+            addToast(
+              'Proposal Submitted',
+              `Account proposal for @${data.username} submitted. Awaiting supervisor approval.`,
+              'success'
+            );
+            setActiveTab('APPROVALS');
+            return true;
+          } catch (err: any) {
+            if (err?.response?.status === 409) {
+              const conflictMsg = 'A staff member or pending proposal with this username or email already exists.';
+              addToast('Proposal Conflict', conflictMsg, 'warning');
+              throw new Error(conflictMsg);
             }
+            const msg = normalizeApiError(err, 'Failed to submit account proposal');
+            addToast('Submission Failed', msg, 'warning');
+            throw new Error(msg);
           }
-          return success;
         }}
       />
 

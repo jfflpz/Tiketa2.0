@@ -25,6 +25,13 @@ Write-Host "[OK] Context files present." -ForegroundColor Green
 Write-Host ""
 Write-Host "=== [2/8] Backend Formatting (ruff format) ===" -ForegroundColor Yellow
 docker compose exec backend ruff format .
+
+# Check if ruff format created unstaged modifications
+$dirtyFiles = git status --porcelain backend/
+if ($dirtyFiles) {
+    Write-Warning "Ruff auto-formatted backend files! Run 'git add backend/' to include these formatting changes in your commit."
+}
+
 docker compose exec backend ruff format --check .
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Backend formatting check failed."

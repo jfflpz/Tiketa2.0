@@ -18,6 +18,7 @@ import type { Ticket, TicketStatus } from '../../../types/ticket';
 
 export interface KioskTrackLookupTabProps {
   onTicketFound?: (ticketId: string) => void;
+  initialCode?: string;
 }
 
 const STEPPER_STAGES: {
@@ -47,15 +48,30 @@ function getStageLevel(status: TicketStatus): number {
   }
 }
 
-export const KioskTrackLookupTab: React.FC<KioskTrackLookupTabProps> = () => {
+export const KioskTrackLookupTab: React.FC<KioskTrackLookupTabProps> = ({ initialCode }) => {
   const trackTicketApi = useAppStore((state) => state.trackTicketApi);
   const copyTicketShareLink = useAppStore((state) => state.copyTicketShareLink);
 
-  const [codeInput, setCodeInput] = useState('');
+  const [codeInput, setCodeInput] = useState(initialCode || '');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTicket, setActiveTicket] = useState<Ticket | null>(null);
   const [copied, setCopied] = useState(false);
+
+  React.useEffect(() => {
+    if (initialCode && !activeTicket) {
+      const clean = initialCode.trim().toUpperCase();
+      if (!clean) return;
+      setIsLoading(true);
+      trackTicketApi(clean)
+        .then((ticket) => {
+          if (ticket) setActiveTicket(ticket);
+          else setError(`Ticket "${clean}" was not found on the server.`);
+        })
+        .catch(() => setError('Unable to reach central IT server.'))
+        .finally(() => setIsLoading(false));
+    }
+  }, [initialCode, trackTicketApi, activeTicket]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -1,4 +1,4 @@
-export type StaffRole = 'intern' | 'it' | 'supervisor' | 'admin' | 'analyst';
+export type StaffRole = 'intern' | 'it' | 'supervisor' | 'admin';
 export type UserRole = StaffRole;
 
 export interface Company {

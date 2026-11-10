@@ -83,7 +83,7 @@ export const TicketQueueTable: React.FC<TicketQueueTableProps> = ({
                 >
                   {/* Ticket Code */}
                   <td className="py-3 px-4 whitespace-nowrap">
-                    <span className="font-mono font-bold text-xs px-2 py-0.5 rounded-lg bg-zinc-900 text-white group-hover:bg-orange-600 transition-colors">
+                    <span className="font-mono font-bold text-xs px-2 py-0.5 rounded-lg bg-zinc-900 text-white group-hover:bg-orange-600 transition-colors shrink-0 whitespace-nowrap inline-block">
                       {ticket.ticketCode}
                     </span>
                   </td>

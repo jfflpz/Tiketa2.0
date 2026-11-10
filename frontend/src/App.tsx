@@ -27,8 +27,7 @@ import { resolvePathToView, viewToCanonicalPath, getDefaultHomeForRole } from '.
 export const ROLE_ALLOWED_VIEWS: Record<StaffRole, ActiveView[]> = {
   intern: ['overview', 'workbench', 'notes', 'joblogs'],
   it: ['overview', 'tickets', 'workbench', 'notes', 'joblogs', 'terminals'],
-  supervisor: ['analytics', 'reports', 'team', 'joblogs'],
-  analyst: ['analytics', 'reports', 'team', 'joblogs', 'terminals'],
+  supervisor: ['analytics', 'reports', 'team', 'joblogs', 'terminals'],
   admin: [
     'overview',
     'tickets',
@@ -41,6 +40,8 @@ export const ROLE_ALLOWED_VIEWS: Record<StaffRole, ActiveView[]> = {
     'team',
   ],
 };
+
+// getDefaultHomeForRole imported from routeUtils
 
 export default function App() {
   const currentUser = useAppStore((state) => state.currentUser);
@@ -57,7 +58,16 @@ export default function App() {
   );
 
   useEffect(() => {
-    hydrateAuthApi();
+    const isPublic =
+      typeof window !== 'undefined' &&
+      resolvePathToView(window.location.pathname) === 'public';
+
+    if (!isPublic) {
+      hydrateAuthApi();
+    } else {
+      useAppStore.setState({ isHydratingAuth: false });
+    }
+
     hydrateKioskEmployeeTickets?.();
   }, [hydrateAuthApi, hydrateKioskEmployeeTickets]);
 
@@ -110,8 +120,8 @@ export default function App() {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-[#F4F6F9]">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-zinc-900 text-white flex items-center justify-center shadow-lg animate-pulse">
-            <span className="text-orange-500 font-bold text-lg font-mono">T</span>
+          <div className="w-16 h-16 flex items-center justify-center animate-pulse">
+            <img src="/logo-mark.svg" alt="Tiketa" className="w-16 h-16 object-contain drop-shadow" />
           </div>
           <div className="flex items-center gap-2 text-xs font-semibold text-zinc-500">
             <div className="w-2 h-2 rounded-full bg-orange-500 animate-ping" />

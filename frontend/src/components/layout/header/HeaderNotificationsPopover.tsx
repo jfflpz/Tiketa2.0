@@ -154,7 +154,7 @@ export const HeaderNotificationsPopover: React.FC<HeaderNotificationsPopoverProp
                       >
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5">
-                            <span className="font-mono text-[11px] font-bold px-1.5 py-0.5 rounded bg-zinc-900 text-white">
+                            <span className="font-mono text-[11px] font-bold px-1.5 py-0.5 rounded bg-zinc-900 text-white shrink-0 whitespace-nowrap">
                               {t.ticketCode}
                             </span>
                             <span className="font-bold text-ink truncate">{t.task}</span>
@@ -206,7 +206,7 @@ export const HeaderNotificationsPopover: React.FC<HeaderNotificationsPopoverProp
                       >
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5">
-                            <span className="font-mono text-[11px] font-bold px-1.5 py-0.5 rounded bg-zinc-900 text-white">
+                            <span className="font-mono text-[11px] font-bold px-1.5 py-0.5 rounded bg-zinc-900 text-white shrink-0 whitespace-nowrap">
                               {t.ticketCode}
                             </span>
                             <span className="font-bold text-ink truncate">{t.task}</span>

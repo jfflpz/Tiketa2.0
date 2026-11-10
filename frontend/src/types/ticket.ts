@@ -111,6 +111,9 @@ export interface Ticket {
   status: TicketStatus; // 13. Status (OPEN, PROG, RESL, CLSD)
   location: string; // 14. Location (Terminal Name)
   locationCode: string; // AVN, BTM, CAL, PSY, CMA, etc.
+  companyId?: string;
+  locationId?: string;
+  departmentId?: string;
   workedBy?: string; // 15. Worked by (Technician name)
   workedById?: string; // Assigned tech UUID
   assigned_tech_id?: string; // Backend direct assignee UUID

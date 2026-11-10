@@ -10,7 +10,6 @@ import {
   LineChart,
   Users,
   BarChart3,
-  Box,
 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import type { StaffRole, ActiveView } from '../../store/slices/uiSlice';
@@ -27,13 +26,12 @@ export const Sidebar: React.FC = () => {
   const isSupervisor = role === 'supervisor';
   const isIntern = role === 'intern';
   const isIT = role === 'it';
-  const isAnalyst = role === 'analyst';
 
   // Badge count for active tickets
   const activeTicketsCount = tickets.filter((t) => t.status !== 'CLSD').length;
 
   const handleBrandClick = () => {
-    if (isAdmin || isSupervisor || isAnalyst) {
+    if (isAdmin || isSupervisor) {
       setActiveView('analytics');
     } else if (isIntern) {
       setActiveView('workbench');
@@ -48,8 +46,6 @@ export const Sidebar: React.FC = () => {
         return 'ADMIN';
       case 'supervisor':
         return 'SUPERVISOR';
-      case 'analyst':
-        return 'ANALYST';
       case 'intern':
         return 'INTERN';
       case 'it':
@@ -109,15 +105,14 @@ export const Sidebar: React.FC = () => {
           onClick={handleBrandClick}
           className="flex items-center gap-3 px-2 pt-1 cursor-pointer group"
         >
-          <div className="w-8 h-8 rounded-xl bg-orange-500/15 border border-orange-500/40 text-orange-500 flex items-center justify-center shadow-sm shrink-0 group-hover:bg-orange-500 group-hover:text-white transition-colors">
-            <Box className="w-4 h-4 stroke-[2.4]" />
-          </div>
-          {!sidebarCollapsed && (
-            <div className="flex flex-col min-w-0">
-              <span className="font-extrabold text-base tracking-wider text-white uppercase leading-none">
-                TIKETA
-              </span>
-              <span className="text-[10px] font-mono text-orange-400 uppercase tracking-widest mt-0.5">
+          {sidebarCollapsed ? (
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 hover:scale-105 transition-transform">
+              <img src="/logo-mark.svg" alt="Tiketa" className="w-8 h-8 object-contain drop-shadow" />
+            </div>
+          ) : (
+            <div className="flex items-center gap-2.5 min-w-0 py-0.5">
+              <img src="/logo-dark.svg" alt="Tiketa" className="h-7 w-auto object-contain object-left drop-shadow shrink-0" />
+              <span className="text-[10px] font-mono font-bold text-orange-400 uppercase tracking-wider px-2 py-0.5 rounded-md bg-orange-500/15 border border-orange-500/30 whitespace-nowrap">
                 {getRoleBadgeLabel(role)}
               </span>
             </div>
@@ -211,10 +206,10 @@ export const Sidebar: React.FC = () => {
         )}
 
         {/* ============================================================
-            TIER 3: SUPERVISOR & ANALYST NAVIGATION (role === 'supervisor' | 'analyst')
-            Executive analytics, 8 standard reports, IT team & fleet logs
+            TIER 3: SUPERVISOR NAVIGATION (role === 'supervisor')
+            Executive analytics, 8 standard reports, IT team & ticket logs
            ============================================================ */}
-        {(isSupervisor || isAnalyst) && (
+        {isSupervisor && (
           <>
             {/* CATEGORY 1: OPERATIONAL ANALYTICS */}
             <div className="space-y-1.5">
@@ -234,8 +229,9 @@ export const Sidebar: React.FC = () => {
                   GOVERNANCE &amp; AUDIT
                 </div>
               )}
+              {renderNavButton('terminals', 'Terminal Hubs', Building2, 'text-teal-400')}
               {renderNavButton('team', 'IT Team & Accounts', Users, 'text-emerald-400')}
-              {renderNavButton('joblogs', 'Fleet Master Job Logs', FileSpreadsheet, 'text-emerald-400')}
+              {renderNavButton('joblogs', '15-Col Master Sheet', FileSpreadsheet, 'text-emerald-400')}
             </div>
           </>
         )}
@@ -268,11 +264,11 @@ export const Sidebar: React.FC = () => {
               {renderNavButton('joblogs', '15-Col Master Sheet', FileSpreadsheet, 'text-emerald-400')}
             </div>
 
-            {/* ADMIN CATEGORY 3: OPERATIONS & FLEET TRIAGE */}
+            {/* ADMIN CATEGORY 3: OPERATIONS & TICKETS */}
             <div className="space-y-1.5">
               {!sidebarCollapsed && (
                 <div className="px-2.5 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-                  OPERATIONS &amp; FLEET TRIAGE
+                  OPERATIONS &amp; QUEUE TRIAGE
                 </div>
               )}
               {renderNavButton(

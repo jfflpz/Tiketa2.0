@@ -502,7 +502,7 @@ describe('Employee Ticket Verification Flow', () => {
     expect(result.success).toBe(true);
     expect((result as any).type).toBe('email_sent');
     // Public tracking link is copied, but it does not claim to be a closure credential
-    expect(copiedText).toContain('/?verifyTicket=T-2610-0115');
+    expect(copiedText).toContain('/?track=T-2610-0115');
     expect(copiedText).not.toContain('token=');
 
     // Toast specifically indicates verification email sent

@@ -36,6 +36,16 @@ class UserUpdate(Input):
     password: str | None = Field(default=None, min_length=12, max_length=128)
 
 
+class AdminResetPasswordRequest(Input):
+    admin_current_password: str = Field(min_length=1)
+    new_password: str = Field(min_length=12, max_length=128)
+    confirm_password: str = Field(min_length=12, max_length=128)
+
+
+class AdminUsernameUpdateRequest(Input):
+    username: str = Field(min_length=3, max_length=50, pattern=r"^[a-zA-Z0-9_.-]+$")
+
+
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: UUID
@@ -145,6 +155,10 @@ class ServiceRecordUpdate(BaseModel):
     task_code: str | None = Field(default=None, max_length=50)
     diagnosis: str | None = Field(default=None, max_length=20000)
     resolution_notes: str | None = Field(default=None, max_length=20000)
+    company_id: UUID | None = Field(default=None)
+    location_id: UUID | None = Field(default=None)
+    department_id: UUID | None = Field(default=None)
+    requester_name: str | None = Field(default=None, max_length=150)
 
     @model_validator(mode="after")
     def check_at_least_one_field_present(self):
@@ -162,6 +176,18 @@ class ServiceRecordUpdate(BaseModel):
             if self.resolution_notes is not None:
                 cleaned = self.resolution_notes.strip()
                 self.resolution_notes = cleaned if cleaned else None
+        if "company_id" in self.model_fields_set and self.company_id is None:
+            raise ValueError("company_id cannot be null")
+        if "location_id" in self.model_fields_set and self.location_id is None:
+            raise ValueError("location_id cannot be null")
+        if "department_id" in self.model_fields_set and self.department_id is None:
+            raise ValueError("department_id cannot be null")
+        if (
+            "requester_name" in self.model_fields_set
+            and self.requester_name is not None
+        ):
+            cleaned_req = self.requester_name.strip()
+            self.requester_name = cleaned_req if cleaned_req else "Unspecified"
         return self
 
 
@@ -188,6 +214,7 @@ class ReopenInput(Input):
 class TicketVerifyAccessInput(Input):
     ticket_code: str | None = Field(default=None, max_length=50)
     employee_id: str | None = Field(default=None, max_length=50)
+    email: str | None = Field(default=None, max_length=150)
     token: str | None = Field(default=None, max_length=100)
     match_token: str | None = Field(default=None, max_length=1000)
 
@@ -355,7 +382,7 @@ class TicketChecklistStepOut(BaseModel):
 class TicketChecklistApplyRequest(Input):
     repair_note_id: UUID
     expected_note_revision: int = Field(gt=0)
-    expected_checklist_revision: int | None = Field(default=None, gt=0)
+    expected_checklist_revision: int | None = Field(default=None, ge=0)
     replace_existing: bool = False
 
 
@@ -465,6 +492,27 @@ class LocationOut(BaseModel):
     code: str
     name: str
     address: str | None = None
+    is_active: bool
+
+
+class CompanyCreate(Input):
+    code: str = Field(min_length=1, max_length=20, pattern=r"^[A-Z0-9_-]+$")
+    name: str = Field(min_length=1, max_length=255)
+    is_active: bool = True
+
+
+class CompanyUpdate(Input):
+    code: str | None = Field(
+        default=None, min_length=1, max_length=20, pattern=r"^[A-Z0-9_-]+$"
+    )
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    is_active: bool | None = None
+
+
+class CompanyOut(BaseModel):
+    id: UUID
+    code: str
+    name: str
     is_active: bool
 
 

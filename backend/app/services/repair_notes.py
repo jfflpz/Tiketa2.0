@@ -40,12 +40,12 @@ def check_guide_edit_permission(user: User, note: RepairNote):
 
 
 def check_ticket_access(user: User, ticket: Ticket):
-    if user.role == "admin":
-        return True
     if user.role == "supervisor":
         return False
-    if user.role == "intern":
-        return ticket.assigned_tech_id == user.id
+    if ticket.assigned_tech_id and ticket.assigned_tech_id != user.id:
+        return False
+    if user.role == "admin" and not ticket.assigned_tech_id:
+        return True
     return ticket.assigned_tech_id == user.id
 
 
@@ -497,6 +497,11 @@ async def apply_repair_note_to_ticket(
         checklist.updated_by_id = user.id
         checklist.revision += 1
     else:
+        if payload.expected_checklist_revision not in (None, 0):
+            raise HTTPException(
+                409,
+                f"Conflict: ticket has no checklist, expected revision must be 0 or null, got {payload.expected_checklist_revision}",
+            )
         checklist = TicketChecklist(
             ticket_id=ticket.id,
             source_repair_note_id=note.id,

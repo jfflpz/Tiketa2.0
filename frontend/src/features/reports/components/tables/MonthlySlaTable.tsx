@@ -23,8 +23,8 @@ export const MonthlySlaTable: React.FC<MonthlySlaTableProps> = ({ data }) => {
           </tr>
         </thead>
         <tbody className="divide-y divide-line/60">
-          {data.map((r) => (
-            <tr key={r.month} className="hover:bg-zinc-50/60 transition-colors">
+          {data.map((r, i) => (
+            <tr key={`${r.month}-${i}`} className="hover:bg-zinc-50/60 transition-colors">
               <td className="py-3 px-3 font-bold text-ink">{r.month}</td>
               <td className="py-3 px-3 font-mono">{r.totalRequests}</td>
               <td className="py-3 px-3 font-mono text-emerald-700 font-semibold">{r.completed}</td>

@@ -254,7 +254,7 @@ export const createNotesSlice: AppSliceCreator<NotesSlice> = (set, get) => ({
         repair_note_id: noteId,
         expected_note_revision: expectedNoteRevision,
         replace_existing: replaceExisting,
-        expected_checklist_revision: expectedChecklistRevision,
+        expected_checklist_revision: expectedChecklistRevision && expectedChecklistRevision > 0 ? expectedChecklistRevision : undefined,
       });
       set((state) => ({
         checklistsByTicketId: {

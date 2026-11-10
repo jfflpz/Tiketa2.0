@@ -2,7 +2,7 @@ import type { AppSliceCreator } from '../types';
 import type { Ticket } from '../../types/ticket';
 import { ticketsApi, extractApiErrorMessage, setEmployeeToken } from '../../api/client';
 import { mapStaffTicket } from '../../utils/mapStaffTicket';
-import { getPersistedEmployeeTickets, persistEmployeeTickets } from '../../utils/session';
+import { getPersistedEmployeeTickets, persistEmployeeProfile, persistEmployeeTickets, persistMatchToken } from '../../utils/session';
 
 export type VerificationViewStatus =
   | 'idle'
@@ -35,7 +35,7 @@ export interface TicketVerificationSlice {
   closeVerificationModal: () => void;
 
   initiateVerificationFlow: (code: string, token?: string | null) => Promise<void>;
-  verifyEmployeeIdentity: (employeeId: string) => Promise<boolean>;
+  verifyEmployeeIdentity: (employeeId: string, email?: string) => Promise<boolean>;
   fetchMyEmployeeTickets: () => Promise<void>;
   confirmVerifiedClosure: (ticketId: string, remarks?: string) => Promise<boolean>;
   reopenVerifiedTicket: (ticketId: string, reason: string) => Promise<boolean>;
@@ -62,7 +62,7 @@ export const createTicketVerificationSlice: AppSliceCreator<TicketVerificationSl
   return {
     verifyTicketCode: initialParams.code,
     verifyToken: initialParams.token,
-    verificationStatus: initialParams.code ? 'loading' : 'idle',
+    verificationStatus: 'idle',
     verificationErrorMessage: null,
     verifiedTicket: null,
     employeeTickets: getPersistedEmployeeTickets(),
@@ -109,6 +109,17 @@ export const createTicketVerificationSlice: AppSliceCreator<TicketVerificationSl
     initiateVerificationFlow: async (code: string, token?: string | null) => {
       const cleanCode = code.trim().toUpperCase();
       const currentSeq = ++verificationSequence;
+
+      // When arriving via closure link with token, require Employee ID & email first
+      if (token && !get().unlockedTicketCodes[cleanCode]) {
+        set({
+          verificationStatus: 'needs_identity',
+          verificationErrorMessage: null,
+          verifyTicketCode: cleanCode,
+          verifyToken: token,
+        });
+        return;
+      }
 
       set({
         verificationStatus: 'loading',
@@ -168,14 +179,16 @@ export const createTicketVerificationSlice: AppSliceCreator<TicketVerificationSl
                 : 'This verification link has expired (72-hour window). Please contact IT Support for a new verification link.',
             verifiedTicket: null,
           });
-        } else if (status === 403) {
-          if (typeof detail === 'string' && detail.toLowerCase().includes('verification required')) {
+          } else if (
+            status === 401 ||
+            (status === 403 && typeof detail === 'string' && detail.toLowerCase().includes('verification required'))
+          ) {
             set({
               verificationStatus: 'needs_identity',
               verificationErrorMessage: null,
               verifiedTicket: null,
             });
-          } else {
+          } else if (status === 403) {
             set({
               verificationStatus: 'forbidden',
               verificationErrorMessage:
@@ -184,7 +197,6 @@ export const createTicketVerificationSlice: AppSliceCreator<TicketVerificationSl
                   : 'Access denied: You are not authorized to view this ticket.',
               verifiedTicket: null,
             });
-          }
         } else if (!err.response || status >= 500) {
           set({
             verificationStatus: 'network_error',
@@ -203,7 +215,7 @@ export const createTicketVerificationSlice: AppSliceCreator<TicketVerificationSl
       }
     },
 
-    verifyEmployeeIdentity: async (employeeId: string) => {
+    verifyEmployeeIdentity: async (employeeId: string, email?: string) => {
       const code = get().verifyTicketCode;
       const token = get().verifyToken;
       if (!code) return false;
@@ -213,6 +225,7 @@ export const createTicketVerificationSlice: AppSliceCreator<TicketVerificationSl
       try {
         const res = await ticketsApi.verifyAccess(code, {
           employee_id: employeeId.trim(),
+          email: email?.trim(),
           token: token || undefined,
         });
 
@@ -266,8 +279,13 @@ export const createTicketVerificationSlice: AppSliceCreator<TicketVerificationSl
           set({ employeeTickets: combined });
           persistEmployeeTickets(combined);
         }
-      } catch {
-        // Unauthenticated or employee session without my-tickets
+      } catch (err: any) {
+        // Clear expired/unauthorized session so it stops querying on every reload
+        if (err?.response?.status === 401) {
+          set({ employeeMatchToken: null, employeeProfile: null });
+          persistMatchToken(null);
+          persistEmployeeProfile(null);
+        }
       }
     },
 
@@ -328,13 +346,24 @@ export const createTicketVerificationSlice: AppSliceCreator<TicketVerificationSl
         typeof window !== 'undefined' && window.location.origin
           ? window.location.origin
           : 'http://localhost:5173';
-      let link = `${origin}/?verifyTicket=${ticketCode}`;
+      let link = `${origin}/?track=${ticketCode}`;
       let isClosureCredential = false;
       let emailDispatched = false;
 
-      if (ticketId) {
+      // Fallback: resolve ticketId from store when caller only provides ticketCode
+      const codeUpper = ticketCode.trim().toUpperCase();
+      const resolvedTicketId =
+        ticketId ||
+        get().tickets.find((t) => t.ticketCode.toUpperCase() === codeUpper)?.id ||
+        get().employeeTickets.find((t) => t.ticketCode.toUpperCase() === codeUpper)?.id ||
+        (get().verifiedTicket?.ticketCode.toUpperCase() === codeUpper
+          ? get().verifiedTicket?.id
+          : undefined);
+
+      if (resolvedTicketId) {
         try {
-          const reissue = await ticketsApi.reissueVerification(ticketId);
+          const reissue = await
+          ticketsApi.reissueVerification(resolvedTicketId);
           if (reissue && reissue.closure_url) {
             link = reissue.closure_url;
             isClosureCredential = true;
@@ -342,7 +371,7 @@ export const createTicketVerificationSlice: AppSliceCreator<TicketVerificationSl
             emailDispatched = true;
           }
         } catch {
-          // Reissue failed or unauthorized
+          // Reissue failed or unauthorized (e.g. unauthenticated kiosk or non-RESL ticket)
         }
       }
 

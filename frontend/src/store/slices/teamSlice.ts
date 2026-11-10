@@ -122,7 +122,9 @@ const mapBackendUserToTeamMember = (
     email: u.email,
     role: roleTitle,
     systemRole: u.role,
-    avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(
+    avatar:
+    u.avatar_url ||
+    `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(
       u.username
     )}&backgroundColor=${isAdm ? 'fed7aa' : 'b6e3f4'}`,
     department: dept,
@@ -152,11 +154,26 @@ export const createTeamSlice: AppSliceCreator<TeamSlice> = (set, get) => ({
   },
 
   fetchITMembers: async () => {
+    const currentAuthUser = get().currentUser;
+    if (currentAuthUser?.role !== 'admin' && currentAuthUser?.role !== 'supervisor') {
+      return;
+    }
     set({ isLoadingTeam: true, teamError: null });
     try {
       const dicts = get().serverDictionaries;
       const users = await adminApi.getUsers({ offset: 0, limit: 100 });
-      const mapped = users.map((u) => mapBackendUserToTeamMember(u, dicts));
+      const mapped = users.map((u) => {
+        const member = mapBackendUserToTeamMember(u, dicts);
+        if (
+          currentAuthUser &&
+          (member.id === currentAuthUser.id ||
+            member.email.toLowerCase() === currentAuthUser.email.toLowerCase()) &&
+          currentAuthUser.avatarUrl
+        ) {
+          member.avatar = currentAuthUser.avatarUrl;
+        }
+        return member;
+      });
       set({ itTeamMembers: mapped, isLoadingTeam: false });
     } catch (err: unknown) {
       const msg = extractApiErrorMessage(err, 'Failed to load IT team accounts from server');

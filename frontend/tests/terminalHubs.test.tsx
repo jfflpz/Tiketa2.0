@@ -22,6 +22,7 @@ vi.mock('../src/api/client', async () => {
       ...actual.ticketsApi,
       getQueue: vi.fn(),
       getTicket: vi.fn(),
+      getHistory: vi.fn().mockResolvedValue([]),
       getComments: vi.fn().mockResolvedValue([]),
       claimTicket: vi.fn().mockResolvedValue({}),
       assignTicket: vi.fn().mockResolvedValue({}),
@@ -509,7 +510,7 @@ describe('TerminalHubsView & TerminalHubDetailModal', () => {
     // Test send message on independently inspected ticket
     const chatInput = screen.getByPlaceholderText(/Message Maria Santos as/i);
     fireEvent.change(chatInput, { target: { value: 'Testing signal continuity' } });
-    const sendBtn = screen.getByRole('button', { name: /Send/i });
+    const sendBtn = screen.getByRole('button', { name: /^Send$/i });
     fireEvent.click(sendBtn);
 
     await waitFor(() => {
@@ -784,7 +785,7 @@ describe('TerminalHubsView & TerminalHubDetailModal', () => {
 
     const chatInput = screen.getByPlaceholderText(/Message Maria Santos/i) as HTMLInputElement;
     fireEvent.change(chatInput, { target: { value: 'Important update note' } });
-    const sendBtn = screen.getByRole('button', { name: /Send/i });
+    const sendBtn = screen.getByRole('button', { name: /^Send$/i });
 
     fireEvent.click(sendBtn);
 

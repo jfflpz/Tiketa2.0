@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   Building2,
@@ -131,9 +132,10 @@ export const TerminalHubDetailModal: React.FC<TerminalHubDetailModalProps> = ({
     onClose();
   };
 
-  return (
+  const modalContent = (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/60 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-zinc-900/60 backdrop-blur-sm
+      animate-fade-in overflow-y-auto"
       role="dialog"
       aria-modal="true"
       aria-labelledby="terminal-hub-title"
@@ -141,11 +143,11 @@ export const TerminalHubDetailModal: React.FC<TerminalHubDetailModalProps> = ({
       <div
         ref={modalRef}
         onKeyDown={handleFocusContainment}
-        className="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl border border-zinc-200 overflow-hidden"
+        className="bg-white rounded-3xl w-full max-w-4xl max-h-[88vh] flex flex-col shadow-2xl border border-zinc-200 overflow-hidden my-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="p-6 border-b border-[#ECEEF2] flex items-start justify-between gap-4 bg-gradient-to-r from-orange-50/40 via-white to-white shrink-0">
+        <div className="p-4 sm:p-6 border-b border-[#ECEEF2] flex items-start justify-between gap-3 sm:gap-4 bg-gradient-to-r from-orange-50/40 via-white to-white shrink-0">
           <div className="flex items-start gap-4 min-w-0">
             <div className="w-12 h-12 rounded-2xl bg-orange-600 text-white font-mono font-extrabold text-base flex items-center justify-center shadow-md shadow-orange-600/20 shrink-0">
               {hub.code}
@@ -242,7 +244,7 @@ export const TerminalHubDetailModal: React.FC<TerminalHubDetailModalProps> = ({
         </div>
 
         {/* Modal Scrollable Body */}
-        <div className="p-6 overflow-y-auto flex-1">
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1 min-h-0">
           {activeTab === 'DEPARTMENTS' && (
             <HubDepartmentsTab
               hubName={hub.name}
@@ -299,4 +301,10 @@ export const TerminalHubDetailModal: React.FC<TerminalHubDetailModalProps> = ({
       </div>
     </div>
   );
+
+    if (typeof document !== 'undefined' && import.meta.env.NODE_ENV !== 'test') {
+    return createPortal(modalContent, document.body);
+  }
+
+  return modalContent;
 };

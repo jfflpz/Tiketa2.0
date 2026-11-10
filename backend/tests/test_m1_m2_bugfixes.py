@@ -186,22 +186,30 @@ async def test_service_record_update_and_permissions(client, accounts):
         )
         assert decrypt(t.resolution_notes_enc) == "Completed firmware calibration"
 
-    # Admin can also update service record
-    admin_res = await client.patch(
+    # Unassigned admin denied direct update without explicit reassignment (Sprint 5 B-01)
+    admin_denied = await client.patch(
         f"/api/v1/tickets/{ticket_id}/service-record",
         json={"resolution_notes": "Administrator verified service notes"},
         headers=accounts["admin"],
     )
-    assert admin_res.status_code == 200
+    assert admin_denied.status_code == 403
+
+    # Assigned tech updates resolution notes
+    tech_update = await client.patch(
+        f"/api/v1/tickets/{ticket_id}/service-record",
+        json={"resolution_notes": "Administrator verified service notes"},
+        headers=accounts["tech"],
+    )
+    assert tech_update.status_code == 200
     assert (
-        admin_res.json()["resolution_notes"] == "Administrator verified service notes"
+        tech_update.json()["resolution_notes"] == "Administrator verified service notes"
     )
 
     # Whitespace-only clears to None
     clear_res = await client.patch(
         f"/api/v1/tickets/{ticket_id}/service-record",
         json={"resolution_notes": "   "},
-        headers=accounts["admin"],
+        headers=accounts["tech"],
     )
     assert clear_res.status_code == 200
     assert clear_res.json()["resolution_notes"] is None

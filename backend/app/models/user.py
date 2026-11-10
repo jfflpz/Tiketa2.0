@@ -46,6 +46,9 @@ class User(Base, TimestampMixin):
     )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     token_version: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    last_username_changed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
 
 class UserProfilePhoto(Base):

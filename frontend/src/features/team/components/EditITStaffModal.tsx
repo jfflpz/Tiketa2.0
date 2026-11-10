@@ -221,7 +221,7 @@ export const EditITStaffModal: React.FC<EditITStaffModalProps> = ({
             </div>
           </div>
 
-          {/* System RBAC Tier (4-Tier + Analyst) */}
+          {/* System RBAC Tier (4-Tier) */}
           <div>
             <label className="block text-xs font-semibold text-ink mb-1.5">
               Access Tier (RBAC Authority) <span className="text-rose-500">*</span>

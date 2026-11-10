@@ -156,7 +156,7 @@ export const HeaderGlobalSearch: React.FC<HeaderGlobalSearchProps> = ({
                   className="w-full text-left p-3 hover:bg-orange-50/50 active:bg-orange-50 transition-colors flex items-start gap-3 group"
                 >
                   <div className="mt-0.5 shrink-0">
-                    <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-zinc-900 text-white group-hover:bg-orange-600 transition-colors">
+                    <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-zinc-900 text-white group-hover:bg-orange-600 transition-colors shrink-0 whitespace-nowrap">
                       {ticket.ticketCode}
                     </span>
                   </div>

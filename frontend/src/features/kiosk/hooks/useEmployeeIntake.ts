@@ -7,6 +7,9 @@ import { LOCATIONS } from '../../../constants/domain';
 export interface LocationObservationState {
   status: 'idle' | 'requesting' | 'captured' | 'denied' | 'unavailable';
   observationId: string | null;
+  placeName?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   accuracy: number | null;
   capturedAt: string | null;
   message: string | null;
@@ -52,6 +55,9 @@ export function useEmployeeIntake() {
   const [locationState, setLocationState] = useState<LocationObservationState>({
     status: 'idle',
     observationId: null,
+    placeName: null,
+    latitude: null,
+    longitude: null,
     accuracy: null,
     capturedAt: null,
     message: null,
@@ -196,7 +202,24 @@ export function useEmployeeIntake() {
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const { latitude, longitude, accuracy } = pos.coords;
-        const capturedTime = new Date().toLocaleTimeString();
+        const capturedTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        // Resolve human-readable city/terminal name
+        let placeName = '';
+        try {
+          const geoRes = await fetch(
+            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+          );
+          if (geoRes.ok) {
+            const data = await geoRes.json();
+            const locality = data.locality || data.city || '';
+            const province = data.principalSubdivision || '';
+            placeName = locality && province ? `${locality}, ${province}` : locality || province || 'Philippines';
+          }
+        } catch {
+          // Fallback if offline
+        }
+
         try {
           const obs = await recordLocationObservationApi({
             latitude,
@@ -206,18 +229,23 @@ export function useEmployeeIntake() {
           setLocationState({
             status: 'captured',
             observationId: obs ? obs.observation_id : null,
+            placeName,
+            latitude,
+            longitude,
             accuracy: Math.round(accuracy),
             capturedAt: capturedTime,
-            message: `Location captured (±${Math.round(accuracy)}m)`,
+            message: null,
           });
         } catch {
-          // Failure to persist observation does not block user
           setLocationState({
             status: 'captured',
             observationId: null,
+            placeName,
+            latitude,
+            longitude,
             accuracy: Math.round(accuracy),
             capturedAt: capturedTime,
-            message: `Location captured (±${Math.round(accuracy)}m, unlinked)`,
+            message: null,
           });
         }
       },

@@ -2,7 +2,8 @@
 import type { AppSliceCreator } from '../types';
 import type { AuthenticatedUser, StaffRole, ActiveView } from './uiSlice';
 import { authApi, setAccessToken } from '../../api/client';
-import { resolvePathToView, viewToCanonicalPath, getDefaultHomeForRole } from '../../utils/routeUtils';
+import { resolvePathToView, getDefaultHomeForRole, viewToCanonicalPath } from '../../utils/routeUtils';
+import { ROLE_ALLOWED_VIEWS } from '../../App';
 import { normalizeApiError } from '../../utils/errorUtils';
 
 const getStaffTitle = (role: StaffRole): string => {
@@ -11,8 +12,6 @@ const getStaffTitle = (role: StaffRole): string => {
       return 'IT Administrator';
     case 'supervisor':
       return 'IT Helpdesk Supervisor';
-    case 'analyst':
-      return 'IT Systems Analyst';
     case 'intern':
       return 'IT Intern';
     case 'it':
@@ -36,7 +35,8 @@ export interface AuthSlice {
   openLoginModal: (role?: StaffRole) => void;
   closeLoginModal: () => void;
   loginAsStaff: (role: StaffRole, customName?: string) => void;
-  logoutToKiosk: (options?: { retainSession?: boolean }) => Promise<void>;
+  setCurrentUser: (user: AuthenticatedUser | null) => void;
+  logoutToKiosk: (options?: { rememberProfile?: boolean; retainSession?: boolean }) => Promise<void>;
 }
 
 let isHydratingInFlight: Promise<boolean> | null = null;
@@ -44,6 +44,7 @@ let isHydratingInFlight: Promise<boolean> | null = null;
 export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
   currentUser: null,
   authSessionId: 1,
+  setCurrentUser: (user) => set({ currentUser: user }),
   loginModalRole: null,
   isLogoutModalOpen: false,
   isAuthenticating: false,
@@ -65,21 +66,15 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
           const currentPath = typeof window !== 'undefined' ? window.location.pathname : '/';
           const requestedRoute = resolvePathToView(currentPath);
 
-          let targetView: ActiveView = getDefaultHomeForRole(userRole);
+          const defaultHome = getDefaultHomeForRole(userRole);
+          let targetView: ActiveView = defaultHome;
           if (requestedRoute !== 'public') {
-            const isExecutiveView =
-              requestedRoute === 'analytics' ||
-              requestedRoute === 'team' ||
-              requestedRoute === 'reports' ||
-              requestedRoute === 'joblogs';
-            if (userRole === 'admin') {
+            // Guard deep links by allowed views for this role
+            const allowed = ROLE_ALLOWED_VIEWS[userRole] || [];
+            if (allowed.includes(requestedRoute)) {
               targetView = requestedRoute;
-            } else if (userRole === 'supervisor' && isExecutiveView) {
-              targetView = requestedRoute;
-            } else if (userRole === 'it' && !['analytics', 'reports', 'team'].includes(requestedRoute)) {
-              targetView = requestedRoute;
-            } else if (userRole === 'intern' && ['overview', 'workbench', 'notes', 'joblogs'].includes(requestedRoute)) {
-              targetView = requestedRoute;
+            } else {
+              targetView = defaultHome;
             }
           }
 
@@ -96,16 +91,19 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
                 .join('')
                 .slice(0, 2)
                 .toUpperCase(),
+              avatarUrl: data.user.avatar_url || null,
             },
             authSessionId: get().authSessionId + 1,
             loginModalRole: null,
             activeView: targetView,
             isHydratingAuth: false,
           });
-          if (userRole !== 'supervisor') {
-            get().fetchQueueApi();
-          }
+          get().fetchQueueApi();
           return true;
+        } else {
+          setAccessToken(null);
+          set({ currentUser: null, isHydratingAuth: false });
+          return false;
         }
       } catch {
         setAccessToken(null);
@@ -127,18 +125,19 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
 
       const userRole: StaffRole = (data.user.role as StaffRole) || 'it';
 
-      // 4-Tier RBAC landing: route to designated default home for role
+      // F-01: Explicit login lands on canonical home for role
       const targetView: ActiveView = getDefaultHomeForRole(userRole);
+      const canonicalPath = viewToCanonicalPath(targetView);
       localStorage.setItem('tiketa_active_view', targetView);
 
-      // BF-02: Clear verification override without consuming an employee closure confirmation
+      // Clear verification override without consuming an employee closure confirmation
       if (get().verifyTicketCode) {
         get().setVerifyTicketCode(null);
       }
 
-      // Update URL to canonical role path
+      // Update URL to role-specific canonical home
       if (typeof window !== 'undefined') {
-        window.history.pushState(null, '', viewToCanonicalPath(targetView));
+        window.history.pushState(null, '', canonicalPath);
         window.dispatchEvent(new Event('popstate'));
       }
 
@@ -155,6 +154,7 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
             .join('')
             .slice(0, 2)
             .toUpperCase(),
+          avatarUrl: data.user.avatar_url || null,
         },
         authSessionId: get().authSessionId + 1,
         loginModalRole: null,
@@ -188,35 +188,31 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
   },
 
   logoutToKiosk: async (options) => {
-    if (options?.retainSession) {
-      if (typeof window !== 'undefined') {
-        window.history.pushState(null, '', '/report');
-        window.dispatchEvent(new Event('popstate'));
+    const userToRemember = get().currentUser;
+    const shouldRemember = options?.rememberProfile ?? false;
+
+    // F-01: Both exit choices revoke the staff session, clear sensitive domain state, stop polling and return to /report
+    localStorage.removeItem('tiketa_active_view');
+    if (shouldRemember && userToRemember) {
+      try {
+        const consentedCard = {
+          name: userToRemember.name,
+          username: userToRemember.email.split('@')[0],
+          role: userToRemember.role,
+        };
+        localStorage.setItem('tiketa_remembered_profile', JSON.stringify(consentedCard));
+      } catch {
+        // quota exceeded or private mode
       }
-      set({
-        selectedTicketId: null,
-        inspectedTicket: null,
-        isInspectingTicket: false,
-        inspectTicketError: null,
-        activeWorkbenchTicketId: null,
-        workbenchTicket: null,
-        isWorkbenchLoading: false,
-        workbenchError: null,
-        isQuickIntakeOpen: false,
-      });
-      get().addToast(
-        'Returned to Employee Ticket Screen',
-        'Staff session kept on device for quick return',
-        'info'
-      );
-      return;
+    } else {
+      localStorage.removeItem('tiketa_remembered_profile');
     }
 
-    localStorage.removeItem('tiketa_active_view');
+    let revokeSucceeded = true;
     try {
       await authApi.logout();
     } catch {
-      // Ignore network errors so local state is always cleanly wiped
+      revokeSucceeded = false;
     } finally {
       setAccessToken(null);
       if (typeof window !== 'undefined') {
@@ -237,12 +233,24 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
         isWorkbenchLoading: false,
         workbenchError: null,
         isQuickIntakeOpen: false,
+        tickets: [],
       });
-      get().addToast(
-        'Returned to Employee Ticket Screen',
-        'Staff session signed out cleanly',
-        'info'
-      );
+
+      if (!revokeSucceeded) {
+        get().addToast(
+          'Sign-out completed with warning',
+          'Local session cleared. Server revocation failed (network/unreachable).',
+          'warning'
+        );
+      } else {
+        get().addToast(
+          'Returned to Employee Ticket Screen',
+          shouldRemember
+            ? 'Profile remembered on this device (password required to sign in)'
+            : 'Staff session signed out cleanly',
+          'info'
+        );
+      }
     }
   },
 });

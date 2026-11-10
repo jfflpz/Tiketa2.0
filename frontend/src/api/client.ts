@@ -39,10 +39,24 @@ export const apiClient = axios.create({
     },
 });
 
+export const isPublicEndpoint = (url?: string): boolean => {
+    if (!url) return false;
+    return (
+        url.startsWith('/tickets/submit') ||
+        url.startsWith('/tickets/track') ||
+        url.startsWith('/tickets/my-tickets') ||
+        url.startsWith('/tickets/public') ||
+        url.startsWith('/employees/lookup') ||
+        url.startsWith('/employees/match') ||
+        url.includes('/public')
+    );
+};
+
 // Request Interceptor: Attach Bearer JWT
-apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+apiClient.interceptors.request.use((config: InternalAxiosRequestConfig & { isPublic?: boolean }) => {
+    const isPublic = config.isPublic || isPublicEndpoint(config.url);
     if (config.headers && !config.headers.Authorization) {
-        if (inMemoryAccessToken) {
+        if (!isPublic && inMemoryAccessToken) {
             config.headers.Authorization = `Bearer ${inMemoryAccessToken}`;
         } else if (inMemoryEmployeeToken) {
             config.headers.Authorization = `Bearer ${inMemoryEmployeeToken}`;
@@ -63,11 +77,11 @@ let failedQueue: Array<{
 
 const processQueue = (error: AxiosError | null) => {
     failedQueue.forEach((prom) => {
-    if (error) {
-        prom.reject(error);
-    } else {
-        prom.resolve();
-    }
+        if (error) {
+            prom.reject(error);
+        } else {
+            prom.resolve();
+        }
     });
     failedQueue = [];
 };
@@ -75,39 +89,63 @@ const processQueue = (error: AxiosError | null) => {
 apiClient.interceptors.response.use(
     (response) => response,
     async (error: AxiosError) => {
-    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+        const originalRequest = error.config as (InternalAxiosRequestConfig & { _retry?: boolean; isPublic?: boolean }) | undefined;
 
-    if (error.response?.status === 401 && !originalRequest._retry && !originalRequest.url?.includes('/auth/')) {
-        if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-            failedQueue.push({ resolve, reject });
-        })
-            .then(() => apiClient(originalRequest))
-            .catch((err) => Promise.reject(err));
+        if (!originalRequest) {
+            return Promise.reject(error);
         }
 
-        originalRequest._retry = true;
-        isRefreshing = true;
+        const isPublic = originalRequest.isPublic || isPublicEndpoint(originalRequest.url);
 
-        try {
-        const { data } = await axios.post<{ access_token: string }>(
-            `${BASE_URL}/auth/refresh`,
-            {},
-            { withCredentials: true }
-        );
-        setAccessToken(data.access_token);
-        processQueue(null);
-        return apiClient(originalRequest);
-        } catch (refreshError) {
-        processQueue(refreshError as AxiosError);
-        setAccessToken(null);
-        return Promise.reject(refreshError);
-        } finally {
-        isRefreshing = false;
+        // Public requests never trigger staff refresh on 401
+        if (
+            error.response?.status === 401 && 
+            !originalRequest._retry && 
+            !originalRequest.url?.includes('/auth/') &&
+            !isPublic
+        ) {
+            if (!inMemoryAccessToken) {
+                return Promise.reject(error);
+            }
+
+            if (isRefreshing) {
+                return new Promise((resolve, reject) => {
+                    failedQueue.push({ resolve, reject });
+                })
+                    .then(() => {
+                        if (originalRequest.headers && inMemoryAccessToken) {
+                            originalRequest.headers.Authorization = `Bearer ${inMemoryAccessToken}`;
+                        }
+                        return apiClient(originalRequest);
+                    })
+                    .catch((err) => Promise.reject(err));
+            }
+
+            originalRequest._retry = true;
+            isRefreshing = true;
+
+            try {
+                const { data } = await axios.post<{ access_token: string }>(
+                    `${BASE_URL}/auth/refresh`,
+                    {},
+                    { withCredentials: true }
+                );
+                setAccessToken(data.access_token);
+                if (originalRequest.headers) {
+                    originalRequest.headers.Authorization = `Bearer ${data.access_token}`;
+                }
+                processQueue(null);
+                return apiClient(originalRequest);
+            } catch (refreshError) {
+                processQueue(refreshError as AxiosError);
+                setAccessToken(null);
+                return Promise.reject(refreshError);
+            } finally {
+                isRefreshing = false;
+            }
         }
-    }
 
-    return Promise.reject(error);
+        return Promise.reject(error);
     }
 );
 
@@ -220,7 +258,7 @@ export const authApi = {
     return res.data;
     },
     refresh: async () => {
-    const res = await apiClient.post('/auth/refresh');
+    const res = await apiClient.post('/auth/refresh', {}, { timeout: 7000 });
     return res.data;
     },
     logout: async () => {
@@ -237,6 +275,8 @@ export interface ServerDictionaryItem {
   id: string;
   code: string;
   name: string;
+  address?: string;
+  is_active?: boolean;
 }
 
 export interface ServerDictionaries {
@@ -299,9 +339,11 @@ export const directoryApi = {
     });
     return res.data;
   },
-  lookupEmployee: async (query: string): Promise<EmployeeLookupResult> => {
+    lookupEmployee: async (query: string): Promise<EmployeeLookupResult> => {
+    const token = getAccessToken();
     const res = await apiClient.get<EmployeeLookupResult>('/employees/lookup', {
-      params: { q: query },
+        params: { q: query },
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     });
     return res.data;
     },
@@ -372,12 +414,26 @@ export const ticketsApi = {
     },
     getQueue: async (params?: {
     status?: string;
+    technician_id?: string;
     offset?: number;
     limit?: number;
     location_id?: string;
     order?: 'asc' | 'desc';
     }) => {
     const res = await apiClient.get<StaffTicketResponse[]>('/tickets', { params });
+    return res.data;
+    },
+    getHistory: async (params?: {
+    technician_id?: string;
+    location_id?: string;
+    status?: string;
+    offset?: number;
+    limit?: number;
+    order?: 'asc' | 'desc';
+    }) => {
+    const res = await apiClient.get<StaffTicketResponse[]>('/tickets/history', {
+    params: { status: 'ALL', ...params },
+    });
     return res.data;
     },
     getTicket: async (ticketId: string): Promise<StaffTicketResponse> => {
@@ -402,11 +458,19 @@ export const ticketsApi = {
     return res.data;
     },
     updateServiceRecord: async (
-    ticketId: string,
-    payload: { task_code?: string; diagnosis?: string; resolution_notes?: string }
+        ticketId: string,
+        payload: {
+        task_code?: string;
+        diagnosis?: string;
+        resolution_notes?: string;
+        company_id?: string;
+        location_id?: string;
+        department_id?: string;
+        requester_name?: string;
+        }
     ) => {
-    const res = await apiClient.patch(`/tickets/${ticketId}/service-record`, payload);
-    return res.data;
+        const res = await apiClient.patch(`/tickets/${ticketId}/service-record`, payload);
+        return res.data;
     },
     quickIntake: async (payload: {
     employee_id: string;
@@ -433,7 +497,7 @@ export const ticketsApi = {
     },
     verifyAccess: async (
     codeOrId: string,
-    payload?: { employee_id?: string; token?: string; match_token?: string }
+    payload?: { employee_id?: string; email?: string; token?: string; match_token?: string }
     ): Promise<TicketVerifyAccessOut> => {
     const res = await apiClient.post<TicketVerifyAccessOut>(
         `/tickets/${codeOrId}/verify-access`,
@@ -480,6 +544,13 @@ export const ticketsApi = {
         `/tickets/${ticketId}/reopen`,
         payload
     );
+    return res.data;
+    },
+    downloadJobLogsXLSX: async (signal?: AbortSignal) => {
+    const res = await apiClient.get('/tickets/job-logs/export', {
+        responseType: 'blob',
+        signal,
+    });
     return res.data;
     },
 };
@@ -540,6 +611,24 @@ export const reportsApi = {
     });
     return res.data;
     },
+    downloadReportXLSX: async (
+    reportName: string,
+    params?: {
+        date_from?: string;
+        date_to?: string;
+        company_id?: string;
+        location_id?: string;
+        department_id?: string;
+    },
+    signal?: AbortSignal
+    ) => {
+    const res = await apiClient.get(`/reports/${reportName}`, {
+        params: { ...params, format: 'xlsx' },
+        responseType: 'blob',
+        signal,
+    });
+    return res.data;
+    },
 };
 
 export interface BackendUser {
@@ -552,6 +641,8 @@ export interface BackendUser {
     location_id?: string | null;
     closed_repairs?: number;
     active_bench?: number;
+    avatar_url?: string | null;
+    avatar_updated_at?: string | null;
     token_version?: number;
     created_at?: string;
     updated_at?: string;
@@ -585,6 +676,8 @@ export interface DictionaryItem {
     id: string;
     code: string;
     name: string;
+    address?: string;
+    is_active?: boolean;
 }
 
 export interface DictionariesResponse {
@@ -660,6 +753,59 @@ export const adminApi = {
         const res = await apiClient.get<DictionariesResponse>('/dictionaries');
         return res.data;
     },
+    createLocation: async (payload: {
+        code: string;
+        name: string;
+        address?: string;
+    }): Promise<ServerDictionaryItem> => {
+        const res = await apiClient.post<ServerDictionaryItem>('/admin/locations', payload);
+        return res.data;
+    },
+    updateLocation: async (
+        id: string,
+        payload: { name?: string; address?: string; is_active?: boolean }
+    ): Promise<ServerDictionaryItem> => {
+        const res = await apiClient.patch<ServerDictionaryItem>(`/admin/locations/${id}`, payload);
+        return res.data;
+    },
+    createDepartment: async (payload: {
+        code: string;
+        name: string;
+    }): Promise<ServerDictionaryItem> => {
+        const res = await apiClient.post<ServerDictionaryItem>('/admin/departments', payload);
+        return res.data;
+    },
+    updateDepartment: async (
+        id: string,
+        payload: { name?: string; is_active?: boolean }
+    ): Promise<ServerDictionaryItem> => {
+        const res = await apiClient.patch<ServerDictionaryItem>(`/admin/departments/${id}`, payload);
+        return res.data;
+    },
+    createCompany: async (payload: {
+        code: string;
+        name: string;
+    }): Promise<ServerDictionaryItem> => {
+        const res = await apiClient.post<ServerDictionaryItem>('/admin/companies', payload);
+        return res.data;
+    },
+    updateCompany: async (
+        id: string,
+        payload: { name?: string; is_active?: boolean }
+    ): Promise<ServerDictionaryItem> => {
+        const res = await apiClient.patch<ServerDictionaryItem>(`/admin/companies/${id}`, payload);
+        return res.data;
+    },
+    createLocationDepartment: async (payload: {
+        location_id: string;
+        department_id: string;
+    }): Promise<{ location_id: string; department_id: string }> => {
+        const res = await apiClient.post<{ location_id: string; department_id: string }>(
+            '/admin/location-departments',
+            payload
+        );
+        return res.data;
+    },
 };
 
 export interface AccountRequestCreateInput {
@@ -704,3 +850,17 @@ export const accountRequestsApi = {
     },
 };
 
+
+export const usersApi = {
+    uploadSelfPhoto: async (file: File): Promise<{ avatar_url: string }> => {
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await apiClient.put<{ avatar_url: string }>('/users/me/photo', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        return res.data;
+    },
+    removeSelfPhoto: async (): Promise<void> => {
+        await apiClient.delete('/users/me/photo');
+    },
+};

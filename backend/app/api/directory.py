@@ -1,8 +1,9 @@
+from datetime import timedelta
 from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, Request
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from starlette.concurrency import run_in_threadpool
 
 from app.api.deps import DB, Admin, CurrentUser, SupervisorOrAdmin
@@ -22,8 +23,14 @@ from app.models import (
     TaskCategory,
     Ticket,
     User,
+    UserProfilePhoto,
 )
 from app.schemas import (
+    AdminResetPasswordRequest,
+    AdminUsernameUpdateRequest,
+    CompanyCreate,
+    CompanyOut,
+    CompanyUpdate,
     DepartmentCreate,
     DepartmentOut,
     DepartmentUpdate,
@@ -35,11 +42,13 @@ from app.schemas import (
     LocationDepartmentUpdate,
     PlanInput,
     ScopeInput,
+    StaffRole,
     UserCreate,
     UserOut,
     UserUpdate,
 )
 from app.services.directory import employee_view, find_employee, validate_scope
+from app.services.tickets import now
 
 router = APIRouter(tags=["Directory"])
 
@@ -167,11 +176,30 @@ async def users(
     user: SupervisorOrAdmin,
     offset: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=200),
+    q: str | None = None,
+    role: StaffRole | None = None,
+    location_id: UUID | None = None,
+    is_active: bool | None = None,
 ):
-    users_list = (
-        await db.scalars(
-            select(User).order_by(User.username).offset(offset).limit(limit)
+    query = select(User)
+    if q:
+        clean_q = f"%{q.strip().lower()}%"
+        query = query.where(
+            or_(
+                func.lower(User.username).like(clean_q),
+                func.lower(User.full_name).like(clean_q),
+                func.lower(User.email).like(clean_q),
+            )
         )
+    if role:
+        query = query.where(User.role == role)
+    if location_id:
+        query = query.where(User.location_id == location_id)
+    if is_active is not None:
+        query = query.where(User.is_active == is_active)
+
+    users_list = (
+        await db.scalars(query.order_by(User.username).offset(offset).limit(limit))
     ).all()
     if not users_list:
         return []
@@ -194,6 +222,21 @@ async def users(
         for row in stats_rows
     }
 
+    photo_rows = (
+        await db.execute(
+            select(UserProfilePhoto.user_id, UserProfilePhoto.updated_at).where(
+                UserProfilePhoto.user_id.in_(user_ids)
+            )
+        )
+    ).all()
+    photo_map = {
+        row.user_id: (
+            f"/api/v1/users/{row.user_id}/photo?v={int(row.updated_at.timestamp())}",
+            row.updated_at,
+        )
+        for row in photo_rows
+    }
+
     return [
         UserOut(
             id=u.id,
@@ -204,6 +247,8 @@ async def users(
             is_active=u.is_active,
             active_bench=stats_map.get(u.id, (0, 0))[0],
             closed_repairs=stats_map.get(u.id, (0, 0))[1],
+            avatar_url=photo_map.get(u.id, (None, None))[0],
+            avatar_updated_at=photo_map.get(u.id, (None, None))[1],
         )
         for u in users_list
     ]
@@ -248,11 +293,79 @@ async def update_user(user_id: UUID, body: UserUpdate, db: DB, admin: Admin):
         exclude_none=True, exclude={"password", "role", "is_active"}
     ).items():
         setattr(user, key, value)
-    if body.password:
-        user.password_hash = await run_in_threadpool(hash_password, body.password)
     user.token_version += 1
     await db.commit()
     return user
+
+
+@router.post("/admin/users/{user_id}/reset-password")
+async def admin_reset_password(
+    user_id: UUID,
+    body: AdminResetPasswordRequest,
+    db: DB,
+    acting_admin: Admin,
+):
+    from app.core.security import verify_password
+
+    valid_admin = await run_in_threadpool(
+        verify_password, body.admin_current_password, acting_admin.password_hash
+    )
+    if not valid_admin:
+        raise HTTPException(401, "Invalid administrator password")
+
+    if body.new_password != body.confirm_password:
+        raise HTTPException(422, "New password and confirmation do not match")
+
+    target_user = await db.get(User, user_id)
+    if not target_user:
+        raise HTTPException(404, "Target user not found")
+
+    target_user.password_hash = await run_in_threadpool(
+        hash_password, body.new_password
+    )
+    target_user.token_version += 1
+    await db.commit()
+    return {"message": "Password successfully reset and target sessions invalidated"}
+
+
+@router.patch("/admin/users/{user_id}/username")
+async def admin_update_username(
+    user_id: UUID,
+    body: AdminUsernameUpdateRequest,
+    db: DB,
+    acting_admin: Admin,
+):
+    target = await db.get(User, user_id)
+    if not target:
+        raise HTTPException(404, "Target user not found")
+
+    clean_username = body.username.strip().lower()
+    if clean_username == target.username.lower():
+        return {"username": target.username, "next_eligible_at": None}
+
+    # Enforce atomic 168-hour cooldown
+    if target.last_username_changed_at:
+        cooldown_elapsed = now() - target.last_username_changed_at
+        if cooldown_elapsed < timedelta(hours=168):
+            next_eligible = target.last_username_changed_at + timedelta(hours=168)
+            raise HTTPException(
+                409,
+                f"Username changes are on cooldown until {next_eligible.isoformat()}",
+            )
+
+    # Enforce uniqueness
+    existing = await db.scalar(
+        select(User).where(func.lower(User.username) == clean_username)
+    )
+    if existing and existing.id != target.id:
+        raise HTTPException(409, "A user with this username already exists")
+
+    target.username = clean_username
+    target.last_username_changed_at = now()
+    target.token_version += 1
+    await db.commit()
+    next_eligible = target.last_username_changed_at + timedelta(hours=168)
+    return {"username": target.username, "next_eligible_at": next_eligible.isoformat()}
 
 
 @router.get("/admin/employees")
@@ -261,10 +374,34 @@ async def employees(
     user: SupervisorOrAdmin,
     offset: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=200),
+    q: str | None = None,
+    company_id: UUID | None = None,
+    location_id: UUID | None = None,
+    department_id: UUID | None = None,
+    is_active: bool | None = None,
 ):
+    query = select(Employee)
+    if q:
+        clean_q = f"%{q.strip().lower()}%"
+        query = query.where(
+            or_(
+                func.lower(Employee.employee_id).like(clean_q),
+                func.lower(Employee.full_name).like(clean_q),
+                func.lower(Employee.email).like(clean_q),
+            )
+        )
+    if company_id:
+        query = query.where(Employee.company_id == company_id)
+    if location_id:
+        query = query.where(Employee.location_id == location_id)
+    if department_id:
+        query = query.where(Employee.department_id == department_id)
+    if is_active is not None:
+        query = query.where(Employee.is_active == is_active)
+
     records = (
         await db.scalars(
-            select(Employee).order_by(Employee.employee_id).offset(offset).limit(limit)
+            query.order_by(Employee.employee_id).offset(offset).limit(limit)
         )
     ).all()
     return [await employee_view(db, row) for row in records]
@@ -482,3 +619,93 @@ async def update_location_department(
     await db.commit()
     await db.refresh(loc_dept)
     return loc_dept
+
+
+@router.post("/companies", status_code=201, response_model=CompanyOut)
+@router.post("/admin/companies", status_code=201, response_model=CompanyOut)
+async def create_company(body: CompanyCreate, db: DB, admin: Admin):
+    clean_code = body.code.strip().upper()
+    clean_name = body.name.strip()
+
+    conflict = await db.scalar(
+        select(Company).where(
+            (func.upper(Company.code) == clean_code)
+            | (func.lower(Company.name) == clean_name.lower())
+        )
+    )
+    if conflict:
+        raise HTTPException(409, "A company with this code or name already exists")
+
+    comp = Company(
+        code=clean_code,
+        name=clean_name,
+        is_active=body.is_active,
+    )
+    db.add(comp)
+    await db.commit()
+    await db.refresh(comp)
+    return comp
+
+
+@router.patch("/companies/{company_id}", response_model=CompanyOut)
+@router.patch("/admin/companies/{company_id}", response_model=CompanyOut)
+async def update_company(company_id: UUID, body: CompanyUpdate, db: DB, admin: Admin):
+    comp = await db.get(Company, company_id, with_for_update=True)
+    if not comp:
+        raise HTTPException(404, "Company not found")
+
+    if body.code is not None:
+        clean_code = body.code.strip().upper()
+        conflict = await db.scalar(
+            select(Company).where(
+                func.upper(Company.code) == clean_code,
+                Company.id != company_id,
+            )
+        )
+        if conflict:
+            raise HTTPException(409, "A company with this code already exists")
+        comp.code = clean_code
+
+    if body.name is not None:
+        clean_name = body.name.strip()
+        conflict = await db.scalar(
+            select(Company).where(
+                func.lower(Company.name) == clean_name.lower(),
+                Company.id != company_id,
+            )
+        )
+        if conflict:
+            raise HTTPException(409, "A company with this name already exists")
+        comp.name = clean_name
+
+    if body.is_active is False and comp.is_active is True:
+        emp_count = await db.scalar(
+            select(func.count())
+            .select_from(Employee)
+            .where(Employee.company_id == company_id, Employee.is_active.is_(True))
+        )
+        if (emp_count or 0) > 0:
+            raise HTTPException(
+                409, "Cannot deactivate company with active assigned employees"
+            )
+
+        ticket_count = await db.scalar(
+            select(func.count())
+            .select_from(Ticket)
+            .where(
+                Ticket.company_id == company_id,
+                Ticket.status.in_(["OPEN", "PROG"]),
+            )
+        )
+        if (ticket_count or 0) > 0:
+            raise HTTPException(
+                409, "Cannot deactivate company with active tickets in progress"
+            )
+
+        comp.is_active = False
+    elif body.is_active is True:
+        comp.is_active = True
+
+    await db.commit()
+    await db.refresh(comp)
+    return comp

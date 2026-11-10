@@ -1,18 +1,23 @@
-// @spec FR-AUTH-02: Staff Authentication Modal for 4-Tier Access
+// @spec FR-AUTH-02: Staff Authentication Modal with Consented Remembered Profile Card
 import React, { useState, useEffect } from 'react';
 import {
   X,
-  ShieldCheck,
-  Shield,
-  Wrench,
   Lock,
   ArrowRight,
   Loader2,
   AlertCircle,
   Eye,
   EyeOff,
+  UserX,
 } from 'lucide-react';
-import { useAppStore, StaffRole } from '../../store/useAppStore';
+import { useAppStore } from '../../store/useAppStore';
+import type { StaffRole } from '../../store/slices/uiSlice';
+
+interface RememberedProfile {
+  name: string;
+  username: string;
+  role: StaffRole;
+}
 
 export const StaffLoginModal: React.FC = () => {
   const loginModalRole = useAppStore((state) => state.loginModalRole);
@@ -20,29 +25,31 @@ export const StaffLoginModal: React.FC = () => {
   const loginWithApi = useAppStore((state) => state.loginWithApi);
   const isAuthenticating = useAppStore((state) => state.isAuthenticating);
   const authError = useAppStore((state) => state.authError);
-  const [role, setRole] = useState<StaffRole>('admin');
-  const [username, setUsername] = useState('admin');
+
+  const [rememberedProfile, setRememberedProfile] = useState<RememberedProfile | null>(null);
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  const getPresetUsername = (r: StaffRole): string => {
-    switch (r) {
-      case 'admin':
-        return 'admin';
-      case 'supervisor':
-        return 'supervisor';
-      case 'intern':
-        return 'intern';
-      case 'it':
-      default:
-        return 'technician';
-    }
-  };
-
   useEffect(() => {
     if (loginModalRole) {
-      setRole(loginModalRole);
-      setUsername(getPresetUsername(loginModalRole));
+      try {
+        const stored = localStorage.getItem('tiketa_remembered_profile');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed?.username && parsed?.name && parsed?.role) {
+            setRememberedProfile(parsed);
+            setUsername(parsed.username);
+            setPassword('');
+            return;
+          }
+        }
+      } catch {
+        // Ignore localStorage read errors
+      }
+      setRememberedProfile(null);
+      setUsername('');
+      setPassword('');
     }
   }, [loginModalRole]);
 
@@ -58,17 +65,36 @@ export const StaffLoginModal: React.FC = () => {
 
   if (!loginModalRole) return null;
 
-  const handleRoleSwitch = (newRole: StaffRole) => {
-    setRole(newRole);
-    setUsername(getPresetUsername(newRole));
+  const handleSwitchAccount = () => {
+    try {
+      localStorage.removeItem('tiketa_remembered_profile');
+    } catch {
+      // Ignore
+    }
+    setRememberedProfile(null);
+    setUsername('');
+    setPassword('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const success = await loginWithApi({ username, password });
+    const targetUsername = rememberedProfile?.username || username.trim();
+    if (!targetUsername || !password) return;
+    
+    const success = await loginWithApi({ username: targetUsername, password });
     if (success) {
       setPassword('');
     }
+  };
+
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .filter(Boolean)
+      .map((part) => part[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase();
   };
 
   return (
@@ -83,7 +109,7 @@ export const StaffLoginModal: React.FC = () => {
         onClick={() => !isAuthenticating && closeLoginModal()}
         aria-hidden="true"
       />
-      <div className="relative z-10 w-full max-w-lg bg-surface border border-line rounded-3xl shadow-2xl overflow-hidden my-auto animate-scale-up">
+      <div className="relative z-10 w-full max-w-md bg-surface border border-line rounded-3xl shadow-2xl overflow-hidden my-auto animate-scale-up">
         {/* Header */}
         <div className="px-6 py-5 bg-canvas border-b border-line flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -95,7 +121,7 @@ export const StaffLoginModal: React.FC = () => {
                 Staff Workspace Sign In
               </h3>
               <p className="text-[11px] text-ink-subtle">
-                4-Tier Authenticated Access (Argon2id + Dual-Token JWT)
+                Authenticated Access (Dual-Token HttpOnly + RAM Bearer)
               </p>
             </div>
           </div>
@@ -118,143 +144,117 @@ export const StaffLoginModal: React.FC = () => {
             </div>
           )}
 
-          {/* 4-Tier Role Switcher Pills */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 bg-canvas p-1 rounded-2xl border border-line">
-            <button
-              type="button"
-              onClick={() => handleRoleSwitch('it')}
-              className={`py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all press-fx ${
-                role === 'it'
-                  ? 'bg-surface text-ink shadow-card border border-line'
-                  : 'text-ink-subtle hover:text-ink'
-              }`}
-            >
-              <Wrench className="w-3.5 h-3.5 text-orange-500" />
-              <span>IT Support</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleRoleSwitch('intern')}
-              className={`py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all press-fx ${
-                role === 'intern'
-                  ? 'bg-surface text-ink shadow-card border border-line'
-                  : 'text-ink-subtle hover:text-ink'
-              }`}
-            >
-              <Lock className="w-3.5 h-3.5 text-blue-500" />
-              <span>Intern</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleRoleSwitch('supervisor')}
-              className={`py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all press-fx ${
-                role === 'supervisor'
-                  ? 'bg-surface text-ink shadow-card border border-line'
-                  : 'text-ink-subtle hover:text-ink'
-              }`}
-            >
-              <Shield className="w-3.5 h-3.5 text-amber-500" />
-              <span>Supervisor</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleRoleSwitch('admin')}
-              className={`py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all press-fx ${
-                role === 'admin'
-                  ? 'bg-surface text-ink shadow-card border border-line'
-                  : 'text-ink-subtle hover:text-ink'
-              }`}
-            >
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-              <span>Admin</span>
-            </button>
-          </div>
-
-          {/* Credentials Input */}
-          <div className="space-y-3">
-            <div>
-              <label className="block text-xs font-semibold text-ink mb-1">
-                Staff Email or Username
-              </label>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-                disabled={isAuthenticating}
-                className="w-full px-3.5 py-2.5 bg-canvas border border-line rounded-xl text-xs font-medium text-ink focus:outline-none focus:border-orange-500 disabled:opacity-60"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-ink mb-1">
-                Password
-              </label>
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter password (min 12 characters)"
-                  required
-                  disabled={isAuthenticating}
-                  className="w-full pl-3.5 pr-10 py-2.5 bg-canvas border border-line rounded-xl text-xs font-medium text-ink focus:outline-none focus:border-orange-500 disabled:opacity-60"
-                />
+          {/* Remembered Profile Card Mode */}
+          {rememberedProfile ? (
+            <div className="space-y-4">
+              <div className="p-4 bg-canvas rounded-2xl border border-line flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-zinc-900 text-white font-bold text-xs flex items-center justify-center shrink-0">
+                    {getInitials(rememberedProfile.name)}
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-ink flex items-center gap-2">
+                      <span>{rememberedProfile.name}</span>
+                      <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-surface border border-line text-ink-subtle">
+                        {rememberedProfile.role}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-ink-subtle">
+                      @{rememberedProfile.username}
+                    </div>
+                  </div>
+                </div>
                 <button
                   type="button"
-                  onClick={() => setShowPassword((prev) => !prev)}
-                  tabIndex={-1}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-subtle hover:text-ink transition-colors p-0.5"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  title={showPassword ? 'Hide password' : 'Show password'}
+                  onClick={handleSwitchAccount}
+                  className="text-[11px] text-zinc-500 hover:text-ink font-medium inline-flex items-center gap-1 p-1 rounded hover:bg-surface transition-colors"
+                  title="Switch to another staff account"
                 >
-                  {showPassword ? (
-                    <EyeOff className="w-4 h-4 text-zinc-400 hover:text-zinc-600" />
-                  ) : (
-                    <Eye className="w-4 h-4 text-zinc-400 hover:text-zinc-600" />
-                  )}
+                  <UserX className="w-3.5 h-3.5" />
+                  <span>Switch</span>
                 </button>
               </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-ink mb-1">
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter account password"
+                    required
+                    autoFocus
+                    disabled={isAuthenticating}
+                    className="w-full pl-3.5 pr-10 py-2.5 bg-canvas border border-line rounded-xl text-xs font-medium text-ink focus:outline-none focus:border-orange-500 disabled:opacity-60"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    tabIndex={-1}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-subtle hover:text-ink transition-colors p-0.5"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-4 h-4 text-zinc-400 hover:text-zinc-600" />
+                    ) : (
+                      <Eye className="w-4 h-4 text-zinc-400 hover:text-zinc-600" />
+                    )}
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
-
-          {/* Destination Preview Note */}
-          <div className="p-3 rounded-2xl bg-canvas border border-line text-[11px] text-ink-subtle">
-            {role === 'admin' && (
-              <span>
-                Opens the <strong>Admin &amp; Team Workbench Dashboard</strong>, IT Queue, and 8 Executive Reports.
-              </span>
-            )}
-            {role === 'supervisor' && (
-              <span>
-                Opens the <strong>Supervisor Operations Dashboard</strong> with real-time queue SLA management and full team reporting.
-              </span>
-            )}
-            {role === 'intern' && (
-              <span>
-                Opens the <strong>IT Intern Workbench</strong> for repair guidance, knowledge base notes, and assisted job logging.
-              </span>
-            )}
-            {role === 'it' && (
-              <span>
-                Opens the <strong>IT Support Workbench</strong> for single-click ticket claiming, active repairs, and 15-column job logging.
-              </span>
-            )}
-          </div>
-
-          {/* Quick Demo Helper */}
-          <div className="flex items-center justify-between text-[11px] text-ink-subtle px-1">
-            <span>Demo: <code className="bg-canvas px-1 py-0.5 rounded border border-line text-ink font-mono">{getPresetUsername(role)}</code> / <code className="bg-canvas px-1 py-0.5 rounded border border-line text-ink font-mono">Tiketa2026!Pass</code></span>
-            <button
-              type="button"
-              onClick={() => {
-                setUsername(getPresetUsername(role));
-                setPassword('Tiketa2026!Pass');
-              }}
-              className="text-brand hover:underline font-medium text-[11px]"
-            >
-              Fill Credentials
-            </button>
-          </div>
+          ) : (
+            /* Standard Username & Password Form */
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-ink mb-1">
+                  Staff Username or Email
+                </label>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="e.g. technician or admin"
+                  required
+                  autoFocus
+                  disabled={isAuthenticating}
+                  className="w-full px-3.5 py-2.5 bg-canvas border border-line rounded-xl text-xs font-medium text-ink focus:outline-none focus:border-orange-500 disabled:opacity-60"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-ink mb-1">
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter account password"
+                    required
+                    disabled={isAuthenticating}
+                    className="w-full pl-3.5 pr-10 py-2.5 bg-canvas border border-line rounded-xl text-xs font-medium text-ink focus:outline-none focus:border-orange-500 disabled:opacity-60"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    tabIndex={-1}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-subtle hover:text-ink transition-colors p-0.5"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-4 h-4 text-zinc-400 hover:text-zinc-600" />
+                    ) : (
+                      <Eye className="w-4 h-4 text-zinc-400 hover:text-zinc-600" />
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           <button
             type="submit"
@@ -264,19 +264,11 @@ export const StaffLoginModal: React.FC = () => {
             {isAuthenticating ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Authenticating with Argon2id...</span>
+                <span>Signing in...</span>
               </>
             ) : (
               <>
-                <span>
-                  {role === 'admin'
-                    ? 'Launch Admin Dashboard'
-                    : role === 'supervisor'
-                    ? 'Launch Supervisor Dashboard'
-                    : role === 'intern'
-                    ? 'Launch Intern Workbench'
-                    : 'Launch IT Support Workbench'}
-                </span>
+                <span>Sign in to Staff Workspace</span>
                 <ArrowRight className="w-4 h-4" />
               </>
             )}

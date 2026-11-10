@@ -32,17 +32,21 @@ export const EmployeeTicketScreen: React.FC = () => {
   const clearVerificationContext = useAppStore((state) => state.clearVerificationContext);
   const copyTicketShareLink = useAppStore((state) => state.copyTicketShareLink);
   const fetchMyEmployeeTickets = useAppStore((state) => state.fetchMyEmployeeTickets);
-  const hydrateKioskEmployeeTickets = useAppStore((state) => state.hydrateKioskEmployeeTickets);
+  // Check if URL has a tracking code without a token (?track= or ?verifyTicket= without ?token=)
+  const initialTrackCode = React.useMemo(() => {
+    if (typeof window === 'undefined') return '';
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('token')) return ''; // Has token -> closure verification, not public tracking
+    return params.get('track') || params.get('verifyTicket') || params.get('ticket') || '';
+  }, []);
 
-  const [tab, setTab] = useState<'create' | 'my_tickets' | 'lookup'>('create');
+  const [tab, setTab] = useState<'create' | 'my_tickets' | 'lookup'>(
+    initialTrackCode ? 'lookup' : 'create'
+  );
   const [detailTicketId, setDetailTicketId] = useState<string | null>(null);
   const [copiedTicketId, setCopiedTicketId] = useState<string | null>(null);
 
   const intake = useEmployeeIntake();
-
-  useEffect(() => {
-    hydrateKioskEmployeeTickets?.();
-  }, [hydrateKioskEmployeeTickets]);
 
   useEffect(() => {
     if (verifyTicketCode && verificationStatus === 'idle') {
@@ -338,7 +342,7 @@ export const EmployeeTicketScreen: React.FC = () => {
 
             {/* TAB 3: LOOKUP CODE */}
             {tab === 'lookup' && (
-              <KioskTrackLookupTab />
+              <KioskTrackLookupTab initialCode={initialTrackCode} />
             )}
           </>
         )}
