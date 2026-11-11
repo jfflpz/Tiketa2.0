@@ -161,7 +161,7 @@ export const TicketListsView: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {/* View Mode Switcher: Table vs 3-Col Kanban */}
           <div className="inline-flex items-center bg-white p-1 rounded-xl border border-[#ECEEF2] shadow-xs">
             <button
