@@ -99,6 +99,8 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
             isHydratingAuth: false,
           });
           get().fetchQueueApi();
+          get().fetchITMembers?.();
+          get().fetchDictionaries?.();
           return true;
         } else {
           setAccessToken(null);
@@ -162,6 +164,8 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
         isAuthenticating: false,
       });
       get().fetchQueueApi();
+      get().fetchITMembers?.();
+      get().fetchDictionaries?.();
 
       get().addToast(
         `Welcome, ${data.user.full_name}!`,
