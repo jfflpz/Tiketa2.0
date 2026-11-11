@@ -984,6 +984,7 @@ export const ExportPptxModal: React.FC<ExportPptxModalProps> = ({
           </div>
         </div>
       )}
-    </div>
+    </div>,
+    document.body
   );
 };
