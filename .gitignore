@@ -8,6 +8,9 @@
 *.sql.gz.sha256
 .ruff_cache/
 *.env.local
+*.xlsx
+*.csv
+backend/imports/
 
 # Python
 __pycache__/

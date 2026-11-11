@@ -153,8 +153,10 @@ export const createTicketVerificationSlice: AppSliceCreator<TicketVerificationSl
           ],
         }));
 
+      if (get().employeeMatchToken) {
         await get().fetchMyEmployeeTickets();
-      } catch (err: any) {
+      }
+    } catch (err: any) {
         if (currentSeq !== verificationSequence) return;
 
         const status = err.response?.status;

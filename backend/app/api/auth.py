@@ -54,12 +54,13 @@ return 1
 
 
 def set_cookie(response: Response, token: str):
+    is_prod = settings.ENVIRONMENT == "production"
     response.set_cookie(
         "refresh_token",
         token,
         httponly=True,
-        secure=settings.ENVIRONMENT == "production",
-        samesite="strict",
+        secure=is_prod,
+        samesite="none" if is_prod else "strict",
         path=COOKIE_PATH,
         max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400,
     )

@@ -17,6 +17,13 @@ const QUICK_REPLIES = [
 
 export const TicketConversation: React.FC<TicketConversationProps> = ({ ticket }) => {
   const addToast = useAppStore((state) => state.addToast);
+  const currentUser = useAppStore((state) => state.currentUser);
+  const employeeMatchToken = useAppStore((state) => state.employeeMatchToken);
+  const verifyToken = useAppStore((state) => state.verifyToken);
+
+  // Closure-scoped JWTs are prohibited by the backend from accessing conversation endpoints
+  const isClosureOnly = Boolean(verifyToken && !currentUser && !employeeMatchToken);
+
   const [chatInput, setChatInput] = useState('');
   const [comments, setComments] = useState<TicketChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -24,7 +31,7 @@ export const TicketConversation: React.FC<TicketConversationProps> = ({ ticket }
   const [sendError, setSendError] = useState<string | null>(null);
 
   const loadComments = useCallback(async () => {
-    if (!ticket.id || ticket.id.startsWith('t-') || ticket.id.startsWith('tracked-')) {
+    if (isClosureOnly || !ticket.id || ticket.id.startsWith('t-') || ticket.id.startsWith('tracked-')) {
       setComments((ticket.messages || []).filter((m) => !m.isInternal));
       return;
     }
@@ -53,11 +60,15 @@ export const TicketConversation: React.FC<TicketConversationProps> = ({ ticket }
   }, [ticket.id, ticket.messages]);
 
   useEffect(() => {
+    if (isClosureOnly) {
+      setComments((ticket.messages || []).filter((m) => !m.isInternal));
+      return;
+    }
     setIsLoading(true);
     loadComments().finally(() => setIsLoading(false));
     const interval = setInterval(loadComments, 5000);
     return () => clearInterval(interval);
-  }, [loadComments]);
+  }, [loadComments, isClosureOnly, ticket.messages]);
 
   const sendMessage = async (text: string) => {
     const trimmed = text.trim();

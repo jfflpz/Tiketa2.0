@@ -31,7 +31,6 @@ export const JobLogDrawer: React.FC = () => {
   const itTeamMembers = useAppStore((state) => state.itTeamMembers);
   const updateTicketMode = useAppStore((state) => state.updateTicketMode);
   const updateTicketDescription = useAppStore((state) => state.updateTicketDescription);
-  const resolveTicket = useAppStore((state) => state.resolveTicket);
   const requestValidation = useAppStore((state) => state.requestValidation);
   const reopenTicket = useAppStore((state) => state.reopenTicket);
   const copyTicketShareLink = useAppStore((state) => state.copyTicketShareLink);
@@ -367,7 +366,6 @@ export const JobLogDrawer: React.FC = () => {
                 <button
                   type="button"
                   onClick={async () => {
-                    resolveTicket(ticket.id);
                     await updateTicketStatusApi(ticket.id, 'RESL', ticket.mode || 'SITE');
                   }}
                   className="flex-1 sm:flex-initial px-3.5 py-2 bg-brand hover:bg-brand-hover text-white text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition-colors press-fx whitespace-nowrap"

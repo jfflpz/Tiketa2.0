@@ -13,6 +13,18 @@ class Settings(BaseSettings):
     DATABASE_URL: str
     REDIS_URL: str
 
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def assemble_db_url(cls, v: Any) -> str:
+        if isinstance(v, str):
+            if v.startswith("postgres://"):
+                return v.replace("postgres://", "postgresql+asyncpg://", 1)
+            if v.startswith("postgresql://") and not v.startswith(
+                "postgresql+asyncpg://"
+            ):
+                return v.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return v
+
     SECRET_KEY: str = Field(min_length=32)
     APP_FIELD_ENCRYPTION_KEY: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15

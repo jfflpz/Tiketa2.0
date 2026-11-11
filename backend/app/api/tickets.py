@@ -467,7 +467,7 @@ async def queue(
     location_id: UUID | None = None,
     order: Literal["asc", "desc"] = "desc",
     offset: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(50, ge=1, le=2500),
 ):
 
     if user.role == "intern":
@@ -576,7 +576,7 @@ async def ticket_history(
     status: Literal["ALL", "OPEN", "PROG", "RESL", "CLSD"] = "ALL",
     order: Literal["asc", "desc"] = "desc",
     offset: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(50, ge=1, le=2500),
     location_id: UUID | None = None,
     technician_id: UUID | None = None,
     date_from: date | None = None,
@@ -1086,6 +1086,10 @@ async def status_ticket(ticket_id: UUID, body: StatusInput, db: DB, user: Curren
 
         row.mode = body.mode or row.mode
 
+        token = secrets.token_urlsafe(32)
+        row.closure_token_hash = digest(token)
+        row.closure_token_expires_at = now() + timedelta(hours=72)
+
         if row.status == "PROG":
             row.resolved_at = now()
 
@@ -1094,15 +1098,6 @@ async def status_ticket(ticket_id: UUID, body: StatusInput, db: DB, user: Curren
             row.duration = Decimal(
                 str((row.resolved_at - row.started_at).total_seconds() / 3600)
             ).quantize(Decimal("0.0001"))
-
-            token = secrets.token_urlsafe(32)
-
-            row.closure_token_hash = digest(token)
-
-            row.closure_token_expires_at = now() + timedelta(hours=72)
-
-        else:
-            token = secrets.token_urlsafe(32)
 
         if not row.requester_contact_enc:
             raise HTTPException(

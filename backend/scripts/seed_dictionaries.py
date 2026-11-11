@@ -24,6 +24,8 @@ COMPANIES = [
     ("FSC", "Food Stop Company"),
     ("HG", "Hotel Group"),
     ("AH", "Adamo Holdings"),
+    ("RG", "Resort Group"),
+    ("PMO", "Property Management Office"),
 ]
 
 LOCATIONS = [
@@ -81,6 +83,7 @@ TASKS = [
     ("PC-SETUP", "PC/Laptop Set-up"),
     ("PRN-PMS", "Printer PMS"),
     ("PRN-SETUP", "Printer Set-up"),
+    ("TAB-SETUP", "Tablet Set-up"),
 ]
 
 

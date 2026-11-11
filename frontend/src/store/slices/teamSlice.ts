@@ -6,6 +6,7 @@ import {
   adminApi,
   accountRequestsApi,
   extractApiErrorMessage,
+  setAccessToken,
   BackendUser,
   UserCreateInput,
   EmployeeCreateInput,
@@ -214,7 +215,10 @@ export const createTeamSlice: AppSliceCreator<TeamSlice> = (set, get) => ({
   updateITMemberApi: async (id, payload) => {
     try {
       const existingMember = get().itTeamMembers.find((m) => m.id === id);
+      const currentUserId = get().currentUser?.id;
+      const isSelfEdit = Boolean(currentUserId && currentUserId === id);
 
+      let passwordChanged = false;
       // 1. Administrative Password Reset (S5-12)
       if (payload.password && payload.password.trim()) {
         if (!payload.acting_admin_password || !payload.acting_admin_password.trim()) {
@@ -225,6 +229,21 @@ export const createTeamSlice: AppSliceCreator<TeamSlice> = (set, get) => ({
           new_password: payload.password.trim(),
           confirm_password: payload.password.trim(),
         });
+        passwordChanged = true;
+      }
+
+      // If the admin reset their own password, the server incremented token_version += 1 and invalidated current session.
+      // Do NOT fire downstream authenticated requests with dead token.
+      if (isSelfEdit && passwordChanged) {
+        setAccessToken(null);
+        get().setCurrentUser(null);
+        get().addToast(
+          'Password Changed Successfully',
+          'Your password has been updated. Active sessions were revoked for security; please sign in with your new password.',
+          'success'
+        );
+        get().openLoginModal('admin');
+        return true;
       }
 
       // 2. Governed Username Update (S5-13)
@@ -285,7 +304,6 @@ export const createTeamSlice: AppSliceCreator<TeamSlice> = (set, get) => ({
       if (payload.locationId !== undefined) {
         updateData.location_id = payload.locationId;
       }
-      await adminApi.updateUser(id, updateData as any);
 
       // Persist UI metadata locally
       const key = payload.username?.trim() || existingMember?.username || id;
@@ -321,17 +339,20 @@ export const createTeamSlice: AppSliceCreator<TeamSlice> = (set, get) => ({
 
   deleteITMemberApi: async (id: string, name?: string) => {
     try {
-      await adminApi.updateUser(id, { is_active: false });
+      await accountRequestsApi.create({
+        request_type: 'deactivate',
+        target_user_id: id,
+      });
       await get().fetchITMembers();
       get().addToast(
-        'Account Deactivated',
-        `${name ?? 'Specialist'} account marked inactive. Historical audit logs preserved.`,
-        'info'
+        'Deactivation Proposal Submitted',
+        `Deactivation request for ${name ?? 'staff member'} submitted. Awaiting supervisor approval.`,
+        'success'
       );
       return true;
     } catch (err: unknown) {
-      const msg = extractApiErrorMessage(err, 'Failed to deactivate account');
-      get().addToast('Deactivation Failed', msg, 'warning');
+      const msg = extractApiErrorMessage(err, 'Failed to submit deactivation request');
+      get().addToast('Deactivation Request Failed', msg, 'warning');
       return false;
     }
   },

@@ -146,11 +146,14 @@ apiClient.interceptors.response.use(
             } catch (refreshError) {
                 processQueue(refreshError as AxiosError);
                 setAccessToken(null);
+                if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new CustomEvent('tiketa:session-expired'));
+                }
                 return Promise.reject(refreshError);
             } finally {
                 isRefreshing = false;
             }
-        }
+    }
 
         return Promise.reject(error);
     }
