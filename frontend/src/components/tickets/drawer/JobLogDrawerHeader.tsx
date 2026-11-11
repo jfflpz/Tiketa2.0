@@ -15,9 +15,8 @@ export interface JobLogDrawerHeaderProps {
   drawerTab: 'CHAT' | 'JOB_LOG';
   messageCount: number;
   onSelectTab: (tab: 'CHAT' | 'JOB_LOG') => void;
-  
   onCopyShareLink: () => void;
-  onRequestValidation: () => void;
+  onRequestValidation?: () => void;
   onClose: () => void;
 }
 
@@ -26,9 +25,7 @@ export const JobLogDrawerHeader: React.FC<JobLogDrawerHeaderProps> = ({
   drawerTab,
   messageCount,
   onSelectTab,
-  
   onCopyShareLink,
-  onRequestValidation,
   onClose,
 }) => {
   return (
@@ -80,36 +77,6 @@ export const JobLogDrawerHeader: React.FC<JobLogDrawerHeaderProps> = ({
           </button>
         </div>
       </div>
-
-      {/* Validation Request Banner when Resolved */}
-      {(ticket.status === 'RESL' || ticket.validationRequested) && (
-        <div className="p-3 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-between gap-2 text-xs">
-          <div className="min-w-0">
-            <span className="font-bold text-ink block truncate">
-              Validation Requested: Awaiting {ticket.requestor} ({ticket.employeeId}) Sign-Off
-            </span>
-            <span className="text-[11px] text-zinc-500">
-              Employee must validate repair via confirmation screen.
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              type="button"
-              onClick={onCopyShareLink}
-              className="px-2.5 py-1 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-[11px] font-bold press-fx"
-            >
-              Copy Link
-            </button>
-            <button
-              type="button"
-              onClick={onRequestValidation}
-              className="px-2.5 py-1 rounded-lg bg-white border border-orange-300 text-orange-800 hover:bg-orange-100 text-[11px] font-bold press-fx"
-            >
-              Remind
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Drawer View Switcher: Live Chat vs 15-Column Job Log */}
       <div className="grid grid-cols-2 gap-1.5 bg-surface p-1 rounded-xl border border-line">
