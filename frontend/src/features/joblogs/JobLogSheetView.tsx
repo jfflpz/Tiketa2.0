@@ -13,6 +13,7 @@ import { COMPANIES } from '../../constants/domain';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { ticketsApi } from '../../api/client';
 import { mapStaffTicket } from '../../utils/mapStaffTicket';
+import { formatStandardTime } from '../../utils/timeFormat';
 import type { Ticket } from '../../types/ticket';
 
 export const JobLogSheetView: React.FC = () => {
@@ -347,9 +348,9 @@ export const JobLogSheetView: React.FC = () => {
                     </td>
                     <td className="py-3 px-3 text-zinc-500">{t.month}</td>
                     <td className="py-3 px-3 font-mono">{t.dateStarted}</td>
-                    <td className="py-3 px-3 font-mono">{t.timeStarted}</td>
+                    <td className="py-3 px-3 font-mono">{formatStandardTime(t.timeStarted)}</td>
                     <td className="py-3 px-3 font-mono text-zinc-500">
-                      {t.timeFinished ?? '—'}
+                      {formatStandardTime(t.timeFinished)}
                     </td>
                     <td className="py-3 px-3 font-mono font-bold text-emerald-700">
                       {t.duration !== undefined ? `${t.duration.toFixed(2)} hrs` : '—'}

@@ -12,6 +12,7 @@ import {
 import type { Ticket } from '../../../../types/ticket';
 import { ticketsApi } from '../../../../api/client';
 import { mapStaffTicket } from '../../../../utils/mapStaffTicket';
+import { formatStandardTime } from '../../../../utils/timeFormat';
 import { useAppStore } from '../../../../store/useAppStore';
 import { StatusBadge } from '../../../../components/common/StatusBadge';
 
@@ -307,7 +308,7 @@ export const HubActiveTicketsTab: React.FC<HubActiveTicketsTabProps> = ({
                     Dept: <strong className="text-zinc-700">{t.department}</strong>
                   </span>
                   <span>•</span>
-                  <span>Started: {t.dateStarted} {t.timeStarted ? t.timeStarted.slice(0, 5) : ''}</span>
+                  <span>Started: {t.dateStarted} {t.timeStarted ? formatStandardTime(t.timeStarted) : ''}</span>
                   {t.workedBy && (
                     <>
                       <span>•</span>

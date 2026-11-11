@@ -7,6 +7,7 @@ import type { Ticket, SupportMode, TicketStatus } from '../../../types/ticket';
 import type { TeamMember } from '../../../types/team';
 import { DiagnosedTaskSelector } from '../DiagnosedTaskSelector';
 import { TicketChecklistSection } from '../checklist/TicketChecklistSection';
+import { formatStandardTime } from '../../../utils/timeFormat';
 
 export interface JobLogDrawerRecordFormProps {
   ticket: Ticket;
@@ -68,9 +69,13 @@ export const JobLogDrawerRecordForm: React.FC<JobLogDrawerRecordFormProps> = ({
   const timeFields = [
     { no: '07', label: 'Month', value: ticket.month },
     { no: '08', label: 'Date Started', value: ticket.dateStarted },
-    { no: '09', label: 'Time Started', value: ticket.timeStarted },
+    { no: '09', label: 'Time Started', value: formatStandardTime(ticket.timeStarted) },
     { no: '12', label: 'Date Finished', value: ticket.dateFinished ?? '—' },
-    { no: '10', label: 'Time Finished', value: ticket.timeFinished ?? '— (Active)' },
+    {
+      no: '10',
+      label: 'Time Finished',
+      value: ticket.timeFinished ? formatStandardTime(ticket.timeFinished) : '— (Active)',
+    },
     {
       no: '11',
       label: 'Duration (Hours)',

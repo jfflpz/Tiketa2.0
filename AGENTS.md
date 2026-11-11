@@ -25,5 +25,6 @@ This rule file configures all AI coding assistants (Antigravity, Cursor, Copilot
 ---
 
 ## 4. Git & Commit Protocols
+- **STRICT PROHIBITION ON AUTONOMOUS COMMITS**: Under NO circumstances may the AI coding assistant run `git commit`, `git push`, `git tag`, or mutate git history autonomously. The agent must NEVER commit code unless the user explicitly gives direct approval (e.g. "commit this now", "go ahead and commit"). Present changes, diffs, suggested branch names, and commit messages, and await explicit user approval before touching git commits.
 - Conventional Commits: `feat(scope): ...`, `fix(scope): ...`, `chore(scope): ...`, `docs(scope): ...`, `test(scope): ...`.
 - Protected `main` and `develop`: Never commit or push directly. Base feature branches (`feat/backend-*`, `feat/frontend-*`) on `develop`; all PRs target `develop`. Only Jefferson Lopez may merge. Do not force-push or rewrite published history without separate authorization.

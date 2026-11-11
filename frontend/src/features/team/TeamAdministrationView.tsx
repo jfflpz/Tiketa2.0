@@ -137,7 +137,7 @@ export const TeamAdministrationView: React.FC = () => {
       m.name.toLowerCase().includes(q) ||
       (m.username && m.username.toLowerCase().includes(q)) ||
       m.email.toLowerCase().includes(q) ||
-      m.role.toLowerCase().includes(q) ||
+      (m.role ? m.role.toLowerCase().includes(q) : false) ||
       m.primaryLocation.toLowerCase().includes(q) ||
       m.department.toLowerCase().includes(q)
     );

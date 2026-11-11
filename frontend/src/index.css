@@ -39,6 +39,11 @@
   * {
     border-color: #ECEEF2;
   }
+  html, body, #root {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
   body {
     margin: 0;
     background-color: #F7F8FA;

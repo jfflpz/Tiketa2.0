@@ -4,6 +4,7 @@ import type { TeamMember, TeamRole, TeamMemberStatus } from '../../types/team';
 import type { EmployeeProfile, StaffRole } from '../../types';
 import {
   adminApi,
+  accountRequestsApi,
   extractApiErrorMessage,
   BackendUser,
   UserCreateInput,
@@ -27,8 +28,10 @@ export interface TeamSlice {
       name: string;
       email: string;
       username?: string;
-      role: TeamRole;
+      role?: TeamRole;
       systemRole: StaffRole;
+      status?: TeamMemberStatus;
+      custom_permissions?: string[];
       department: string;
       primaryLocation: string;
       locationId?: string | null;
@@ -130,12 +133,17 @@ const mapBackendUserToTeamMember = (
       u.username
     )}&backgroundColor=${isAdm ? 'fed7aa' : 'b6e3f4'}`,
     department: dept,
-    status: u.is_active ? 'active' : 'offline',
+    status: !u.is_active
+      ? 'offline'
+      : u.status === 'on_leave'
+      ? 'on_leave'
+      : 'active',
     primaryLocation: locationName,
     ticketsClosed: u.closed_repairs ?? 0,
     activeTickets: u.active_bench ?? 0,
     flameScore: 0,
     is_active: u.is_active,
+    custom_permissions: u.custom_permissions || [],
   };
 };
 
@@ -228,27 +236,51 @@ export const createTeamSlice: AppSliceCreator<TeamSlice> = (set, get) => ({
       ) {
         await adminApi.updateUsername(id, {
           username: payload.username.trim(),
+          acting_admin_password: payload.acting_admin_password,
         });
       }
 
-      // 3. General User Profile Fields (governed by B-03)
-      const updateData: {
-        full_name?: string;
-        email?: string;
-        role?: StaffRole;
-        is_active?: boolean;
-        location_id?: string | null;
-      } = {
+      // 3. Governed Actions (B-03): Role Change & Deactivation proposals
+      let hasGovernedProposal = false;
+      if (payload.systemRole && existingMember?.systemRole && payload.systemRole !== existingMember.systemRole) {
+        await accountRequestsApi.create({
+          request_type: 'role_change',
+          target_user_id: id,
+          role: payload.systemRole,
+          department: payload.department,
+        });
+        hasGovernedProposal = true;
+        get().addToast(
+          'Proposal Submitted',
+          `Role tier modification for @${payload.username || existingMember?.username} submitted to Pending Approvals Queue for Supervisor approval.`,
+          'success'
+        );
+      }
+
+      if (payload.is_active === false && existingMember?.is_active) {
+        await accountRequestsApi.create({
+          request_type: 'deactivate',
+          target_user_id: id,
+        });
+        hasGovernedProposal = true;
+        get().addToast(
+          'Proposal Submitted',
+          `Deactivation request for @${payload.username || existingMember?.username} submitted to Pending Approvals Queue for Supervisor approval.`,
+          'success'
+        );
+      }
+
+      // 4. General Direct Profile Fields (name, email, terminal, status, permissions)
+      const updateData: Record<string, any> = {
         full_name: payload.name,
         email: payload.email,
+        acting_admin_password: payload.acting_admin_password,
       };
-      // Only include role if explicitly changed (backend rejects direct role changes per B-03)
-      if (payload.systemRole && existingMember?.systemRole && payload.systemRole !== existingMember.systemRole) {
-        updateData.role = payload.systemRole;
+      if (payload.status && payload.status !== 'inactive') {
+        updateData.status = payload.status;
       }
-      // Only include is_active if explicitly changed
-      if (payload.is_active !== undefined && existingMember?.is_active !== undefined && payload.is_active !== existingMember.is_active) {
-        updateData.is_active = payload.is_active;
+      if (payload.custom_permissions !== undefined) {
+        updateData.custom_permissions = payload.custom_permissions;
       }
       if (payload.locationId !== undefined) {
         updateData.location_id = payload.locationId;
@@ -271,11 +303,13 @@ export const createTeamSlice: AppSliceCreator<TeamSlice> = (set, get) => ({
       }
 
       await get().fetchITMembers();
-      get().addToast(
-        'Staff Account Updated',
-        `Account details for ${payload.name} saved successfully.`,
-        'success'
-      );
+      if (!hasGovernedProposal) {
+        get().addToast(
+          'Staff Account Updated',
+          `Account details for ${payload.name} saved successfully.`,
+          'success'
+        );
+      }
       return true;
     } catch (err: unknown) {
       const msg = extractApiErrorMessage(err, 'Failed to update staff account');

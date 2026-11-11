@@ -169,4 +169,158 @@ describe('F-07: Admin Governance Security (S5-12 & S5-13)', () => {
       expect(mockClose).toHaveBeenCalledTimes(1);
     });
   });
+
+  it('6. Dynamically changes button to "Submit for Approval" when role is changed (B-03)', async () => {
+    const mockSubmit = vi.fn().mockResolvedValue(true);
+
+    render(
+      <EditITStaffModal
+        isOpen={true}
+        onClose={vi.fn()}
+        member={mockMember}
+        onSubmit={mockSubmit}
+      />
+    );
+
+    // Initial button text for direct changes
+    expect(screen.getByText('Save Account Changes')).toBeTruthy();
+
+    // Click 'Supervisor' tier
+    const supervisorBtn = screen.getByText('Supervisor');
+    fireEvent.click(supervisorBtn);
+
+    // Button should now be 'Submit for Approval'
+    expect(screen.getByText('Submit for Approval')).toBeTruthy();
+    expect(screen.queryByText('Save Account Changes')).toBeNull();
+
+    // Submitting triggers proposal
+    const submitBtn = screen.getByText('Submit for Approval');
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(mockSubmit).toHaveBeenCalledWith(
+        'user-uuid-101',
+        expect.objectContaining({
+          systemRole: 'supervisor',
+        })
+      );
+    });
+  });
+
+  it('7. Dynamically changes button to "Submit for Approval" when Deactivated status is selected (B-03)', async () => {
+    const mockSubmit = vi.fn().mockResolvedValue(true);
+
+    render(
+      <EditITStaffModal
+        isOpen={true}
+        onClose={vi.fn()}
+        member={mockMember}
+        onSubmit={mockSubmit}
+      />
+    );
+
+    // Click 'Deactivated' status
+    const deactBtn = screen.getByText('Deactivated');
+    fireEvent.click(deactBtn);
+
+    // Button should now be 'Submit for Approval'
+    expect(screen.getByText('Submit for Approval')).toBeTruthy();
+
+    const submitBtn = screen.getByText('Submit for Approval');
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(mockSubmit).toHaveBeenCalledWith(
+        'user-uuid-101',
+        expect.objectContaining({
+          is_active: false,
+          status: 'inactive',
+        })
+      );
+    });
+  });
+
+  it('8. Requires Admin Password confirmation to save direct account changes in separate pop-up modal', async () => {
+    const mockSubmit = vi.fn().mockResolvedValue(true);
+
+    render(
+      <EditITStaffModal
+        isOpen={true}
+        onClose={vi.fn()}
+        member={mockMember}
+        onSubmit={mockSubmit}
+      />
+    );
+
+    // Click "Save Account Changes" to open separate modal
+    const submitBtn = screen.getByText('Save Account Changes');
+    fireEvent.click(submitBtn);
+
+    expect(screen.getByText('Admin Authorization')).toBeTruthy();
+    expect(screen.getByText(/Please enter your current Administrator password/i)).toBeTruthy();
+
+    // Click "Authorize & Save" with empty password
+    const authSaveBtn = screen.getByText('Authorize & Save');
+    fireEvent.click(authSaveBtn);
+
+    // Password input in the authorization popup
+    const adminPassInputs = screen.getAllByPlaceholderText('Enter your current admin password');
+    const authInput = adminPassInputs[adminPassInputs.length - 1];
+    fireEvent.change(authInput, { target: { value: 'AdminSecret123!' } });
+    fireEvent.click(authSaveBtn);
+
+    await waitFor(() => {
+      expect(mockSubmit).toHaveBeenCalledTimes(1);
+      expect(mockSubmit).toHaveBeenCalledWith(
+        'user-uuid-101',
+        expect.objectContaining({
+          acting_admin_password: 'AdminSecret123!',
+        })
+      );
+    });
+  });
+
+  it('9. Successfully saves On-leave status and custom permissions via separate authorization modal', async () => {
+    const mockSubmit = vi.fn().mockResolvedValue(true);
+
+    render(
+      <EditITStaffModal
+        isOpen={true}
+        onClose={vi.fn()}
+        member={mockMember}
+        onSubmit={mockSubmit}
+      />
+    );
+
+    // Select On-leave
+    const onLeaveBtn = screen.getByText('On-leave');
+    fireEvent.click(onLeaveBtn);
+
+    // Check custom permission (e.g. Create & Edit Saved Repair Guides)
+    const notesPermCheckbox = screen.getByLabelText(/Create & Edit Saved Repair Guides/i);
+    fireEvent.click(notesPermCheckbox);
+
+    // Click Save Account Changes to trigger the Authorization modal popup
+    const submitBtn = screen.getByText('Save Account Changes');
+    fireEvent.click(submitBtn);
+
+    // Enter admin password in the authorization popup modal
+    const adminPassInputs = screen.getAllByPlaceholderText('Enter your current admin password');
+    const authInput = adminPassInputs[adminPassInputs.length - 1];
+    fireEvent.change(authInput, { target: { value: 'AdminSecret123!' } });
+
+    const authSaveBtn = screen.getByText('Authorize & Save');
+    fireEvent.click(authSaveBtn);
+
+    await waitFor(() => {
+      expect(mockSubmit).toHaveBeenCalledWith(
+        'user-uuid-101',
+        expect.objectContaining({
+          status: 'on_leave',
+          custom_permissions: expect.arrayContaining(['notes:edit']),
+          acting_admin_password: 'AdminSecret123!',
+        })
+      );
+    });
+  });
 });

@@ -26,6 +26,8 @@ export interface AuthenticatedUser {
   avatar: string;
   avatarUrl?: string | null;
   username?: string;
+  status?: string;
+  custom_permissions?: string[];
 }
 
 export interface ToastItem {

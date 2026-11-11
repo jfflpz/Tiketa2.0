@@ -103,11 +103,12 @@ apiClient.interceptors.response.use(
 
         const isPublic = originalRequest.isPublic || isPublicEndpoint(originalRequest.url);
 
-        // Public requests never trigger staff refresh on 401
+        // Public requests or comment polls never trigger staff refresh on 401
         if (
             error.response?.status === 401 && 
             !originalRequest._retry && 
             !originalRequest.url?.includes('/auth/') &&
+            !originalRequest.url?.includes('/comments') &&
             !isPublic
         ) {
             if (!inMemoryAccessToken) {
@@ -299,6 +300,8 @@ export interface AdminUserItem {
   email: string;
   full_name: string;
   role: StaffRole;
+  status?: string;
+  custom_permissions?: string[];
   is_active: boolean;
 }
 
@@ -643,6 +646,8 @@ export interface BackendUser {
     email: string;
     full_name: string;
     role: StaffRole;
+    status?: string;
+    custom_permissions?: string[];
     is_active: boolean;
     location_id?: string | null;
     closed_repairs?: number;
@@ -665,7 +670,11 @@ export interface UserCreateInput {
 export interface UserUpdateInput {
     full_name?: string | null;
     username?: string | null;
+    email?: string | null;
     role?: StaffRole | null;
+    status?: string | null;
+    custom_permissions?: string[] | null;
+    location_id?: string | null;
     is_active?: boolean | null;
     password?: string | null;
     acting_admin_password?: string | null;
@@ -763,7 +772,7 @@ export const adminApi = {
     },
     updateUsername: async (
         userId: string,
-        payload: { username: string }
+        payload: { username: string; acting_admin_password?: string }
     ): Promise<{ username: string; next_eligible_at: string | null }> => {
         const res = await apiClient.patch<{ username: string; next_eligible_at: string | null }>(`/admin/users/${userId}/username`, payload);
         return res.data;
@@ -836,10 +845,12 @@ export const adminApi = {
 };
 
 export interface AccountRequestCreateInput {
-    username: string;
-    email: string;
-    full_name: string;
-    role: 'intern' | 'it';
+    request_type?: 'create' | 'deactivate' | 'role_change';
+    target_user_id?: string | null;
+    username?: string;
+    email?: string;
+    full_name?: string;
+    role?: StaffRole;
     location_id?: string | null;
     department?: string | null;
 }

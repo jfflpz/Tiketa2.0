@@ -28,7 +28,7 @@ export const KioskTopBar: React.FC<KioskTopBarProps> = () => {
   }, []);
 
   return (
-    <header className="border-b border-line bg-surface/80 backdrop-blur-md px-6 py-3 flex items-center justify-between text-xs sticky top-0 z-30">
+    <header className="border-b border-line bg-surface/80 backdrop-blur-md px-3.5 sm:px-6 py-3 flex items-center justify-between text-xs sticky top-0 z-30">
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2">
           <img src="/logo-light.svg" alt="Tiketa" className="h-8 w-auto object-contain drop-shadow-sm" />

@@ -73,12 +73,12 @@ export const EmployeeTicketScreen: React.FC = () => {
     null;
 
   return (
-    <div className="min-h-screen bg-canvas text-ink flex flex-col justify-between">
+    <div className="min-h-screen bg-canvas text-ink flex flex-col justify-between w-full max-w-full overflow-x-hidden">
       {/* 1. Header Bar */}
       <KioskTopBar />
 
       {/* 2. Main Content Area */}
-      <main className="max-w-4xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex-1 space-y-6">
+      <main className="max-w-4xl w-full mx-auto p-3.5 sm:p-6 lg:p-8 flex-1 space-y-6">
         {/* Verification Flow Branches when arriving with ?verifyTicket= */}
         {verifyTicketCode ? (
           <div className="space-y-4">
@@ -244,7 +244,7 @@ export const EmployeeTicketScreen: React.FC = () => {
                 Report workstation, ticketing, network, or hardware issues across Five Star terminals in under 30 seconds.
               </p>
 
-              <div className="inline-flex items-center gap-1.5 p-1 bg-surface border border-line rounded-2xl shadow-xs">
+              <div className="inline-flex max-w-full overflow-x-auto items-center gap-1 sm:gap-1.5 p-1 bg-surface border border-line rounded-2xl shadow-xs">
                 <button
                   type="button"
                   onClick={() => {
