@@ -253,7 +253,13 @@ async def report(
             if value:
                 query = query.where(column == value)
         plans = (await db.scalars(query)).all()
-        data = pms_report(rows, plans, local(now()).date(), bool(company_id))
+        loc_map = {
+            loc.id: loc.name for loc in (await db.scalars(select(Location))).all()
+        }
+        dept_map = {d.id: d.name for d in (await db.scalars(select(Department))).all()}
+        data = pms_report(
+            rows, plans, local(now()).date(), bool(company_id), loc_map, dept_map
+        )
     else:
         data = build_report(report_name, rows, now())
 

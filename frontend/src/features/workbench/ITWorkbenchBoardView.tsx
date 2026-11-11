@@ -47,7 +47,6 @@ export const ITWorkbenchBoardView: React.FC = () => {
   const fetchWorkbenchTicketApi = useAppStore((state) => state.fetchWorkbenchTicketApi);
   const fetchTicketCommentsApi = useAppStore((state) => state.fetchTicketCommentsApi);
   const updateTicketMode = useAppStore((state) => state.updateTicketMode);
-  const resolveTicket = useAppStore((state) => state.resolveTicket);
   const requestValidation = useAppStore((state) => state.requestValidation);
   const setSelectedTicketId = useAppStore((state) => state.setSelectedTicketId);
   const setActiveView = useAppStore((state) => state.setActiveView);
@@ -586,10 +585,10 @@ export const ITWorkbenchBoardView: React.FC = () => {
                 <button
                   type="button"
                   onClick={async () => {
-                    resolveTicket(focusedTicket.id);
                     await updateTicketStatusApi(focusedTicket.id, 'RESL', focusedTicket.mode);
                   }}
-                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-sm transition-colors press-fx"
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold
+                  inline-flex items-center gap-1.5 shadow-sm transition-colors press-fx"
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   <span>Mark Repair Resolved</span>

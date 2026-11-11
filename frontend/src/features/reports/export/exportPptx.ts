@@ -32,7 +32,7 @@ export interface ExportResult {
   fileName: string;
 }
 
-function mapReportData(reportId: number, rawRows: any[]): any[] {
+export function mapReportData(reportId: number, rawRows: any[]): any[] {
   switch (reportId) {
     case 1:
       return mapMonthlySlaRows(rawRows);

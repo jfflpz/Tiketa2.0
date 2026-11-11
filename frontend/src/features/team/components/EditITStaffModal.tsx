@@ -174,10 +174,27 @@ export const EditITStaffModal: React.FC<EditITStaffModalProps> = ({
     }
 
     if (!isActive && member.is_active) {
-      setFormError(
-        'Direct account deactivation is disabled (B-03 Governance). Deactivation requests must be submitted via the Pending Approvals Queue.'
-      );
-      return;
+      setIsSubmitting(true);
+      try {
+        const { accountRequestsApi } = await import('../../../api/client');
+        await accountRequestsApi.create({
+          request_type: 'deactivate',
+          target_user_id: member.id,
+        });
+        useAppStore.getState().addToast(
+          'Deactivation Proposal Submitted',
+          `Deactivation request for ${cleanName} submitted. Awaiting supervisor approval.`,
+          'success'
+        );
+        onClose();
+        return;
+      } catch (err: unknown) {
+        const { extractApiErrorMessage } = await import('../../../api/client');
+        setFormError(extractApiErrorMessage(err, 'Failed to submit deactivation request.'));
+        return;
+      } finally {
+        setIsSubmitting(false);
+      }
     }
 
     const selectedLoc = availableLocations.find((l) => l.code === locationCode);

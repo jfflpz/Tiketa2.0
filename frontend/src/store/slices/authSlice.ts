@@ -83,6 +83,7 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
               id: data.user.id,
               name: data.user.full_name,
               email: data.user.email,
+              username: data.user.username,
               role: userRole,
               title: getStaffTitle(userRole),
               avatar: data.user.full_name
@@ -148,6 +149,7 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
           id: data.user.id,
           name: data.user.full_name,
           email: data.user.email,
+          username: data.user.username,
           role: userRole,
           title: getStaffTitle(userRole),
           avatar: data.user.full_name
@@ -201,7 +203,7 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
       try {
         const consentedCard = {
           name: userToRemember.name,
-          username: userToRemember.email.split('@')[0],
+          username: userToRemember.username || userToRemember.email.split('@')[0],
           role: userToRemember.role,
         };
         localStorage.setItem('tiketa_remembered_profile', JSON.stringify(consentedCard));

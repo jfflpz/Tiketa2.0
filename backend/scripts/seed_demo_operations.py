@@ -482,7 +482,7 @@ async def seed():
                 tech_user = User(
                     username="technician",
                     email="technician@fivestar.com.ph",
-                    full_name="Nathaniel D. Esguerra",
+                    full_name="Nathaniel Esguerra",
                     role="it",
                     password_hash=hash_password("Tiketa2026!Pass"),
                     is_active=True,

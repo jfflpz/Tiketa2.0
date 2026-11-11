@@ -145,11 +145,14 @@ apiClient.interceptors.response.use(
             } catch (refreshError) {
                 processQueue(refreshError as AxiosError);
                 setAccessToken(null);
+                if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new CustomEvent('tiketa:session-expired'));
+                }
                 return Promise.reject(refreshError);
             } finally {
                 isRefreshing = false;
             }
-        }
+    }
 
         return Promise.reject(error);
     }
@@ -836,10 +839,12 @@ export const adminApi = {
 };
 
 export interface AccountRequestCreateInput {
-    username: string;
-    email: string;
-    full_name: string;
-    role: 'intern' | 'it';
+    request_type?: 'create' | 'deactivate';
+    target_user_id?: string;
+    username?: string;
+    email?: string;
+    full_name?: string;
+    role?: 'intern' | 'it' | 'supervisor' | 'admin';
     location_id?: string | null;
     department?: string | null;
 }

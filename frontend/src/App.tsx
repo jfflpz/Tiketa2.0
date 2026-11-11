@@ -68,7 +68,26 @@ export default function App() {
     hydrateKioskEmployeeTickets?.();
   }, [hydrateAuthApi, hydrateKioskEmployeeTickets]);
 
-  // BF-02: Handle browser back/forward and external URL navigation with strict RBAC guards
+  useEffect(() => {
+    const apiBase = import.meta.env.VITE_API_BASE_URL;
+    let healthUrl: string;
+    try {
+      if (apiBase) {
+        healthUrl = new URL('/health', apiBase).href;
+      } else {
+        healthUrl = '/health';
+      }
+    } catch {
+      healthUrl = '/health';
+    }
+
+    const keepAlive = setInterval(() => {
+      fetch(healthUrl, { mode: 'cors' }).catch(() => {});
+    }, 14000);
+
+    return () => clearInterval(keepAlive);
+  }, []);
+
   useEffect(() => {
     const onPopState = () => {
       const path = window.location.pathname;
@@ -91,6 +110,16 @@ export default function App() {
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
   }, [currentUser, setActiveView]);
+
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      if (currentUser) {
+        useAppStore.getState().logoutToKiosk?.({ rememberProfile: false });
+      }
+    };
+    window.addEventListener('tiketa:session-expired', handleSessionExpired);
+    return () => window.removeEventListener('tiketa:session-expired', handleSessionExpired);
+  }, [currentUser]);
 
   useEffect(() => {
     if (!currentUser || currentUser.role === 'supervisor') return;
@@ -133,7 +162,6 @@ export default function App() {
   const currentRoute = resolvePathToView(currentPathStr);
   const isPublicPage = currentRoute === 'public';
 
-  // BF-02: If unauthenticated, on public /report or /kiosk page, or verification link override is active, render Employee Helpdesk
   if (!currentUser || verifyTicketCode || isPublicPage) {
     return (
       <>
@@ -145,14 +173,12 @@ export default function App() {
     );
   }
 
-  // Enforce strict 4-tier role isolation so unauthorized views redirect cleanly to default home
   const userRole: StaffRole = currentUser.role ?? 'it';
   const allowedViews = ROLE_ALLOWED_VIEWS[userRole] ?? ['overview'];
   const resolvedView: ActiveView = allowedViews.includes(activeView)
     ? activeView
     : getDefaultHomeForRole(userRole);
 
-  // Authenticated Staff Workspace: Nexora Categorized Dark Sidebar + Role-Isolated Screens
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#F4F6F9] text-ink font-sans">
       <Sidebar />
@@ -184,10 +210,9 @@ export default function App() {
         </main>
       </div>
 
-      {/* Global Slide-Out 15-Column Job Log & Live Chat Drawer */}
       <JobLogDrawer />
 
-      {/* Global Walk-In & Viber Quick Intake Modal */}
+      {/* Global Walk-In & Viber Quck Intake Modal */}
       <QuickIntakeModal />
 
       {/* Interactive Ticket Verification & Closure Confirmation Modal */}
