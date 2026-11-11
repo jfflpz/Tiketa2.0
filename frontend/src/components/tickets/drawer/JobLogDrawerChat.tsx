@@ -331,7 +331,7 @@ export const JobLogDrawerChat: React.FC<JobLogDrawerChatProps> = ({
                 ? 'Add confidential note visible only to IT staff...'
                 : `Message ${ticket.requestor} as ${techSenderName}...`
             }
-            className={`flex-1 px-3.5 py-2.5 rounded-xl text-xs text-ink focus:outline-none transition-colors ${
+            className={`flex-1 min-w-0 px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-xl text-xs text-ink focus:outline-none transition-colors ${
               isInternalMode
                 ? 'bg-amber-50/60 border border-amber-300 focus:border-amber-600 placeholder:text-amber-700/60'
                 : 'bg-canvas border border-line focus:border-zinc-900'
@@ -340,7 +340,7 @@ export const JobLogDrawerChat: React.FC<JobLogDrawerChatProps> = ({
           <button
             type="submit"
             disabled={!chatDraft.trim() || isSending}
-            className={`px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors press-fx text-white disabled:opacity-40 ${
+            className={`px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors press-fx text-white disabled:opacity-40 shrink-0 ${
               isInternalMode
                 ? 'bg-amber-600 hover:bg-amber-700'
                 : 'bg-[#111315] hover:bg-orange-500'

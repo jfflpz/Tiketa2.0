@@ -213,7 +213,7 @@ export const DiagnosedTaskSelector: React.FC<DiagnosedTaskSelectorProps> = ({
         <div
           className={`absolute ${
             align === 'right' ? 'right-0' : 'left-0'
-          } top-full mt-1.5 w-80 sm:w-96 bg-white border border-[#E4E7EB] rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150`}
+          } top-full mt-1.5 w-[calc(100vw-2.5rem)] sm:w-96 max-w-sm bg-white border border-[#E4E7EB] rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150`}
         >
           {/* Header & Search */}
           <div className="p-3 bg-[#FAFBFD] border-b border-[#ECEEF2]">

@@ -47,15 +47,15 @@ export const JobLogDrawerHeader: React.FC<JobLogDrawerHeaderProps> = ({
             )}
           </div>
           <h2 className="text-base font-semibold text-ink mt-2">{ticket.task}</h2>
-          <p className="text-xs text-ink-subtle mt-0.5 flex items-center gap-3">
+          <p className="text-xs text-ink-subtle mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
             <span className="inline-flex items-center gap-1 font-medium text-ink">
               Requestor: {ticket.requestor}
             </span>
-            <span>•</span>
+            <span className="hidden sm:inline">•</span>
             <span className="inline-flex items-center gap-1">
               <MapPin className="w-3.5 h-3.5" /> {ticket.location}
             </span>
-            <span>•</span>
+            <span className="hidden sm:inline">•</span>
             <span className="inline-flex items-center gap-1">
               <Building2 className="w-3.5 h-3.5" /> {ticket.department}
             </span>

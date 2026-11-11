@@ -368,12 +368,7 @@ export const ITWorkbenchBoardView: React.FC = () => {
                         <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-zinc-900 text-white group-hover:bg-orange-600 transition-colors shrink-0 whitespace-nowrap">
                           {ticket.ticketCode}
                         </span>
-                        {(ticket.status === 'RESL' || (ticket.status as string) === 'PVER') && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold">
-                            <Clock className="w-3 h-3 text-amber-500 animate-pulse" />
-                            <span>Waiting for requester approval</span>
-                          </span>
-                        )}
+                        <StatusBadge status={ticket.status} size="sm" />
                       </div>
                       <div className="flex items-center gap-1.5">
                         <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-zinc-100 text-zinc-700 border border-zinc-200">
@@ -473,19 +468,10 @@ export const ITWorkbenchBoardView: React.FC = () => {
           <div className="h-4 w-[1px] bg-zinc-200 hidden sm:block" />
 
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-orange-50 text-orange-600 border border-orange-200/60">
-              Active Repair Workstation
-            </span>
             <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-zinc-900 text-white">
               {focusedTicket.ticketCode}
             </span>
             <StatusBadge status={focusedTicket.status} size="sm" />
-            {(focusedTicket.status === 'RESL' || (focusedTicket.status as string) === 'PVER') && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold">
-                <Clock className="w-3 h-3 text-amber-500 animate-pulse" />
-                <span>Waiting for requester approval</span>
-              </span>
-            )}
             {focusedTicket.status === 'CLSD' && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold">
                 <CheckCircle2 className="w-3 h-3 text-emerald-500" />
@@ -986,15 +972,16 @@ export const ITWorkbenchBoardView: React.FC = () => {
                   ? `Chat input is restricted to assigned technician (${focusedTicket.workedBy || 'Assigned'})`
                   : `Type a message to ${focusedTicket.requestor} (${focusedTicket.location})...`
               }
-              className="flex-1 px-4 py-2.5 bg-white border border-[#ECEEF2] rounded-xl text-xs text-ink placeholder:text-zinc-400 focus:outline-none focus:border-orange-400 disabled:bg-zinc-100/60 disabled:text-zinc-400"
+              className="flex-1 min-w-0 px-3.5 sm:px-4 py-2 sm:py-2.5 bg-white border border-[#ECEEF2] rounded-xl text-xs text-ink placeholder:text-zinc-400 focus:outline-none focus:border-orange-400 disabled:bg-zinc-100/60 disabled:text-zinc-400"
             />
             <button
               type="submit"
               disabled={!isOwner || !chatDraft.trim()}
-              className="px-5 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-sm transition-colors press-fx shrink-0"
+              className="px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-sm transition-colors press-fx shrink-0"
             >
               <Send className="w-3.5 h-3.5" />
-              <span>Send Message</span>
+              <span className="hidden sm:inline">Send Message</span>
+              <span className="sm:hidden">Send</span>
             </button>
           </form>
         </div>
