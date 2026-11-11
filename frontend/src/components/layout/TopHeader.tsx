@@ -11,6 +11,7 @@ import { HeaderProfilePopover } from './header/HeaderProfilePopover';
 export const TopHeader: React.FC = () => {
   const currentUser = useAppStore((state) => state.currentUser);
   const toggleSidebar = useAppStore((state) => state.toggleSidebar);
+  const toggleMobileSidebar = useAppStore((state) => state.toggleMobileSidebar);
   const searchQuery = useAppStore((state) => state.searchQuery);
   const setSearchQuery = useAppStore((state) => state.setSearchQuery);
   const tickets = useAppStore((state) => state.tickets);
@@ -53,15 +54,23 @@ export const TopHeader: React.FC = () => {
     addToast('Link Copied', `Employee verification URL copied for ${ticketCode}`, 'success');
   };
 
+  const handleNavToggle = () => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      toggleMobileSidebar();
+    } else {
+      toggleSidebar();
+    }
+  };
+
   return (
-    <header className="h-16 bg-white border-b border-[#ECEEF2] px-6 flex items-center justify-between gap-4 shrink-0 z-30 relative">
+    <header className="h-16 bg-white border-b border-[#ECEEF2] px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-4 shrink-0 z-30 relative">
       {/* Left: Signature Nexora Orange Square Hamburger Toggle */}
       <div className="flex items-center gap-3">
         <button
-          onClick={toggleSidebar}
-          className="w-9 h-9 rounded-lg bg-orange-500 hover:bg-orange-600 active:scale-95 text-white flex items-center justify-center shadow-sm transition-all"
-          aria-label="Toggle Sidebar"
-          title="Toggle Sidebar"
+          onClick={handleNavToggle}
+          className="w-9 h-9 rounded-lg bg-orange-500 hover:bg-orange-600 active:scale-95 text-white flex items-center justify-center shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-orange-500/50"
+          aria-label="Toggle Navigation"
+          title="Toggle Navigation"
         >
           <Menu className="w-4 h-4 stroke-[2.5]" />
         </button>

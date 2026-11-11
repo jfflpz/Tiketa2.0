@@ -470,11 +470,6 @@ async def queue(
     limit: int = Query(50, ge=1, le=200),
 ):
 
-    if user.role == "supervisor":
-        raise HTTPException(
-            403, "Supervisor role does not have operational queue access. Use /reports."
-        )
-
     if user.role == "intern":
         technician_id = user.id
 

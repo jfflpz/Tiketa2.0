@@ -160,7 +160,7 @@ export default function App() {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <TopHeader />
 
-        <main className="flex-1 overflow-y-auto px-6 py-5">
+        <main className="flex-1 overflow-y-auto px-3 sm:px-6 py-4 sm:py-5">
           <div className="max-w-[1440px] mx-auto">
             <Suspense
               fallback={

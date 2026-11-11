@@ -40,6 +40,9 @@ export interface UISlice {
   setActiveView: (view: ActiveView) => void;
   sidebarCollapsed: boolean;
   toggleSidebar: () => void;
+  mobileSidebarOpen: boolean;
+  setMobileSidebarOpen: (open: boolean) => void;
+  toggleMobileSidebar: () => void;
   activeOfficeLocationCode: string;
   setActiveOfficeLocationCode: (code: string) => void;
   toasts: ToastItem[];
@@ -66,6 +69,9 @@ export const createUISlice: StateCreator<any, [], [], UISlice> = (set, get) => (
 
   sidebarCollapsed: false,
   toggleSidebar: () => set((state: any) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+  mobileSidebarOpen: false,
+  setMobileSidebarOpen: (open: boolean) => set({ mobileSidebarOpen: open }),
+  toggleMobileSidebar: () => set((state: any) => ({ mobileSidebarOpen: !state.mobileSidebarOpen })),
 
   activeOfficeLocationCode: 'CMA',
   setActiveOfficeLocationCode: (code) => set({ activeOfficeLocationCode: code }),

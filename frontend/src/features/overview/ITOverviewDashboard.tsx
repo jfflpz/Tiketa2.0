@@ -60,6 +60,8 @@ export const ITOverviewDashboard: React.FC = () => {
     useEffect(() => {
     fetchQueueApi();
     fetchKPIsApi();
+    useAppStore.getState().fetchITMembers?.();
+    useAppStore.getState().fetchDictionaries?.();
   }, [fetchQueueApi, fetchKPIsApi]);
 
   // Personal KPI calculations for the logged-in IT Specialist (Strict UUID matching first)
@@ -171,6 +173,67 @@ export const ITOverviewDashboard: React.FC = () => {
     return monthlyOutputTrendData.reduce((acc, curr) => acc + curr.resolved, 0);
   }, [monthlyOutputTrendData]);
 
+  // Dynamic current month name (e.g., Nov, Oct)
+  const currentMonthIdx = new Date().getMonth();
+  const currentMonthName = MONTH_NAMES[currentMonthIdx] || 'Nov';
+
+  // Dynamic Month-over-Month personal resolution trend
+  const momResolution = React.useMemo(() => {
+    const currentMonthVal = monthlyOutputTrendData[currentMonthIdx]?.resolved || 0;
+    const prevMonthVal = currentMonthIdx > 0 ? monthlyOutputTrendData[currentMonthIdx - 1]?.resolved || 0 : 0;
+    if (currentMonthVal === 0 && prevMonthVal === 0) {
+      return { label: '0% vs last mo', isPositive: false, hasData: false };
+    }
+    if (prevMonthVal === 0) {
+      return { label: `+${currentMonthVal} new this mo`, isPositive: true, hasData: true };
+    }
+    const diff = Math.round(((currentMonthVal - prevMonthVal) / prevMonthVal) * 100);
+    return {
+      label: `${diff >= 0 ? '+' : ''}${diff}% vs last mo`,
+      isPositive: diff >= 0,
+      hasData: true,
+    };
+  }, [monthlyOutputTrendData, currentMonthIdx]);
+
+  // Dynamic Repair Speed metric vs 45 min target
+  const speedMetric = React.useMemo(() => {
+    if (avgDurationHrs === null || resolvedWithDuration.length === 0) {
+      return {
+        label: 'Target: 45m',
+        sub: 'no closed repairs',
+        hasData: false,
+      };
+    }
+    const mins = Math.round(avgDurationHrs * 60);
+    const diff = 45 - mins;
+    return {
+      label: diff >= 0 ? `-${diff} min faster` : `+${Math.abs(diff)} min slower`,
+      sub: 'vs 45 min target',
+      hasData: true,
+    };
+  }, [avgDurationHrs, resolvedWithDuration.length]);
+
+  // Dynamic Employee Sign-off Rate
+  const signOffMetric = React.useMemo(() => {
+    const closedOrResl = myTickets.filter((t) => t.status === 'RESL' || t.status === 'CLSD');
+    if (closedOrResl.length === 0) {
+      return {
+        rateStr: '0.0%',
+        label: 'Awaiting sign-offs',
+        sub: 'no closed repairs',
+        hasData: false,
+      };
+    }
+    const signedOff = closedOrResl.filter((t) => t.status === 'CLSD' || Boolean(t.userConfirmedAt));
+    const pct = Math.round((signedOff.length / closedOrResl.length) * 1000) / 10;
+    return {
+      rateStr: `${pct.toFixed(1)}%`,
+      label: `${signedOff.length} of ${closedOrResl.length} confirmed`,
+      sub: pct >= 95 ? 'Within 95% SLA' : 'Under 95% SLA',
+      hasData: true,
+    };
+  }, [myTickets]);
+
   // Real Ticket Resolution Rate without fake 40/36 fallbacks or empty 100%
   const totalFleetFromTickets = tickets.length;
   const completedFleetFromTickets = tickets.filter(
@@ -239,7 +302,7 @@ export const ITOverviewDashboard: React.FC = () => {
               <div className="relative z-10 flex items-center justify-between gap-3">
                 <div className="space-y-2 max-w-[63%]">
                   <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-black/20 text-orange-100">
-                    Terminal Resolution Rate
+                    Fleet Resolution ({currentMonthName})
                   </span>
                   <h2 className="text-base font-bold leading-snug">
                     Ticket Resolution Rate
@@ -301,8 +364,14 @@ export const ITOverviewDashboard: React.FC = () => {
                 </div>
 
                 <div className="space-y-2.5">
-                  {(myTickets.length > 0 ? myTickets.slice(0, 4) : tickets.slice(0, 4)).map(
-                    (t, i) => {
+                  {myTickets.length === 0 ? (
+                    <div className="py-6 text-center text-zinc-400">
+                      <Inbox className="w-6 h-6 mx-auto mb-1.5 text-zinc-300" />
+                      <p className="text-xs font-semibold text-zinc-600">No active claimed tickets</p>
+                      <p className="text-[11px] text-zinc-400 mt-0.5">Tickets claimed from the dispatch queue appear here</p>
+                    </div>
+                  ) : (
+                    myTickets.slice(0, 4).map((t, i) => {
                       const badgeColors = [
                         'bg-orange-100 text-orange-700',
                         'bg-amber-100 text-amber-700',
@@ -342,19 +411,19 @@ export const ITOverviewDashboard: React.FC = () => {
                           </div>
                         </div>
                       );
-                    }
+                    })
                   )}
                 </div>
               </div>
 
-              {(myTickets.length > 4 || tickets.length > 4) && (
+              {myTickets.length > 4 && (
                 <div className="pt-2 text-right border-t border-zinc-100 mt-2">
                   <button
                     type="button"
                     onClick={() => setActiveView('tickets')}
                     className="text-[11px] font-bold text-orange-600 hover:text-orange-700 hover:underline inline-flex items-center gap-1 press-fx"
                   >
-                    <span>+{Math.max(0, (myTickets.length > 0 ? myTickets.length : tickets.length) - 4)} more assigned</span>
+                    <span>+{myTickets.length - 4} more assigned</span>
                     <ArrowRight className="w-3 h-3" />
                   </button>
                 </div>
@@ -370,7 +439,7 @@ export const ITOverviewDashboard: React.FC = () => {
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-xs font-medium text-zinc-400">
-                      My Resolved Tickets (Oct)
+                      My Resolved Tickets ({currentMonthName})
                     </p>
                     <h3 className="text-2xl font-extrabold text-ink mt-1 tabular-nums">
                       {myResolvedCount} Repairs
@@ -394,26 +463,32 @@ export const ITOverviewDashboard: React.FC = () => {
                         <line x1="2" y1="28" x2="98" y2="28" stroke="#E2E8F0" strokeWidth="1" strokeDasharray="2 2" />
                         {/* Midline Target Guideline */}
                         <line x1="2" y1="14" x2="98" y2="14" stroke="#FDBA74" strokeWidth="1" strokeDasharray="3 3" opacity={0.65} />
-                        {/* Area Fill */}
-                        <path
-                          d="M 2 24 Q 20 10, 38 18 T 72 8 T 98 12 L 98 28 L 2 28 Z"
-                          fill="url(#kpiGrad1)"
-                        />
-                        {/* Trend Curve */}
-                        <path
-                          d="M 2 24 Q 20 10, 38 18 T 72 8 T 98 12"
-                          fill="none"
-                          stroke="#F97316"
-                          strokeWidth="2.2"
-                          strokeLinecap="round"
-                        />
-                        {/* Latest Active Dot */}
-                        <circle cx="98" cy="12" r="2.8" fill="#F97316" stroke="#FFFFFF" strokeWidth="1.5" />
+                        {myResolvedCount > 0 ? (
+                          <>
+                            {/* Area Fill */}
+                            <path
+                              d="M 2 24 Q 20 10, 38 18 T 72 8 T 98 12 L 98 28 L 2 28 Z"
+                              fill="url(#kpiGrad1)"
+                            />
+                            {/* Trend Curve */}
+                            <path
+                              d="M 2 24 Q 20 10, 38 18 T 72 8 T 98 12"
+                              fill="none"
+                              stroke="#F97316"
+                              strokeWidth="2.2"
+                              strokeLinecap="round"
+                            />
+                            {/* Latest Active Dot */}
+                            <circle cx="98" cy="12" r="2.8" fill="#F97316" stroke="#FFFFFF" strokeWidth="1.5" />
+                          </>
+                        ) : (
+                          <circle cx="98" cy="28" r="2.5" fill="#CBD5E1" />
+                        )}
                       </svg>
                     </div>
                     <div className="text-right">
-                      <span className="text-xs font-bold text-emerald-600">
-                        +24% vs last mo
+                      <span className={`text-xs font-bold ${momResolution.hasData ? (momResolution.isPositive ? 'text-emerald-600' : 'text-zinc-500') : 'text-zinc-400'}`}>
+                        {momResolution.label}
                       </span>
                       <p className="text-[11px] text-zinc-400">personal output</p>
                     </div>
@@ -455,21 +530,27 @@ export const ITOverviewDashboard: React.FC = () => {
                         <line x1="2" y1="28" x2="98" y2="28" stroke="#E2E8F0" strokeWidth="1" strokeDasharray="2 2" />
                         {/* Safe Capacity Guideline */}
                         <line x1="2" y1="12" x2="98" y2="12" stroke="#FDBA74" strokeWidth="1" strokeDasharray="3 3" opacity={0.65} />
-                        {/* Area Fill */}
-                        <path
-                          d="M 2 20 Q 25 26, 45 14 T 78 18 T 98 8 L 98 28 L 2 28 Z"
-                          fill="url(#kpiGrad2)"
-                        />
-                        {/* Trend Curve */}
-                        <path
-                          d="M 2 20 Q 25 26, 45 14 T 78 18 T 98 8"
-                          fill="none"
-                          stroke="#EA580C"
-                          strokeWidth="2.2"
-                          strokeLinecap="round"
-                        />
-                        {/* Latest Active Dot */}
-                        <circle cx="98" cy="8" r="2.8" fill="#EA580C" stroke="#FFFFFF" strokeWidth="1.5" />
+                        {myActiveRepairs.length > 0 ? (
+                          <>
+                            {/* Area Fill */}
+                            <path
+                              d="M 2 20 Q 25 26, 45 14 T 78 18 T 98 8 L 98 28 L 2 28 Z"
+                              fill="url(#kpiGrad2)"
+                            />
+                            {/* Trend Curve */}
+                            <path
+                              d="M 2 20 Q 25 26, 45 14 T 78 18 T 98 8"
+                              fill="none"
+                              stroke="#EA580C"
+                              strokeWidth="2.2"
+                              strokeLinecap="round"
+                            />
+                            {/* Latest Active Dot */}
+                            <circle cx="98" cy="8" r="2.8" fill="#EA580C" stroke="#FFFFFF" strokeWidth="1.5" />
+                          </>
+                        ) : (
+                          <circle cx="98" cy="28" r="2.5" fill="#CBD5E1" />
+                        )}
                       </svg>
                     </div>
                     <div className="text-right">
@@ -498,8 +579,12 @@ export const ITOverviewDashboard: React.FC = () => {
                       {avgDurationMinutes}
                     </h3>
                   </div>
-                  <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200/60 flex items-center justify-center shrink-0">
-                    <span className="font-mono text-xs font-extrabold">#11</span>
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                    speedMetric.hasData ? 'bg-emerald-50 text-emerald-600 border border-emerald-200/60' : 'bg-zinc-50 text-zinc-400 border border-zinc-200/60'
+                  }`}>
+                    <span className="font-mono text-xs font-extrabold">
+                      {speedMetric.hasData ? '#11' : '—'}
+                    </span>
                   </div>
                 </div>
                 <div className="space-y-1.5 pt-1">
@@ -516,28 +601,34 @@ export const ITOverviewDashboard: React.FC = () => {
                         <line x1="2" y1="28" x2="98" y2="28" stroke="#E2E8F0" strokeWidth="1" strokeDasharray="2 2" />
                         {/* SLA Target Guideline: 45m */}
                         <line x1="2" y1="16" x2="98" y2="16" stroke="#6EE7B7" strokeWidth="1" strokeDasharray="3 3" opacity={0.8} />
-                        {/* Area Fill */}
-                        <path
-                          d="M 2 8 Q 25 18, 50 12 T 80 20 T 98 10 L 98 28 L 2 28 Z"
-                          fill="url(#kpiGrad3)"
-                        />
-                        {/* Trend Curve */}
-                        <path
-                          d="M 2 8 Q 25 18, 50 12 T 80 20 T 98 10"
-                          fill="none"
-                          stroke="#10B981"
-                          strokeWidth="2.2"
-                          strokeLinecap="round"
-                        />
-                        {/* Latest Active Dot */}
-                        <circle cx="98" cy="10" r="2.8" fill="#10B981" stroke="#FFFFFF" strokeWidth="1.5" />
+                        {speedMetric.hasData ? (
+                          <>
+                            {/* Area Fill */}
+                            <path
+                              d="M 2 8 Q 25 18, 50 12 T 80 20 T 98 10 L 98 28 L 2 28 Z"
+                              fill="url(#kpiGrad3)"
+                            />
+                            {/* Trend Curve */}
+                            <path
+                              d="M 2 8 Q 25 18, 50 12 T 80 20 T 98 10"
+                              fill="none"
+                              stroke="#10B981"
+                              strokeWidth="2.2"
+                              strokeLinecap="round"
+                            />
+                            {/* Latest Active Dot */}
+                            <circle cx="98" cy="10" r="2.8" fill="#10B981" stroke="#FFFFFF" strokeWidth="1.5" />
+                          </>
+                        ) : (
+                          <circle cx="98" cy="28" r="2.5" fill="#CBD5E1" />
+                        )}
                       </svg>
                     </div>
                     <div className="text-right">
-                      <span className="text-xs font-bold text-emerald-600">
-                        -12 min faster
+                      <span className={`text-xs font-bold ${speedMetric.hasData ? 'text-emerald-600' : 'text-zinc-400'}`}>
+                        {speedMetric.label}
                       </span>
-                      <p className="text-[11px] text-zinc-400">vs 45 min target</p>
+                      <p className="text-[11px] text-zinc-400">{speedMetric.sub}</p>
                     </div>
                   </div>
                   <div className="flex items-center justify-between text-[9px] text-zinc-400 font-mono pt-1 px-0.5 border-t border-zinc-100">
@@ -556,11 +647,15 @@ export const ITOverviewDashboard: React.FC = () => {
                       Employee Sign-Off Rate
                     </p>
                     <h3 className="text-2xl font-extrabold text-ink mt-1 tabular-nums">
-                      99.1%
+                      {signOffMetric.rateStr}
                     </h3>
                   </div>
-                  <div className="w-10 h-10 rounded-full bg-sky-50 text-sky-600 border border-sky-200/60 flex items-center justify-center shrink-0">
-                    <span className="font-mono text-xs font-extrabold">#13</span>
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                    signOffMetric.hasData ? 'bg-sky-50 text-sky-600 border border-sky-200/60' : 'bg-zinc-50 text-zinc-400 border border-zinc-200/60'
+                  }`}>
+                    <span className="font-mono text-xs font-extrabold">
+                      {signOffMetric.hasData ? '#13' : '—'}
+                    </span>
                   </div>
                 </div>
                 <div className="space-y-1.5 pt-1">
@@ -577,28 +672,34 @@ export const ITOverviewDashboard: React.FC = () => {
                         <line x1="2" y1="28" x2="98" y2="28" stroke="#E2E8F0" strokeWidth="1" strokeDasharray="2 2" />
                         {/* 95% Quality Threshold Guideline */}
                         <line x1="2" y1="12" x2="98" y2="12" stroke="#7DD3FC" strokeWidth="1" strokeDasharray="3 3" opacity={0.8} />
-                        {/* Area Fill */}
-                        <path
-                          d="M 2 22 Q 25 10, 50 14 T 75 8 T 98 6 L 98 28 L 2 28 Z"
-                          fill="url(#kpiGrad4)"
-                        />
-                        {/* Trend Curve */}
-                        <path
-                          d="M 2 22 Q 25 10, 50 14 T 75 8 T 98 6"
-                          fill="none"
-                          stroke="#0284C7"
-                          strokeWidth="2.2"
-                          strokeLinecap="round"
-                        />
-                        {/* Latest Active Dot */}
-                        <circle cx="98" cy="6" r="2.8" fill="#0284C7" stroke="#FFFFFF" strokeWidth="1.5" />
+                        {signOffMetric.hasData ? (
+                          <>
+                            {/* Area Fill */}
+                            <path
+                              d="M 2 22 Q 25 10, 50 14 T 75 8 T 98 6 L 98 28 L 2 28 Z"
+                              fill="url(#kpiGrad4)"
+                            />
+                            {/* Trend Curve */}
+                            <path
+                              d="M 2 22 Q 25 10, 50 14 T 75 8 T 98 6"
+                              fill="none"
+                              stroke="#0284C7"
+                              strokeWidth="2.2"
+                              strokeLinecap="round"
+                            />
+                            {/* Latest Active Dot */}
+                            <circle cx="98" cy="6" r="2.8" fill="#0284C7" stroke="#FFFFFF" strokeWidth="1.5" />
+                          </>
+                        ) : (
+                          <circle cx="98" cy="28" r="2.5" fill="#CBD5E1" />
+                        )}
                       </svg>
                     </div>
                     <div className="text-right">
-                      <span className="text-xs font-bold text-sky-600">
-                        Verified First-Time
+                      <span className={`text-xs font-bold ${signOffMetric.hasData ? 'text-sky-600' : 'text-zinc-400'}`}>
+                        {signOffMetric.label}
                       </span>
-                      <p className="text-[11px] text-zinc-400">terminal approval</p>
+                      <p className="text-[11px] text-zinc-400">{signOffMetric.sub}</p>
                     </div>
                   </div>
                   <div className="flex items-center justify-between text-[9px] text-zinc-400 font-mono pt-1 px-0.5 border-t border-zinc-100">
