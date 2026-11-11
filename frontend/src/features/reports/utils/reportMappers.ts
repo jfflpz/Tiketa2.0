@@ -100,8 +100,8 @@ export function mapPmsComplianceRows(rows: unknown[]): PmsComplianceRow[] {
       .find((s) => s === String(r.status || '').toLowerCase()) || 'due';
 
     return {
-      terminalLocation: String(r.location || r.location_id || r.terminalLocation || 'Pasay'),
-      department: String(r.department || r.department_id || r.department || 'Operations'),
+      terminalLocation: String(r.location || r.terminalLocation || r.location_id || 'Pasay'),
+      department: String(r.department || r.department_name || r.department_id || 'Operations'),
       expectedServices: r.expected_services != null ? Number(r.expected_services) : null,
       pmsConducted: Number(r.completed_services ?? r.pmsConducted ?? 0),
       complianceRate: rawCoverage,

@@ -75,6 +75,127 @@ const WrappedTick: React.FC<ExportTickProps> = ({
   </ChartText>
 );
 
+// Clean two-line tick for Report 6 (Dual Panel: ~75px per bar)
+const DualPanelTick: React.FC<ExportTickProps> = ({ x = 0, y = 0, payload }) => {
+  const raw = String(payload?.value ?? '');
+  const parts = raw.includes('•') ? raw.split('•').map((s) => s.trim()) : [raw];
+  const line1 = parts[0] || '';
+  const line2 = parts[1] || '';
+
+  return (
+    <g transform={`translate(${x},${y + 8})`}>
+      <text
+        x={0}
+        y={0}
+        textAnchor="middle"
+        fill={COLOR_TEXT}
+        style={{
+          fontFamily: BP_TYPOGRAPHY.FONT_FAMILY,
+          fontSize: '12px',
+          fontWeight: 600,
+        }}
+      >
+        {line1.length > 14 ? `${line1.slice(0, 13)}…` : line1}
+      </text>
+      {line2 && (
+        <text
+          x={0}
+          y={15}
+          textAnchor="middle"
+          fill="#4B5563"
+          style={{
+            fontFamily: BP_TYPOGRAPHY.FONT_FAMILY,
+            fontSize: '11px',
+            fontWeight: 500,
+          }}
+        >
+          {line2}
+        </text>
+      )}
+    </g>
+  );
+};
+
+// Month tick for Report 1 with auto-abbreviation and rotation for large ranges (>12 months)
+const MonthExportTick: React.FC<ExportTickProps & { totalCount?: number }> = ({
+  x = 0,
+  y = 0,
+  payload,
+  totalCount = 12,
+}) => {
+  const val = String(payload?.value ?? '');
+  const isCrowded = totalCount > 12;
+
+  let display = val;
+  if (isCrowded) {
+    const parts = val.split(' ');
+    if (parts.length === 2) {
+      display = `${parts[0].slice(0, 3)} '${parts[1].slice(2)}`;
+    }
+  }
+
+  return (
+    <g transform={`translate(${x},${y + (isCrowded ? 12 : 6)})`}>
+      <text
+        x={0}
+        y={0}
+        transform={isCrowded ? 'rotate(-35)' : undefined}
+        textAnchor={isCrowded ? 'end' : 'middle'}
+        fill={COLOR_TEXT}
+        style={{
+          fontFamily: BP_TYPOGRAPHY.FONT_FAMILY,
+          fontSize: isCrowded ? '12px' : '15px',
+          fontWeight: 500,
+        }}
+      >
+        {display}
+      </text>
+    </g>
+  );
+};
+
+// Two-line split tick for full-width Reports 7 & 8
+const TwoLineExportTick: React.FC<ExportTickProps> = ({ x = 0, y = 0, payload }) => {
+  const raw = String(payload?.value ?? '');
+  const parts = raw.includes('•')
+    ? raw.split('•').map((s) => s.trim())
+    : raw.includes('(')
+    ? [raw.slice(0, raw.indexOf('(')).trim(), raw.slice(raw.indexOf('(')).trim()]
+    : [raw];
+
+  return (
+    <g transform={`translate(${x},${y + 8})`}>
+      <text
+        x={0}
+        y={0}
+        textAnchor="middle"
+        fill={COLOR_TEXT}
+        style={{
+          fontFamily: BP_TYPOGRAPHY.FONT_FAMILY,
+          fontSize: '13px',
+          fontWeight: 600,
+        }}
+      >
+        {parts[0].length > 20 ? `${parts[0].slice(0, 19)}…` : parts[0]}
+      </text>
+      {parts[1] && (
+        <text
+          x={0}
+          y={16}
+          textAnchor="middle"
+          fill="#4B5563"
+          style={{
+            fontFamily: BP_TYPOGRAPHY.FONT_FAMILY,
+            fontSize: '12px',
+          }}
+        >
+          {parts[1].length > 22 ? `${parts[1].slice(0, 21)}…` : parts[1]}
+        </text>
+      )}
+    </g>
+  );
+};
+
 const DepartmentExportTick: React.FC<ExportTickProps> = ({
   x = 0,
   y = 0,
@@ -150,11 +271,17 @@ export const ExportChartRenderer: React.FC<ExportChartRendererProps> = ({ report
       {reportId === 1 && (
         <div style={{ width: '100%', height: '100%' }}>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data as MonthlySlaRow[]} margin={{ top: 35, right: 30, left: 20, bottom: 30 }}>
+            <BarChart data={data as MonthlySlaRow[]} margin={{ top: 35, right: 30, left: 20, bottom: 45 }}>
               <CartesianGrid stroke={COLOR_GRID} vertical={false} />
-              <XAxis dataKey="month" height={100} tick={<WrappedTick />} interval={0} stroke={COLOR_TEXT} />
-              <YAxis tick={{ fill: COLOR_TEXT, fontSize: 18 }} stroke={COLOR_TEXT} />
-              <Legend verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: 12, fontSize: '18px' }} />
+              <XAxis
+                dataKey="month"
+                height={70}
+                tick={<MonthExportTick totalCount={(data as MonthlySlaRow[]).length} />}
+                interval={0}
+                stroke={COLOR_TEXT}
+              />
+              <YAxis tick={{ fill: COLOR_TEXT, fontSize: 16 }} stroke={COLOR_TEXT} />
+              <Legend verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: 16, fontSize: '16px' }} />
               <Bar dataKey="totalRequests" name="Total Requests" fill={COLOR_BLUE} radius={[0, 0, 0, 0]} isAnimationActive={false}>
                 <LabelList dataKey="totalRequests" position="top" fill={COLOR_TEXT} fontSize={18} />
               </Bar>
@@ -563,11 +690,11 @@ export const ExportChartRenderer: React.FC<ExportChartRendererProps> = ({ report
                 Hardware Breakdown Incidents Logged
               </div>
               <ResponsiveContainer width="100%" height="88%">
-                <BarChart data={top10} margin={{ top: 30, right: 15, left: 10, bottom: 25 }}>
+                <BarChart data={top10} margin={{ top: 30, right: 15, left: 10, bottom: 45 }}>
                   <CartesianGrid stroke={COLOR_GRID} vertical={false} />
-                  <XAxis dataKey="vulnLabel" tick={<WrappedTick />} interval={0} stroke={COLOR_TEXT} />
+                  <XAxis dataKey="vulnLabel" height={60} tick={<DualPanelTick />} interval={0} stroke={COLOR_TEXT} />
                   <YAxis tick={{ fill: COLOR_TEXT, fontSize: 17 }} stroke={COLOR_TEXT} />
-                  <Legend verticalAlign="bottom" align="center" wrapperStyle={{ fontSize: '17px' }} />
+                  <Legend verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: 14, fontSize: '14px' }} />
                   <Bar dataKey="incidentsLogged" name="Incidents Logged" fill={COLOR_BLUE} radius={[0, 0, 0, 0]} isAnimationActive={false}>
                     {top10.map((_, index) => (
                       <Cell
@@ -585,11 +712,11 @@ export const ExportChartRenderer: React.FC<ExportChartRendererProps> = ({ report
                 Severity Risk Score (Max 10.0)
               </div>
               <ResponsiveContainer width="100%" height="88%">
-                <BarChart data={top10} margin={{ top: 30, right: 15, left: 10, bottom: 25 }}>
+                <BarChart data={top10} margin={{ top: 30, right: 15, left: 10, bottom: 45 }}>
                   <CartesianGrid stroke={COLOR_GRID} vertical={false} />
-                  <XAxis dataKey="vulnLabel" tick={<WrappedTick />} interval={0} stroke={COLOR_TEXT} />
+                  <XAxis dataKey="vulnLabel" height={60} tick={<DualPanelTick />} interval={0} stroke={COLOR_TEXT} />
                   <YAxis domain={[0, 10]} tick={{ fill: COLOR_TEXT, fontSize: 17 }} stroke={COLOR_TEXT} />
-                  <Legend verticalAlign="bottom" align="center" wrapperStyle={{ fontSize: '17px' }} />
+                  <Legend verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: 14, fontSize: '14px' }} />
                   <Bar dataKey="severityRiskScore" name="Severity Risk (/10)" fill={COLOR_ORANGE} radius={[0, 0, 0, 0]} isAnimationActive={false}>
                     {top10.map((_, index) => (
                       <Cell
@@ -618,11 +745,11 @@ export const ExportChartRenderer: React.FC<ExportChartRendererProps> = ({ report
         return (
           <div style={{ width: '100%', height: '100%' }}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={top10} margin={{ top: 35, right: 30, left: 20, bottom: 30 }}>
+              <BarChart data={top10} margin={{ top: 35, right: 30, left: 20, bottom: 45 }}>
                 <CartesianGrid stroke={COLOR_GRID} vertical={false} />
-                <XAxis dataKey="pmsLabel" tick={<WrappedTick />} interval={0} stroke={COLOR_TEXT} />
+                <XAxis dataKey="pmsLabel" height={70} tick={<TwoLineExportTick />} interval={0} stroke={COLOR_TEXT} />
                 <YAxis tick={{ fill: COLOR_TEXT, fontSize: 18 }} stroke={COLOR_TEXT} label={{ value: 'Service Count', angle: -90, position: 'insideLeft', fill: COLOR_TEXT, fontSize: 18 }} />
-                <Legend verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: 12, fontSize: '18px' }} />
+                <Legend verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: 16, fontSize: '15px' }} />
                 <Bar dataKey="expectedServices" name="Expected Services" fill={COLOR_BLUE} radius={[0, 0, 0, 0]} isAnimationActive={false}>
                   <LabelList dataKey="expectedServices" position="top" fill={COLOR_TEXT} fontSize={18} />
                 </Bar>
@@ -647,11 +774,11 @@ export const ExportChartRenderer: React.FC<ExportChartRendererProps> = ({ report
         return (
           <div style={{ width: '100%', height: '100%' }}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={top10} margin={{ top: 35, right: 30, left: 20, bottom: 30 }}>
+              <BarChart data={top10} margin={{ top: 35, right: 30, left: 20, bottom: 45 }}>
                 <CartesianGrid stroke={COLOR_GRID} vertical={false} />
-                <XAxis dataKey="staffLabel" tick={<WrappedTick />} interval={0} stroke={COLOR_TEXT} />
+                <XAxis dataKey="staffLabel" height={70} tick={<TwoLineExportTick />} interval={0} stroke={COLOR_TEXT} />
                 <YAxis tick={{ fill: COLOR_TEXT, fontSize: 18 }} stroke={COLOR_TEXT} label={{ value: 'Repeat Tickets (Count - 1)', angle: -90, position: 'insideLeft', fill: COLOR_TEXT, fontSize: 18 }} />
-                <Legend verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: 12, fontSize: '18px' }} />
+                <Legend verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: 16, fontSize: '15px' }} />
                 <Bar dataKey="repeatIncidents" name="Repeat Incidents (Count - 1)" fill={COLOR_ORANGE} radius={[0, 0, 0, 0]} isAnimationActive={false}>
                   {top10.map((_, index) => (
                     <Cell

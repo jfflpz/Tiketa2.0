@@ -352,6 +352,59 @@ describe('PPTX Export Suite — Tiketa Executive Standards', () => {
       expect(screen.queryByText(/Complete Month Required for PMS/i)).toBeNull();
       expect(exportBtn.disabled).toBe(false);
     });
+
+    it('renders commentary in greyed-out read-only auto mode by default and unlocks on customize/click', () => {
+      render(
+        <ExportPptxModal
+          isOpen={true}
+          onClose={vi.fn()}
+          initialReportId={1}
+          initialDateRange={{ dateFrom: '2026-10-01', dateTo: '2026-10-31' }}
+        />
+      );
+
+      // Auto-Generated badge and Live Slide Preview visible
+      expect(screen.getByText(/Live Slide Preview \(PowerPoint View\)/i)).toBeDefined();
+      const customizeBtn = screen.getByRole('button', { name: /Customize Note/i });
+      expect(customizeBtn).toBeDefined();
+
+      const textarea = screen.getByPlaceholderText(/Enter custom executive commentary/i) as HTMLTextAreaElement;
+      expect(textarea.readOnly).toBe(true);
+
+      // Clicking customize unlocks the field
+      fireEvent.click(customizeBtn);
+      expect(textarea.readOnly).toBe(false);
+      expect(screen.getByRole('button', { name: /Revert to Auto/i })).toBeDefined();
+
+      // Edit custom text with bold metrics
+      fireEvent.change(textarea, { target: { value: 'Achieved **98.5%** resolution with zero backlog.' } });
+      expect(textarea.value).toBe('Achieved **98.5%** resolution with zero backlog.');
+
+      // Click "Done Editing" to switch back to Live Slide Preview
+      fireEvent.click(screen.getByRole('button', { name: /Done Editing/i }));
+
+      // Live Slide Preview renders real bold strong tag without raw asterisks
+      const boldElement = screen.getByText('98.5%');
+      expect(boldElement.tagName.toLowerCase()).toBe('strong');
+
+      // Clicking customize unlocks the field again
+      fireEvent.click(customizeBtn);
+      expect(textarea.readOnly).toBe(false);
+
+      // Clicking revert restores auto mode
+      fireEvent.click(screen.getByRole('button', { name: /Revert to Auto/i }));
+      expect(textarea.readOnly).toBe(true);
+      expect(screen.getByRole('button', { name: /Customize Note/i })).toBeDefined();
+
+      // Open Lightbox Slide Preview (photo-viewer style)
+      const previewDeckBtn = screen.getByRole('button', { name: /Preview Slide Deck/i });
+      fireEvent.click(previewDeckBtn);
+      expect(screen.getByRole('dialog', { name: /PowerPoint Slide Preview Lightbox/i })).toBeDefined();
+
+      // Close Lightbox
+      fireEvent.click(screen.getByRole('button', { name: /Close Slide Preview/i }));
+      expect(screen.queryByRole('dialog', { name: /PowerPoint Slide Preview Lightbox/i })).toBeNull();
+    });
   });
 
   describe('7. Cancellation, Session Invalidation & Error Handling', () => {

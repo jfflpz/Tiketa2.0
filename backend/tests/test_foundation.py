@@ -18,10 +18,10 @@ async def test_seed_idempotent():
     await seed(demo=True)
     async with AsyncSessionLocal() as db:
         for model, expected in (
-            (Company, 11),
+            (Company, 13),
             (Location, 16),
             (Department, 19),
-            (TaskCategory, 13),
+            (TaskCategory, 14),
             (Employee, 1),
         ):
             assert await db.scalar(select(func.count()).select_from(model)) == expected

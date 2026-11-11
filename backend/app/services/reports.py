@@ -351,7 +351,11 @@ def build_report(name, rows, now):
     return result
 
 
-def pms_report(rows, plans, today: date, company_filter=False):
+def pms_report(
+    rows, plans, today: date, company_filter=False, locations=None, departments=None
+):
+    locations = locations or {}
+    departments = departments or {}
     activity = defaultdict(list)
     for row in completed(rows):
         if row.task_code in {"PC-PMS", "PRN-PMS"}:
@@ -385,10 +389,18 @@ def pms_report(rows, plans, today: date, company_filter=False):
             if today > plan.due_date
             else "due"
         )
+        loc_name = locations.get(key[0]) or (
+            items[0].location if items else str(key[0])
+        )
+        dept_name = departments.get(key[1]) or (
+            items[0].department if items else str(key[1])
+        )
         result.append(
             dict(
                 location_id=str(key[0]),
+                location=loc_name,
                 department_id=str(key[1]),
+                department=dept_name,
                 task_code=key[2],
                 month=key[3].isoformat(),
                 expected_services=expected,

@@ -49,7 +49,7 @@ export const JobLogSheetView: React.FC = () => {
       const techIdParam = isSupervisorOrAdmin ? undefined : currentUser?.id;
       const data = await ticketsApi.getHistory({
         technician_id: techIdParam,
-        limit: 200,
+        limit: 2000,
         status: 'ALL',
       });
 
