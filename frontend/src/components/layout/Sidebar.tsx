@@ -1,5 +1,6 @@
 // @spec UI-LAYOUT-01: Nexora Categorized Dark Sidebar (#111315) with 4-Tier Role Layouts & Mobile Drawer
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Home,
   Inbox,
@@ -306,54 +307,60 @@ export const Sidebar: React.FC = () => {
       </aside>
 
       {/* 2. Mobile Responsive Slide-Over Drawer (Only rendered on mobile when open) */}
-      {mobileSidebarOpen && (
-        <div className="md:hidden fixed inset-0 z-50 flex">
-          {/* Dimmed Backdrop Overlay */}
-          <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity duration-200"
-            onClick={() => setMobileSidebarOpen(false)}
-            aria-hidden="true"
-          />
+      {mobileSidebarOpen &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div className="md:hidden fixed inset-0 z-[100] flex">
+            {/* Dimmed Backdrop Overlay */}
+            <div
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-200"
+              onClick={(e) => {
+                e.stopPropagation();
+                setMobileSidebarOpen(false);
+              }}
+              aria-hidden="true"
+            />
 
-          {/* Slide-In Dark Drawer */}
-          <aside
-            className="relative w-[280px] max-w-[85vw] h-full bg-[#111315] text-zinc-300 flex flex-col justify-between shadow-2xl border-r border-zinc-800/80 select-none z-50 animate-in slide-in-from-left duration-200 ease-out"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Mobile Navigation Drawer"
-          >
-            {/* Header with Logo, Role Badge, and Close Button */}
-            <div className="p-4 border-b border-zinc-800/80 flex items-center justify-between shrink-0">
-              <div
-                onClick={() => {
-                  handleBrandClick();
-                  setMobileSidebarOpen(false);
-                }}
-                className="flex items-center gap-2.5 cursor-pointer group"
-              >
-                <img src="/logo-dark.svg" alt="Tiketa" className="h-7 w-auto object-contain object-left drop-shadow shrink-0" />
-                <span className="text-[10px] font-mono font-bold text-orange-400 uppercase tracking-wider px-2 py-0.5 rounded-md bg-orange-500/15 border border-orange-500/30 whitespace-nowrap">
-                  {getRoleBadgeLabel(role)}
-                </span>
+            {/* Slide-In Dark Drawer */}
+            <aside
+              className="relative w-[280px] max-w-[85vw] h-full bg-[#111315] text-zinc-300 flex flex-col justify-between shadow-2xl border-r border-zinc-800/80 select-none z-[101]"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Mobile Navigation Drawer"
+            >
+              {/* Header with Logo, Role Badge, and Close Button */}
+              <div className="p-4 border-b border-zinc-800/80 flex items-center justify-between shrink-0">
+                <div
+                  onClick={() => {
+                    handleBrandClick();
+                    setMobileSidebarOpen(false);
+                  }}
+                  className="flex items-center gap-2.5 cursor-pointer group"
+                >
+                  <img src="/logo-dark.svg" alt="Tiketa" className="h-7 w-auto object-contain object-left drop-shadow shrink-0" />
+                  <span className="text-[10px] font-mono font-bold text-orange-400 uppercase tracking-wider px-2 py-0.5 rounded-md bg-orange-500/15 border border-orange-500/30 whitespace-nowrap">
+                    {getRoleBadgeLabel(role)}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMobileSidebarOpen(false)}
+                  className="w-8 h-8 rounded-lg bg-zinc-800/80 hover:bg-zinc-700 text-zinc-400 hover:text-white flex items-center justify-center transition-all active:scale-95"
+                  aria-label="Close Navigation"
+                  title="Close Navigation"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setMobileSidebarOpen(false)}
-                className="w-8 h-8 rounded-lg bg-zinc-800/80 hover:bg-zinc-700 text-zinc-400 hover:text-white flex items-center justify-center transition-all active:scale-95"
-                aria-label="Close Navigation"
-                title="Close Navigation"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
 
-            {/* Categorized Navigation List */}
-            <div className="p-4 space-y-6 overflow-y-auto flex-1">
-              {renderNavSections(true)}
-            </div>
-          </aside>
-        </div>
-      )}
+              {/* Categorized Navigation List */}
+              <div className="p-4 space-y-6 overflow-y-auto flex-1">
+                {renderNavSections(true)}
+              </div>
+            </aside>
+          </div>,
+          document.body
+        )}
     </>
   );
 };

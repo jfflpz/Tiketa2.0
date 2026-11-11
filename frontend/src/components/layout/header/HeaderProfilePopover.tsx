@@ -81,7 +81,7 @@ export const HeaderProfilePopover: React.FC<HeaderProfilePopoverProps> = ({
         </button>
 
         {profileOpen && (
-          <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-zinc-200/90 p-3 z-50 animate-in fade-in zoom-in-95 duration-100">
+          <div className="absolute right-0 top-full mt-2 w-64 max-w-[calc(100vw-24px)] bg-white rounded-2xl shadow-2xl border border-zinc-200/90 p-3 z-50 animate-in fade-in zoom-in-95 duration-100">
             <div className="flex items-center gap-3 pb-3 border-b border-zinc-100">
               <StaffAvatar
                 name={currentUser?.name}

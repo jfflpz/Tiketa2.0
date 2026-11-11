@@ -3,7 +3,7 @@ export type SystemRole = 'intern' | 'it' | 'admin' | 'supervisor';
 
 export type StaffRole = 'intern' | 'it' | 'supervisor' | 'admin';
 
-export type TeamMemberStatus = 'active' | 'away' | 'offline' | 'pending';
+export type TeamMemberStatus = 'active' | 'on_leave' | 'away' | 'offline' | 'pending' | 'inactive';
 
 export type TeamRole =
   | 'Owner'
@@ -20,7 +20,7 @@ export interface TeamMember {
   name: string;
   username?: string;
   email: string;
-  role: TeamRole;
+  role?: TeamRole | string;
   systemRole?: StaffRole;
   avatar: string;
   department: string;
@@ -30,6 +30,7 @@ export interface TeamMember {
   activeTickets: number;
   flameScore: number;
   is_active?: boolean;
+  custom_permissions?: string[];
   last_username_change_at?: string;
   username_cooldown_until?: string;
 }

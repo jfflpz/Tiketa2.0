@@ -106,6 +106,7 @@ export const createTicketQueueSlice: AppSliceCreator<TicketQueueSlice> = (set, g
   },
 
   fetchInspectedTicketApi: async (id: string) => {
+    if (!get().currentUser) return null;
     const sessionAtStart = get().authSessionId;
     set({ isInspectingTicket: true, inspectTicketError: null });
     try {

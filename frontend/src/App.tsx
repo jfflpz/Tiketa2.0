@@ -144,7 +144,7 @@ export default function App() {
 
   if (isHydratingAuth) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-[#F4F6F9]">
+      <div className="flex h-screen w-full max-w-full items-center justify-center bg-[#F4F6F9]">
         <div className="flex flex-col items-center gap-3">
           <div className="w-16 h-16 flex items-center justify-center animate-pulse">
             <img src="/logo-mark.svg" alt="Tiketa" className="w-16 h-16 object-contain drop-shadow" />
@@ -180,7 +180,7 @@ export default function App() {
     : getDefaultHomeForRole(userRole);
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#F4F6F9] text-ink font-sans">
+    <div className="flex h-screen w-full max-w-full overflow-hidden bg-[#F4F6F9] text-ink font-sans">
       <Sidebar />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">

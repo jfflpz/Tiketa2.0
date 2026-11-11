@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Mail, MessageSquare, CheckCircle2 } from 'lucide-react';
 import type { Ticket } from '../../../types/ticket';
+import { formatStandardTime } from '../../../utils/timeFormat';
 
 export interface HeaderMessagesPopoverProps {
   tickets: Ticket[];
@@ -67,7 +68,7 @@ export const HeaderMessagesPopover: React.FC<HeaderMessagesPopoverProps> = ({
       </button>
 
       {mailOpen && (
-        <div className="absolute right-0 top-full mt-2 w-96 max-w-[92vw] bg-white rounded-xl shadow-2xl border border-zinc-200/90 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100">
+        <div className="fixed left-3 right-3 top-[68px] sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 w-auto sm:w-96 max-w-none sm:max-w-[92vw] bg-white rounded-2xl shadow-2xl border border-zinc-200/90 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100">
           <div className="px-4 py-3 bg-zinc-50 border-b border-zinc-100 flex items-center justify-between">
             <span className="text-xs font-bold text-ink">Messages &amp; Dispatches</span>
             <span className="text-[11px] text-zinc-400">Click to reply</span>
@@ -180,7 +181,7 @@ export const HeaderMessagesPopover: React.FC<HeaderMessagesPopoverProps> = ({
                       {t.requestor} • {t.location} ({t.department})
                     </p>
                     <p className="text-[10px] text-zinc-400 mt-0.5">
-                      Opened at {t.timeStarted} • {t.priority} Priority
+                      Opened at {formatStandardTime(t.timeStarted)} • {t.priority} Priority
                     </p>
                   </div>
                   <button

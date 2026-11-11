@@ -29,6 +29,7 @@ import { DiagnosedTaskSelector } from '../../components/tickets/DiagnosedTaskSel
 import { TicketChecklistSection } from '../../components/tickets/checklist/TicketChecklistSection';
 import { canEditTicket } from '../../store/slices/ticketOperationsSlice';
 import { ticketsApi } from '../../api/client';
+import { formatStandardTime } from '../../utils/timeFormat';
 
 const WORKBENCH_QUICK_REPLIES = [
   'Please share your AnyDesk ID so I can check remotely.',
@@ -419,7 +420,7 @@ export const ITWorkbenchBoardView: React.FC = () => {
                     <div className="flex items-center gap-2 text-xs text-zinc-500">
                       <span className="inline-flex items-center gap-1 font-mono text-[11px] text-orange-600 font-semibold">
                         <Clock className="w-3.5 h-3.5" />
-                        {ticket.timeStarted.slice(0, 5)}
+                        {formatStandardTime(ticket.timeStarted)}
                       </span>
                       <span className="inline-flex items-center gap-1 text-[11px] text-zinc-400">
                         <MessageSquare className="w-3 h-3" />
@@ -758,7 +759,7 @@ export const ITWorkbenchBoardView: React.FC = () => {
                   Date &amp; Time Started
                 </span>
                 <span className="text-xs font-mono font-bold text-orange-600 truncate block">
-                  {focusedTicket.dateStarted} • {focusedTicket.timeStarted.slice(0, 5)}
+                  {focusedTicket.dateStarted} • {formatStandardTime(focusedTicket.timeStarted)}
                 </span>
               </div>
             </div>

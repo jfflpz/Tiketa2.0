@@ -293,31 +293,6 @@ export const CreateITStaffModal: React.FC<CreateITStaffModalProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="font-semibold text-zinc-700 block mb-1">Operational Role Title</label>
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value as TeamRole)}
-                className="w-full px-2.5 py-2 bg-[#F8F9FA] border border-[#ECEEF2] rounded-xl text-xs text-ink focus:outline-none focus:border-orange-500"
-              >
-                {systemRole === 'admin' ? (
-                  <>
-                    <option value="Admin">IT Administrator</option>
-                    <option value="Owner">IT Executive / Head</option>
-                    <option value="Devops">Infrastructure Lead</option>
-                  </>
-                ) : (
-                  <>
-                    <option value="Field Technician">Field Technician</option>
-                    <option value="Hardware Specialist">Hardware Specialist</option>
-                    <option value="Network Engineer">Network Engineer</option>
-                    <option value="Senior Analyst">Senior Analyst</option>
-                    <option value="Helpdesk Dispatch">Helpdesk Dispatch</option>
-                  </>
-                )}
-              </select>
-            </div>
-
-            <div>
               <label className="font-semibold text-zinc-700 block mb-1">Primary Terminal Hub</label>
               <select
                 value={locationCode}
@@ -331,17 +306,17 @@ export const CreateITStaffModal: React.FC<CreateITStaffModalProps> = ({
                 ))}
               </select>
             </div>
-          </div>
 
-          <div>
-            <label className="font-semibold text-zinc-700 block mb-1">Department Unit</label>
-            <input
-              type="text"
-              placeholder="e.g. POS &amp; Depot Hardware Repair"
-              value={department}
-              onChange={(e) => setDepartment(e.target.value)}
-              className="w-full px-3 py-2 bg-[#F8F9FA] border border-[#ECEEF2] rounded-xl text-xs text-ink focus:outline-none focus:border-orange-500"
-            />
+            <div>
+              <label className="font-semibold text-zinc-700 block mb-1">Department Unit</label>
+              <input
+                type="text"
+                placeholder="e.g. POS &amp; Depot Hardware Repair"
+                value={department}
+                onChange={(e) => setDepartment(e.target.value)}
+                className="w-full px-3 py-2 bg-[#F8F9FA] border border-[#ECEEF2] rounded-xl text-xs text-ink focus:outline-none focus:border-orange-500"
+              />
+            </div>
           </div>
 
           <div className="pt-3 border-t border-[#ECEEF2] flex items-center justify-end gap-2">

@@ -54,8 +54,13 @@ export const TopHeader: React.FC = () => {
     addToast('Link Copied', `Employee verification URL copied for ${ticketCode}`, 'success');
   };
 
-  const handleNavToggle = () => {
-    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+  const handleNavToggle = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    const isMobile =
+      typeof window !== 'undefined' &&
+      (window.innerWidth < 768 ||
+        (typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 767px)').matches));
+    if (isMobile) {
       toggleMobileSidebar();
     } else {
       toggleSidebar();

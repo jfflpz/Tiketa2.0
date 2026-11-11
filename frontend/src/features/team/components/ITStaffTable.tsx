@@ -73,9 +73,6 @@ export const ITStaffTable: React.FC<ITStaffTableProps> = ({
                       {member.username && (
                         <p className="text-[10px] font-mono text-orange-600 font-semibold">@{member.username}</p>
                       )}
-                      <span className="inline-block mt-0.5 text-[10px] font-semibold text-zinc-600">
-                        {member.role}
-                      </span>
                     </div>
                   </div>
 
@@ -83,19 +80,21 @@ export const ITStaffTable: React.FC<ITStaffTableProps> = ({
                     className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
                       isDeactivated
                         ? 'bg-zinc-100 text-zinc-500 border border-zinc-200'
-                        : member.status === 'active'
-                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                        : 'bg-zinc-100 text-zinc-600'
+                        : member.status === 'on_leave'
+                        ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                        : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                     }`}
                   >
                     <span
                       className={`w-1.5 h-1.5 rounded-full ${
                         isDeactivated
                           ? 'bg-zinc-400'
+                          : member.status === 'on_leave'
+                          ? 'bg-amber-500'
                           : 'bg-emerald-500 animate-pulse'
                       }`}
                     />
-                    {isDeactivated ? 'Deactivated' : 'Active'}
+                    {isDeactivated ? 'Deactivated' : member.status === 'on_leave' ? 'On-leave' : 'Active'}
                   </span>
                 </div>
 

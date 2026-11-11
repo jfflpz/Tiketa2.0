@@ -103,7 +103,7 @@ export const HeaderNotificationsPopover: React.FC<HeaderNotificationsPopoverProp
       </button>
 
       {notifOpen && (
-        <div className="absolute right-0 top-full mt-2 w-96 max-w-[92vw] bg-white rounded-xl shadow-2xl border border-zinc-200/90 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100">
+        <div className="fixed left-3 right-3 top-[68px] sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 w-auto sm:w-96 max-w-none sm:max-w-[92vw] bg-white rounded-2xl shadow-2xl border border-zinc-200/90 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100">
           <div className="px-4 py-3 bg-zinc-50 border-b border-zinc-100 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold text-ink">Notifications</span>

@@ -266,9 +266,10 @@ export const createTicketVerificationSlice: AppSliceCreator<TicketVerificationSl
     },
 
     fetchMyEmployeeTickets: async () => {
+      const matchToken = get().employeeMatchToken;
+      if (!matchToken) return;
       const currentSeq = verificationSequence;
       try {
-        const matchToken = get().employeeMatchToken || undefined;
         const res = await ticketsApi.getMyTickets(matchToken);
         if (currentSeq !== verificationSequence) return;
         if (Array.isArray(res)) {
@@ -364,8 +365,7 @@ export const createTicketVerificationSlice: AppSliceCreator<TicketVerificationSl
 
       if (resolvedTicketId) {
         try {
-          const reissue = await
-          ticketsApi.reissueVerification(resolvedTicketId);
+          const reissue = await ticketsApi.reissueVerification(resolvedTicketId);
           if (reissue && reissue.closure_url) {
             link = reissue.closure_url;
             isClosureCredential = true;
