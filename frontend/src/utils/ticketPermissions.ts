@@ -5,6 +5,7 @@ export function canEditTicket(
     ticket: Ticket | null | undefined
 ): boolean {
     if (!currentUser || !ticket) return false;
+    if (currentUser.role === 'admin' || currentUser.role === 'supervisor') return true;
     if (ticket.status === 'OPEN' && !ticket.workedById && !ticket.assigned_tech_id && !ticket.workedBy) {
     return true;
     }

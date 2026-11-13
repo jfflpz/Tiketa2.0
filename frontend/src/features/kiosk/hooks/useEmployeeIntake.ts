@@ -165,7 +165,7 @@ export function useEmployeeIntake() {
           setCooldownSeconds(retrySec > 0 ? retrySec : 120);
           setMatchError(`Too many failed matching attempts.`);
         } else if (err.response?.status === 404) {
-          setMatchError('Employee ID and email do not match an active employee record.');
+          setMatchError('Invalid');
         } else {
           setMatchError(
             err.response?.data?.detail ||

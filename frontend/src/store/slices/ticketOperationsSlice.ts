@@ -190,9 +190,10 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
     const target = findTargetTicket(get(), ticketId);
     if (!target) return false;
 
-    // Strict ownership: assigned tickets may only be updated by the assigned owner
-    if (target.status !== 'OPEN' && (target.assigned_tech_id || target.workedById) && !canEditTicket(sessionUser, target)) {
-      get().addToast('Permission Denied', `Ticket is assigned to ${target.workedBy || 'another technician'}. Only the assigned owner may update status.`, 'warning');
+    const isLead = sessionUser?.role === 'admin' || sessionUser?.role === 'supervisor';
+    if (target.status !== 'OPEN' && (target.assigned_tech_id || target.workedById) && !canEditTicket(sessionUser, target) && !isLead) {
+      get().addToast('Permission Denied', `Ticket is assigned to ${target.workedBy || 'another technician'}. Only the assigned owner or
+      supervisor/admin may update status.`, 'warning');
       return false;
     }
 
@@ -479,8 +480,9 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
     const target = findTargetTicket(get(), ticketId);
     if (!target) return;
     const sessionUser = get().currentUser;
-    if ((target.assigned_tech_id || target.workedById) && !canEditTicket(sessionUser, target)) {
-      get().addToast('Permission Denied', `Ticket is assigned to ${target.workedBy || 'another technician'}. Only the assigned owner may update support mode.`, 'warning');
+    const isLead = sessionUser?.role === 'admin' || sessionUser?.role === 'supervisor';
+    if ((target.assigned_tech_id || target.workedById) && !canEditTicket(sessionUser, target) && !isLead) {
+      get().addToast('Permission Denied', `Ticket is assigned to ${target.workedBy || 'another technician'}. Only the assigned owner or supervisor/admin may update support mode.`, 'warning');
       return;
     }
     set((state) =>
@@ -753,8 +755,8 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
     const target = findTargetTicket(get(), ticketId);
     if (!target) return false;
 
-    if (target.status !== 'OPEN' || target.assigned_tech_id || target.workedById || target.workedBy) {
-      get().addToast('Assignment Blocked', 'Tickets can only be assigned before they are claimed.', 'warning');
+    if (target.status === 'RESL' || target.status === 'CLSD') {
+      get().addToast('Assignment Blocked', 'Cannot reassign a resolved or closed ticket.', 'warning');
       return false;
     }
 

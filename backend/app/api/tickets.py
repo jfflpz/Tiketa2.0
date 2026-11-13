@@ -13,7 +13,7 @@ from pydantic import TypeAdapter
 from sqlalchemy import case, func, select
 from sqlalchemy.dialects.postgresql import insert
 
-from app.api.deps import DB, Admin, CurrentUser, validated_user
+from app.api.deps import DB, Admin, CurrentUser, SupervisorOrAdmin, validated_user
 from app.core.cache import cache, invalidate_queue_version, rate_limit
 from app.core.config import settings
 from app.core.security import (
@@ -145,12 +145,10 @@ def enforce_ticket_read_scope(ticket: Ticket, user: User) -> None:
 
 
 def enforce_ticket_mutation_scope(ticket: Ticket, user: User) -> None:
-    """Enforce mutation scope: Supervisor cannot mutate operations; assigned tickets are owner-only."""
+    """Enforce mutation scope: Admin/Supervisor have fleet override; assigned tickets are owner-only for tech."""
 
-    if user.role == "supervisor":
-        raise HTTPException(
-            403, "Supervisor role does not have operational mutation permissions"
-        )
+    if user.role in ("admin", "supervisor"):
+        return
 
     if ticket.assigned_tech_id and ticket.assigned_tech_id != user.id:
         raise HTTPException(403, "Only the assigned technician may edit this ticket")
@@ -887,15 +885,17 @@ async def update_service_record(
 
     row = await get_ticket(db, ticket_id, lock=True)
 
-    if user.role == "supervisor":
-        raise HTTPException(
-            403, "Supervisor role does not have operational mutation permissions"
-        )
+    is_lead = user.role in ("admin", "supervisor")
 
-    if row.assigned_tech_id and row.assigned_tech_id != user.id:
+    if row.status == "PROG" and row.assigned_tech_id and row.assigned_tech_id != user.id and not is_lead:
         raise HTTPException(
             403,
-            "Only the assigned technician may update the service record",
+            "Only the assigned technician, supervisor, or administrator may update the service record",
+        )
+    if row.status != "PROG" and row.assigned_tech_id and row.assigned_tech_id != user.id and not is_lead:
+        raise HTTPException(
+            403,
+            "Only the assigned technician, supervisor, or administrator may update the service record",
         )
 
     if "task_code" in body.model_fields_set:
@@ -967,7 +967,7 @@ async def assign_ticket(
     ticket_id: UUID,
     body: AssignInput,
     db: DB,
-    admin: Admin,
+    user: SupervisorOrAdmin,
 ):
 
     row = await get_ticket(db, ticket_id, lock=True)
@@ -981,11 +981,11 @@ async def assign_ticket(
 
     if (
         not target_tech
-        or target_tech.role not in ("it", "intern")
+        or target_tech.role not in ("it", "intern", "admin")
         or not target_tech.is_active
     ):
         raise HTTPException(
-            422, "Target technician must be an active technician with IT or intern role"
+            422, "Target technician must be an active technician with IT, intern, or admin role"
         )
 
     # Idempotent no-op if already assigned to this technician
@@ -1054,11 +1054,6 @@ async def assign_ticket(
 async def status_ticket(ticket_id: UUID, body: StatusInput, db: DB, user: CurrentUser):
 
     row = await get_ticket(db, ticket_id, lock=True)
-
-    if user.role == "supervisor":
-        raise HTTPException(
-            403, "Supervisor role does not have operational mutation permissions"
-        )
 
     closure_url: str | None = None
 

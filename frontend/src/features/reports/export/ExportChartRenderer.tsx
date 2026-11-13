@@ -267,38 +267,50 @@ export const ExportChartRenderer: React.FC<ExportChartRendererProps> = ({ report
         fontVariant: 'normal',
       }}
     >
-      {/* Report 1: Monthly SLA (Volume & 48h Resolution SLA) */}
-      {reportId === 1 && (
+    {/* Report 1: Monthly SLA (Volume & 48h Resolution SLA) */}
+    {reportId === 1 && (() => {
+      const rows = data as MonthlySlaRow[];
+      const showLabels = rows.length <= 4;
+      return (
         <div style={{ width: '100%', height: '100%' }}>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data as MonthlySlaRow[]} margin={{ top: 35, right: 30, left: 20, bottom: 45 }}>
+            <BarChart data={rows} margin={{ top: 35, right: 30, left: 20, bottom: 45 }}>
               <CartesianGrid stroke={COLOR_GRID} vertical={false} />
               <XAxis
                 dataKey="month"
                 height={70}
-                tick={<MonthExportTick totalCount={(data as MonthlySlaRow[]).length} />}
+                tick={<MonthExportTick totalCount={rows.length} />}
                 interval={0}
                 stroke={COLOR_TEXT}
               />
-              <YAxis tick={{ fill: COLOR_TEXT, fontSize: 16 }} stroke={COLOR_TEXT} />
+              <YAxis
+                domain={showLabels ? [0, (dataMax: number) => Math.ceil(dataMax * 1.15)] : [0, 'auto']}
+                tick={{ fill: COLOR_TEXT, fontSize: 16 }}
+                stroke={COLOR_TEXT}
+              />
               <Legend verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: 16, fontSize: '16px' }} />
               <Bar dataKey="totalRequests" name="Total Requests" fill={COLOR_BLUE} radius={[0, 0, 0, 0]} isAnimationActive={false}>
-                <LabelList dataKey="totalRequests" position="top" fill={COLOR_TEXT} fontSize={18} />
+                {showLabels && <LabelList dataKey="totalRequests" position="top" fill={COLOR_TEXT} fontSize={18} />}
               </Bar>
               <Bar dataKey="completed" name="Completed Tickets" fill={COLOR_ORANGE} radius={[0, 0, 0, 0]} isAnimationActive={false}>
-                <LabelList dataKey="completed" position="top" fill={COLOR_TEXT} fontSize={18} />
+                {showLabels && <LabelList dataKey="completed" position="top" fill={COLOR_TEXT} fontSize={18} />}
               </Bar>
               <Bar dataKey="pending" name="Pending Tickets" fill={COLOR_GREEN} radius={[0, 0, 0, 0]} isAnimationActive={false}>
-                <LabelList dataKey="pending" position="top" fill={COLOR_TEXT} fontSize={18} />
+                {showLabels && <LabelList dataKey="pending" position="top" fill={COLOR_TEXT} fontSize={18} />}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
-      )}
+      );
+    })()}
 
-      {/* Report 2: Staff Productivity (Horizontal Ticket and Labor Panels) */}
       {reportId === 2 && (() => {
         const top10 = ([...data] as StaffUtilizationRow[])
+          .filter(
+            (r) =>
+              !r.technician.toLowerCase().includes('unassigned') &&
+              !r.technician.toLowerCase().includes('general it pool')
+          )
           .sort(
             (a, b) =>
               (b.completed || 0) - (a.completed || 0) ||
@@ -628,8 +640,7 @@ export const ExportChartRenderer: React.FC<ExportChartRendererProps> = ({ report
               <BarChart data={top10} margin={{ top: 35, right: 30, left: 20, bottom: 30 }}>
                 <CartesianGrid stroke={COLOR_GRID} vertical={false} />
                 <XAxis dataKey="ticketLabel" height={100} tick={<WrappedTick />} interval={0} />
-                <YAxis tick={{ fill: COLOR_TEXT, fontSize: 18 }} stroke={COLOR_TEXT} label={{ value: 'Days Stagnant', angle: -90, position: 'insideLeft', fill: COLOR_TEXT, fontSize: 18 }} />
-                <Legend verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: 12, fontSize: '18px' }} />
+                <YAxis domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tick={{ fill: COLOR_TEXT, fontSize: 18 }} stroke={COLOR_TEXT} label={{ value: 'Days Stagnant', angle: -90, position: 'insideLeft', fill: COLOR_TEXT, fontSize: 18 }} />                <Legend verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: 12, fontSize: '18px' }} />
                 <Bar dataKey="daysOpen" name="Dwell Time (>48h SLA Days)" fill={COLOR_ORANGE} radius={[0, 0, 0, 0]} isAnimationActive={false}>
                   {top10.map((_, index) => (
                     <Cell
@@ -777,7 +788,7 @@ export const ExportChartRenderer: React.FC<ExportChartRendererProps> = ({ report
               <BarChart data={top10} margin={{ top: 35, right: 30, left: 20, bottom: 45 }}>
                 <CartesianGrid stroke={COLOR_GRID} vertical={false} />
                 <XAxis dataKey="staffLabel" height={70} tick={<TwoLineExportTick />} interval={0} stroke={COLOR_TEXT} />
-                <YAxis tick={{ fill: COLOR_TEXT, fontSize: 18 }} stroke={COLOR_TEXT} label={{ value: 'Repeat Tickets (Count - 1)', angle: -90, position: 'insideLeft', fill: COLOR_TEXT, fontSize: 18 }} />
+                <YAxis domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]} tick={{ fill: COLOR_TEXT, fontSize: 18 }} stroke={COLOR_TEXT} label={{ value: 'Repeat Tickets (Count - 1)', angle: -90, position: 'insideLeft', fill: COLOR_TEXT, fontSize: 18 }} />
                 <Legend verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: 16, fontSize: '15px' }} />
                 <Bar dataKey="repeatIncidents" name="Repeat Incidents (Count - 1)" fill={COLOR_ORANGE} radius={[0, 0, 0, 0]} isAnimationActive={false}>
                   {top10.map((_, index) => (

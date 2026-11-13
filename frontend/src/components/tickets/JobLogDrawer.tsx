@@ -194,6 +194,7 @@ export const JobLogDrawer: React.FC = () => {
   const messages = ticket.messages ?? [];
   const techSenderName = ticket.workedBy ?? currentUser?.name ?? 'Christian (IT Specialist)';
   const isAdmin = currentUser?.role === 'admin';
+  const isSupervisorOrAdmin = currentUser?.role === 'admin' || currentUser?.role === 'supervisor';
   const isOwner = canEditTicket(currentUser, ticket);
 
   const handleOpenWorkbench = () => {
@@ -205,7 +206,7 @@ export const JobLogDrawer: React.FC = () => {
   };
 
   const handleSaveJobLog = async () => {
-    if (!isOwner) {
+    if (!isOwner && !isSupervisorOrAdmin) {
       addToast('Permission Denied', `Ticket is assigned to ${ticket.workedBy || 'another technician'}`, 'warning');
       return;
     }
@@ -304,8 +305,9 @@ export const JobLogDrawer: React.FC = () => {
               ticket={ticket}
               techSenderName={techSenderName}
               onSendMessage={(msg, isInternal) => {
-                if (!isOwner) {
-                  addToast('Permission Denied', `Ticket is assigned to ${ticket.workedBy || 'another technician'}. Only the assigned owner may post comments.`, 'warning');
+                if (!isOwner && !isSupervisorOrAdmin) {
+                  addToast('Permission Denied', `Ticket is assigned to ${ticket.workedBy || 'another technician'}. Only the assigned owner or lead may
+                  post comments.`, 'warning');
                   return false;
                 }
                 return sendTicketMessageApi(ticket.id, msg, isInternal);
@@ -315,20 +317,11 @@ export const JobLogDrawer: React.FC = () => {
             /* TAB 2: 15-COLUMN JOB LOG & WORK CONTROLS */
             <JobLogDrawerRecordForm
               ticket={ticket}
-              notesDraft={notesDraft}
-              onNotesDraftChange={setNotesDraft}
-              isSavingNotes={isSavingNotes}
-              onSaveJobLog={handleSaveJobLog}
-              onUpdateMode={(mode) => {
-                if (!isOwner) {
-                  addToast('Permission Denied', `Ticket is assigned to ${ticket.workedBy || 'another technician'}. Only the assigned owner may change mode.`, 'warning');
-                  return;
-                }
-                updateTicketMode(ticket.id, mode);
-              }}
               isAdmin={isAdmin}
               itTeamMembers={itTeamMembers}
               onAssignTicket={assignTicket}
+              onSaveJobLog={handleSaveJobLog}
+              onUpdateMode={(mode) => updateTicketMode(ticket.id, mode)}
             />
           )}
         </div>
@@ -362,7 +355,7 @@ export const JobLogDrawer: React.FC = () => {
               </button>
             )}
             {ticket.status === 'PROG' && (
-              isOwner ? (
+              (isOwner || isSupervisorOrAdmin) ? (
                 <button
                   type="button"
                   onClick={async () => {
