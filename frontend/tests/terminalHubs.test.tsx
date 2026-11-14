@@ -171,10 +171,10 @@ describe('TerminalHubsView & TerminalHubDetailModal', () => {
 
     render(<TerminalHubsView />);
 
-    expect(screen.getByText(/Loading Terminal Hub Summaries/i)).toBeTruthy();
+    expect(screen.getByText(/Loading Location Summaries/i)).toBeTruthy();
 
     await waitFor(() => {
-      expect(screen.getByText(/2 Bus Terminal Hubs Monitor/i)).toBeTruthy();
+      expect(screen.getByText(/2 Locations Monitor/i)).toBeTruthy();
     });
 
     // Check Pasay card
@@ -208,7 +208,7 @@ describe('TerminalHubsView & TerminalHubDetailModal', () => {
     fireEvent.keyDown(pasayCard, { key: 'Enter', code: 'Enter' });
 
     await waitFor(() => {
-      expect(screen.getByText(/Pasay Terminal Station/i)).toBeTruthy();
+      expect(screen.getByText(/Pasay Location/i)).toBeTruthy();
     });
   });
 
@@ -242,7 +242,7 @@ describe('TerminalHubsView & TerminalHubDetailModal', () => {
     render(<TerminalHubDetailModal hub={MOCK_SUMMARIES[0]} onClose={handleClose} />);
 
     // Header values
-    expect(screen.getByText(/Pasay Terminal Station/i)).toBeTruthy();
+    expect(screen.getByText(/Pasay Location/i)).toBeTruthy();
     expect(screen.getByText('3')).toBeTruthy();
     expect(screen.getByText('2')).toBeTruthy();
     expect(screen.getByText('1')).toBeTruthy();
@@ -562,7 +562,7 @@ describe('TerminalHubsView & TerminalHubDetailModal', () => {
     fireEvent.keyDown(pasayCard, { key: 'Enter', code: 'Enter' });
 
     await waitFor(() => {
-      expect(screen.getByText(/Pasay Terminal Station/i)).toBeTruthy();
+      expect(screen.getByText(/Pasay Location/i)).toBeTruthy();
     });
 
     // Close button should have received focus

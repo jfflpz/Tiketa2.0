@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { resolvePathToView, viewToCanonicalPath } from '../src/utils/routeUtils';
 import { ROLE_ALLOWED_VIEWS } from '../src/App';
+import { getAllowedViewsForUser, getEffectivePermissions, hasPermission } from '../src/utils/permissions';
 import type { ActiveView } from '../src/store/slices/uiSlice';
 
 describe('Route Utils & Canonical Paths', () => {
@@ -87,5 +88,24 @@ describe('Role-Based Access Control (RBAC) Matrix', () => {
       'reports',
       'team',
     ]);
+  });
+
+  it('derives views and actions from effectivePermissions independently of staff title (F-B1)', () => {
+    const partTimer = {
+      role: 'it' as const,
+      title: 'IT Part-Timer',
+      effectivePermissions: ['workbench:access', 'notes:view'],
+    };
+    expect(getEffectivePermissions(partTimer)).toEqual(['workbench:access', 'notes:view']);
+    expect(hasPermission(partTimer, 'tickets:claim')).toBe(false);
+    expect(getAllowedViewsForUser(partTimer)).toEqual(['overview', 'workbench', 'joblogs', 'notes']);
+
+    const promotedIntern = {
+      role: 'intern' as const,
+      title: 'Senior IT Analyst',
+      effectivePermissions: ['workbench:access', 'notes:view', 'tickets:view', 'tickets:claim'],
+    };
+    expect(hasPermission(promotedIntern, 'tickets:claim')).toBe(true);
+    expect(getAllowedViewsForUser(promotedIntern)).toContain('tickets');
   });
 });

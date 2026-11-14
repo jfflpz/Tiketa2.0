@@ -13,6 +13,8 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { useAppStore } from '../../../store/useAppStore';
+import { nonemployeeApi, extractApiErrorMessage } from '../../../api/client';
+import { mapStaffTicket } from '../../../utils/mapStaffTicket';
 import { StatusBadge } from '../../../components/common/StatusBadge';
 import type { Ticket, TicketStatus } from '../../../types/ticket';
 
@@ -53,7 +55,10 @@ export const KioskTrackLookupTab: React.FC<KioskTrackLookupTabProps> = ({ initia
   const copyTicketShareLink = useAppStore((state) => state.copyTicketShareLink);
 
   const [codeInput, setCodeInput] = useState(initialCode || '');
+  const [delegationToken, setDelegationToken] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isConfirmingDelegation, setIsConfirmingDelegation] = useState(false);
+  const [delegationSuccessMsg, setDelegationSuccessMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeTicket, setActiveTicket] = useState<Ticket | null>(null);
   const [copied, setCopied] = useState(false);
@@ -80,20 +85,61 @@ export const KioskTrackLookupTab: React.FC<KioskTrackLookupTabProps> = ({ initia
 
     setIsLoading(true);
     setError(null);
+    setDelegationSuccessMsg(null);
     try {
-      const ticket = await trackTicketApi(clean);
-      if (ticket) {
-        setActiveTicket(ticket);
+      if (delegationToken.trim()) {
+        const res = await nonemployeeApi.trackDelegated(clean, {
+          delegation_token: delegationToken.trim(),
+        });
+        const mapped: Ticket = {
+          ...mapStaffTicket(res, null),
+          delegatedForName: res.represented_person ?? res.requester_name,
+          delegationStatus: res.delegation_status ?? 'active',
+        };
+        setActiveTicket(mapped);
         setError(null);
       } else {
-        setError(`Ticket "${clean}" was not found on the server. Please check the code.`);
-        setActiveTicket(null);
+        const ticket = await trackTicketApi(clean);
+        if (ticket) {
+          setActiveTicket(ticket);
+          setError(null);
+        } else {
+          setError(`Ticket "${clean}" was not found on the server. Please check the code.`);
+          setActiveTicket(null);
+        }
       }
-    } catch {
-      setError('Unable to reach central IT server. Please check network and try again.');
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 401 || status === 403) {
+        setError(extractApiErrorMessage(err, 'Delegation access expired, revoked, or unauthorized for this ticket.'));
+      } else {
+        setError(extractApiErrorMessage(err, 'Unable to reach central IT server. Please check network and try again.'));
+      }
       setActiveTicket(null);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleConfirmDelegatedClosure = async () => {
+    if (!activeTicket || isConfirmingDelegation) return;
+    setIsConfirmingDelegation(true);
+    setError(null);
+    try {
+      const updated = await nonemployeeApi.confirmDelegatedClosure(activeTicket.id, {
+        delegation_token: delegationToken.trim() || undefined,
+        represented_person: activeTicket.delegatedForName,
+      });
+      setActiveTicket({
+        ...mapStaffTicket(updated, null),
+        delegatedForName: activeTicket.delegatedForName,
+        delegationStatus: activeTicket.delegationStatus,
+      });
+      setDelegationSuccessMsg(`Confirmed closure on behalf of ${activeTicket.delegatedForName || activeTicket.requestor}.`);
+    } catch (err: unknown) {
+      setError(extractApiErrorMessage(err, 'Delegated closure failed or delegation was revoked/expired.'));
+    } finally {
+      setIsConfirmingDelegation(false);
     }
   };
 
@@ -203,7 +249,7 @@ export const KioskTrackLookupTab: React.FC<KioskTrackLookupTabProps> = ({ initia
               <MapPin className="w-4 h-4 text-brand shrink-0 mt-0.5" />
               <div>
                 <span className="block text-[10px] font-bold uppercase tracking-wider text-ink-subtle">
-                  Terminal &amp; Department
+                  Location &amp; Department
                 </span>
                 <strong className="text-ink text-sm font-semibold">
                   {activeTicket.location} • {activeTicket.department}
@@ -248,6 +294,55 @@ export const KioskTrackLookupTab: React.FC<KioskTrackLookupTabProps> = ({ initia
             </div>
           )}
         </div>
+
+        {/* Delegated Representation & Scoped Confirmation Banner (F-E2) */}
+        {activeTicket.delegatedForName && (
+          <div
+            data-testid="delegation-banner"
+            className={`p-3.5 rounded-2xl border text-xs space-y-2 ${
+              activeTicket.delegationStatus === 'expired' || activeTicket.delegationStatus === 'revoked'
+                ? 'bg-rose-50 border-rose-200 text-rose-800'
+                : 'bg-sky-50 border-sky-200 text-sky-900'
+            }`}
+          >
+            <div className="font-bold">
+              Representing: {activeTicket.delegatedForName}
+            </div>
+            {activeTicket.delegationStatus === 'expired' && (
+              <p>This delegation has expired. Please request a new delegation link.</p>
+            )}
+            {activeTicket.delegationStatus === 'revoked' && (
+              <p>This delegation was revoked and can no longer confirm closure.</p>
+            )}
+            {activeTicket.status === 'RESL' &&
+              (!activeTicket.delegationStatus || activeTicket.delegationStatus === 'active') && (
+                <button
+                  type="button"
+                  disabled={isConfirmingDelegation}
+                  onClick={() => void handleConfirmDelegatedClosure()}
+                  className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white font-bold"
+                >
+                  {isConfirmingDelegation ? 'Confirming...' : `Confirm Closure for ${activeTicket.delegatedForName}`}
+                </button>
+              )}
+          </div>
+        )}
+
+        {error && (
+          <div
+            role="alert"
+            className="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-700 flex items-center gap-2 animate-fade-in"
+          >
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {delegationSuccessMsg && (
+          <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold">
+            {delegationSuccessMsg}
+          </div>
+        )}
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
@@ -303,6 +398,20 @@ export const KioskTrackLookupTab: React.FC<KioskTrackLookupTabProps> = ({ initia
             autoFocus
             disabled={isLoading}
             className="w-full px-4 py-3.5 bg-canvas border border-line rounded-2xl text-center font-mono font-black text-base uppercase tracking-widest text-ink placeholder:text-ink-faint focus:outline-none focus:border-zinc-500 transition-colors"
+          />
+        </div>
+
+        <div className="space-y-1">
+          <label className="block text-[11px] font-semibold text-ink-subtle text-center">
+            Delegation / Nonemployee Token (Optional)
+          </label>
+          <input
+            type="text"
+            value={delegationToken}
+            onChange={(e) => setDelegationToken(e.target.value)}
+            placeholder="Paste scoped delegation token if representing another requester"
+            disabled={isLoading}
+            className="w-full px-3.5 py-2 bg-canvas border border-line rounded-xl text-center font-mono text-xs text-ink placeholder:text-ink-faint focus:outline-none focus:border-zinc-500"
           />
         </div>
 

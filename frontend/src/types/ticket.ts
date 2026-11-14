@@ -128,6 +128,28 @@ export interface Ticket {
   closureTokenHash?: string;
   closureUrl?: string; // Viber / direct verification link returned by backend
   userConfirmedAt?: string;
+  closureDeadlineAt?: string;
+  closureReason?: string;
+  autoClosedAt?: string;
+  confirmedBy?: string;
+  isPaused?: boolean;
+  pausedAt?: string;
+  pauseReason?: string;
+  activeMinutes?: number;
+  elapsedMinutes?: number;
+  reporterName?: string;
+  requesterType?: 'employee' | 'nonemployee';
+  requesterId?: string;
+  delegatedForName?: string;
+  delegationStatus?: 'active' | 'expired' | 'revoked';
+  // Phase 5 (F-F1, F-G1, F-G2)
+  subcategoryCode?: string;
+  subcategoryName?: string;
+  riskLevel?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | 'UNKNOWN';
+  assetId?: string;
+  assetTag?: string;
+  assetSerial?: string;
+  assetModel?: string;
   validationRequested?: boolean;
   validationRequestedAt?: string;
   createdAt: string;
@@ -146,6 +168,7 @@ export interface NewTicketInput {
   requestor: string;
   employeeId?: string;
   taskCode: TaskCategoryCode;
+  subcategoryCode?: string;
   description: string;
   mode: SupportMode;
   intakeSource?: 'PC Kiosk' | 'Employee ID' | 'Walk-in / Viber';

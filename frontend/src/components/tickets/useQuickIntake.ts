@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import axios from 'axios';
-import { directoryApi, extractApiErrorMessage, type EmployeeLookupResult } from '../../api/client';
+import {
+  directoryApi,
+  nonemployeeApi,
+  extractApiErrorMessage,
+  type EmployeeLookupResult,
+  type NonemployeePerson,
+} from '../../api/client';
 import { useAppStore } from '../../store/useAppStore';
 import type { SupportMode, TaskCategoryCode, Ticket } from '../../types/ticket';
 
@@ -15,8 +21,20 @@ export const useQuickIntake = () => {
   const [lookupPending, setLookupPending] = useState(false);
   const [retry, setRetry] = useState(0);
   const [taskCode, setTaskCode] = useState<TaskCategoryCode>('PRN-TS');
+  const [subcategoryCode, setSubcategoryCode] = useState<string>('');
   const [mode, setMode] = useState<SupportMode>('REM');
+
+  const handleTaskCodeChange = (code: TaskCategoryCode) => {
+    setTaskCode(code);
+    setSubcategoryCode(''); // Clear stale child selection when parent changes (F-G2)
+  };
   const [description, setDescription] = useState('');
+  const [requesterType, setRequesterType] = useState<'employee' | 'nonemployee'>('employee');
+  const [reporterName, setReporterName] = useState('');
+  const [nonemployeeQuery, setNonemployeeQuery] = useState('');
+  const [nonemployeeResults, setNonemployeeResults] = useState<NonemployeePerson[]>([]);
+  const [selectedNonemployee, setSelectedNonemployee] = useState<NonemployeePerson | null>(null);
+  const [isSearchingNonemployees, setIsSearchingNonemployees] = useState(false);
   const [error, setError] = useState('');
   const [isSubmitting, setSubmitting] = useState(false);
   const [createdTicket, setCreatedTicket] = useState<Ticket | null>(null);
@@ -75,15 +93,62 @@ export const useQuickIntake = () => {
     setCreatedTicket(null);
     setTaskCode('PRN-TS');
     setMode('REM');
+    setRequesterType('employee');
+    setReporterName('');
+    setNonemployeeQuery('');
+    setNonemployeeResults([]);
+    setSelectedNonemployee(null);
   };
   const close = () => {
     if (submitting.current) return;
     reset();
     setOpen(false);
   };
+
+  const searchNonemployees = async (q: string) => {
+    setNonemployeeQuery(q);
+    if (!q.trim()) {
+      setNonemployeeResults([]);
+      return;
+    }
+    setIsSearchingNonemployees(true);
+    try {
+      const results = await nonemployeeApi.search(q.trim());
+      setNonemployeeResults(Array.isArray(results) ? results : []);
+    } catch (err: unknown) {
+      setError(extractApiErrorMessage(err, 'Failed to search nonemployee records.'));
+    } finally {
+      setIsSearchingNonemployees(false);
+    }
+  };
+
+  const createNonemployee = async (payload: {
+    full_name: string;
+    company_id: string;
+    location_id: string;
+    department_id: string;
+    contact_hint?: string;
+  }): Promise<NonemployeePerson | null> => {
+    setError('');
+    try {
+      const created = await nonemployeeApi.create(payload);
+      setSelectedNonemployee(created);
+      setNonemployeeResults((prev) => [created, ...prev.filter((p) => p.id !== created.id)]);
+      return created;
+    } catch (err: unknown) {
+      setError(extractApiErrorMessage(err, 'Failed to register nonemployee profile.'));
+      return null;
+    }
+  };
+
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    if (submitting.current || !employee || employee.employee_id !== employeeId.trim()) return;
+    if (submitting.current) return;
+    if (requesterType === 'employee' && (!employee || employee.employee_id !== employeeId.trim())) return;
+    if (requesterType === 'nonemployee' && !selectedNonemployee) {
+      setError('Select or register the actual nonemployee requester before submitting.');
+      return;
+    }
     const details = description.trim();
     if (details.length < 10 || details.length > 20000) {
       setError('Enter between 10 and 20,000 characters in Technical Symptoms & Details.');
@@ -94,7 +159,16 @@ export const useQuickIntake = () => {
     setError('');
     const session = sessionSequence.current;
     try {
-      const ticket = await submit({ employeeId: employee.employee_id, taskCode, mode, description: details });
+      const ticket = await submit({
+        employeeId: requesterType === 'employee' ? employee!.employee_id : '',
+        taskCode,
+        subcategoryCode: subcategoryCode || undefined,
+        mode,
+        description: details,
+        reporterName: reporterName.trim() || undefined,
+        requesterType,
+        nonemployeeId: requesterType === 'nonemployee' ? selectedNonemployee!.id : undefined,
+      });
       if (session !== sessionSequence.current) return;
       if (ticket) setCreatedTicket(ticket);
       else setError('The ticket was not confirmed as saved. Your entries are kept here. Check the error message and queue before retrying.');
@@ -107,6 +181,9 @@ export const useQuickIntake = () => {
   };
   return { isOpen, close, reset, employeeId, changeEmployeeId, employee, lookupMessage,
     lookupPending, retryLookup: () => { setEmployee(null); ++lookupSequence.current; setRetry((value) => value + 1); },
-    taskCode, setTaskCode, mode, setMode, description, setDescription, error, isSubmitting,
+    requesterType, setRequesterType, reporterName, setReporterName,
+    nonemployeeQuery, nonemployeeResults, selectedNonemployee, setSelectedNonemployee,
+    isSearchingNonemployees, searchNonemployees, createNonemployee,
+    taskCode, setTaskCode: handleTaskCodeChange, subcategoryCode, setSubcategoryCode, mode, setMode, description, setDescription, error, isSubmitting,
     createdTicket, handleSubmit };
 };

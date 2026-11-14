@@ -85,7 +85,11 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
               email: data.user.email,
               username: data.user.username,
               role: userRole,
-              title: getStaffTitle(userRole),
+              title: (data.user as { title?: string; staff_title?: string }).title ||
+                (data.user as { staff_title?: string }).staff_title ||
+                getStaffTitle(userRole),
+              effectivePermissions: (data.user as { effective_permissions?: string[] }).effective_permissions,
+              custom_permissions: (data.user as { custom_permissions?: string[] }).custom_permissions,
               avatar: data.user.full_name
                 .split(' ')
                 .map((n: string) => n[0])
@@ -151,7 +155,11 @@ export const createAuthSlice: AppSliceCreator<AuthSlice> = (set, get) => ({
           email: data.user.email,
           username: data.user.username,
           role: userRole,
-          title: getStaffTitle(userRole),
+          title: (data.user as { title?: string; staff_title?: string }).title ||
+            (data.user as { staff_title?: string }).staff_title ||
+            getStaffTitle(userRole),
+          effectivePermissions: (data.user as { effective_permissions?: string[] }).effective_permissions,
+          custom_permissions: (data.user as { custom_permissions?: string[] }).custom_permissions,
           avatar: data.user.full_name
             .split(' ')
             .map((n: string) => n[0])

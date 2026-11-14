@@ -48,6 +48,7 @@ export interface PublicIntakeSlice {
   submitTicketApi: (input: {
     employeeId: string;
     taskCode: TaskCategoryCode;
+    subcategoryCode?: string;
     description: string;
     taskTitle?: string;
     matchToken: string;
@@ -146,6 +147,7 @@ export const createPublicIntakeSlice: AppSliceCreator<PublicIntakeSlice> = (set,
         {
           employee_id: input.employeeId,
           task_code: input.taskCode,
+          ...(input.subcategoryCode ? { subcategory_code: input.subcategoryCode } : {}),
           reported_issue_code: input.taskCode,
           description: input.description,
           match_token: input.matchToken,

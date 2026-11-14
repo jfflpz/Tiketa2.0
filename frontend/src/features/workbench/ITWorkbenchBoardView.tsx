@@ -729,7 +729,7 @@ export const ITWorkbenchBoardView: React.FC = () => {
               <MapPin className="w-4 h-4 text-orange-500 shrink-0" />
               <div className="min-w-0">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
-                  Terminal &amp; Dept
+                  Location &amp; Dept
                 </span>
                 <span className="text-xs font-bold text-ink truncate block">
                   {focusedTicket.location} ({focusedTicket.locationCode}) •{' '}

@@ -13,6 +13,7 @@ import { useAppStore } from '../../../store/useAppStore';
 export interface JobLogDrawerChatProps {
   ticket: Ticket;
   techSenderName: string;
+  readOnly?: boolean;
   onSendMessage: (msg: string, isInternal: boolean) => Promise<unknown> | unknown;
 }
 
@@ -26,6 +27,7 @@ const IT_QUICK_REPLIES = [
 export const JobLogDrawerChat: React.FC<JobLogDrawerChatProps> = ({
   ticket,
   techSenderName,
+  readOnly = false,
   onSendMessage,
 }) => {
   const fetchTicketCommentsApi = useAppStore((state) => state.fetchTicketCommentsApi);
@@ -36,6 +38,7 @@ export const JobLogDrawerChat: React.FC<JobLogDrawerChatProps> = ({
   const [isInternalMode, setIsInternalMode] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [pollDenied, setPollDenied] = useState(false);
   const [hasUnseenNewMessage, setHasUnseenNewMessage] = useState(false);
 
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
@@ -49,6 +52,7 @@ export const JobLogDrawerChat: React.FC<JobLogDrawerChatProps> = ({
 
   // @spec F-07: Bounded 3-second two-way chat polling gated by document.visibilityState === 'visible'
   const pollComments = useCallback(async () => {
+    if (pollDenied) return;
     if (document.visibilityState !== 'visible') return;
     if (isFetchingRef.current) return;
     if (!ticket.id || ticket.id.startsWith('t-')) return;
@@ -56,12 +60,22 @@ export const JobLogDrawerChat: React.FC<JobLogDrawerChatProps> = ({
     isFetchingRef.current = true;
     try {
       await fetchTicketCommentsApi(ticket.id);
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 401 || status === 403) {
+        setPollDenied(true);
+      }
     } finally {
       isFetchingRef.current = false;
     }
-  }, [ticket.id, fetchTicketCommentsApi]);
+  }, [ticket.id, fetchTicketCommentsApi, pollDenied]);
 
   useEffect(() => {
+    setPollDenied(false);
+  }, [ticket.id]);
+
+  useEffect(() => {
+    if (pollDenied) return;
     // Initial fetch when drawer opens or ticket changes
     pollComments();
 
@@ -83,7 +97,7 @@ export const JobLogDrawerChat: React.FC<JobLogDrawerChatProps> = ({
       window.clearInterval(intervalId);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [ticket.id, authSessionId, currentUser?.role, pollComments]);
+  }, [ticket.id, authSessionId, currentUser?.role, pollComments, pollDenied]);
 
   // Auto-scroll logic: scroll to bottom if user is already near bottom (< 80px),
   // otherwise show "New message ↓" banner to avoid hijacking scroll position while reading history.
@@ -255,111 +269,132 @@ export const JobLogDrawerChat: React.FC<JobLogDrawerChatProps> = ({
         </button>
       )}
 
-      {/* Quick Replies */}
-      {!isInternalMode && (
-        <div className="space-y-1">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-ink-subtle">
-            One-Click Quick Replies
-          </span>
-          <div className="flex flex-wrap gap-1.5">
-            {IT_QUICK_REPLIES.map((reply) => (
-              <button
-                key={reply}
-                type="button"
-                onClick={() => handleQuickReply(reply)}
-                className="text-left text-[11px] px-2.5 py-1 rounded-xl bg-canvas hover:bg-zinc-100 text-ink border border-line transition-colors press-fx"
-              >
-                + {reply}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Composer Mode Selector: Send to Employee vs Internal Note */}
-      <div className="flex items-center gap-2 pt-1 border-t border-line/60">
-        <button
-          type="button"
-          onClick={() => setIsInternalMode(false)}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-            !isInternalMode
-              ? 'bg-zinc-900 text-white shadow-xs'
-              : 'bg-canvas text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100'
-          }`}
-        >
-          <Users className="w-3.5 h-3.5" />
-          <span>Send to Employee</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setIsInternalMode(true)}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-            isInternalMode
-              ? 'bg-amber-600 text-white shadow-xs'
-              : 'bg-canvas text-zinc-500 hover:text-amber-800 hover:bg-amber-50'
-          }`}
-        >
-          <Lock className="w-3.5 h-3.5" />
-          <span>Internal Note (Hidden)</span>
-        </button>
-      </div>
-
-      {/* Delivery Error Notice */}
-      {sendError && (
+      {pollDenied && (
         <div
           role="alert"
           className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2"
         >
           <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-          <span>{sendError}</span>
+          <span>Access denied for ticket conversation. Background polling stopped.</span>
         </div>
       )}
 
-      {/* Message Composer Form */}
-      <form onSubmit={handleSend} className="space-y-2">
-        <div className="flex items-center gap-2">
-          <input
-            type="text"
-            value={chatDraft}
-            onChange={(e) => {
-              setChatDraft(e.target.value);
-              if (sendError) setSendError(null);
-            }}
-            placeholder={
-              isInternalMode
-                ? 'Add confidential note visible only to IT staff...'
-                : `Message ${ticket.requestor} as ${techSenderName}...`
-            }
-            className={`flex-1 min-w-0 px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-xl text-xs text-ink focus:outline-none transition-colors ${
-              isInternalMode
-                ? 'bg-amber-50/60 border border-amber-300 focus:border-amber-600 placeholder:text-amber-700/60'
-                : 'bg-canvas border border-line focus:border-zinc-900'
-            }`}
-          />
-          <button
-            type="submit"
-            disabled={!chatDraft.trim() || isSending}
-            className={`px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors press-fx text-white disabled:opacity-40 shrink-0 ${
-              isInternalMode
-                ? 'bg-amber-600 hover:bg-amber-700'
-                : 'bg-[#111315] hover:bg-orange-500'
-            }`}
-          >
-            {isInternalMode ? (
-              <>
-                <Lock className="w-3.5 h-3.5" />
-                <span>Save Note</span>
-              </>
-            ) : (
-              <>
-                <Send className="w-3.5 h-3.5" />
-                <span>Send</span>
-              </>
-            )}
-          </button>
+      {readOnly ? (
+        <div
+          data-testid="supervisor-chat-readonly"
+          className="p-2.5 rounded-xl bg-zinc-100 border border-line text-zinc-600 text-[11px] font-medium flex items-center justify-between gap-2"
+        >
+          <span>Supervisor Conversation Viewer (Read-Only). Internal notes are marked in amber and hidden from requesters.</span>
         </div>
-      </form>
+      ) : (
+        <>
+          {/* Quick Replies */}
+          {!isInternalMode && (
+            <div className="space-y-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-ink-subtle">
+                One-Click Quick Replies
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {IT_QUICK_REPLIES.map((reply) => (
+                  <button
+                    key={reply}
+                    type="button"
+                    onClick={() => handleQuickReply(reply)}
+                    className="text-left text-[11px] px-2.5 py-1 rounded-xl bg-canvas hover:bg-zinc-100 text-ink border border-line transition-colors press-fx"
+                  >
+                    + {reply}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Composer Mode Selector: Send to Employee vs Internal Note */}
+          <div className="flex items-center gap-2 pt-1 border-t border-line/60">
+            <button
+              type="button"
+              onClick={() => setIsInternalMode(false)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                !isInternalMode
+                  ? 'bg-zinc-900 text-white shadow-xs'
+                  : 'bg-canvas text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100'
+              }`}
+            >
+              <Users className="w-3.5 h-3.5" />
+              <span>Send to Employee</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsInternalMode(true)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                isInternalMode
+                  ? 'bg-amber-600 text-white shadow-xs'
+                  : 'bg-canvas text-zinc-500 hover:text-amber-800 hover:bg-amber-50'
+              }`}
+            >
+              <Lock className="w-3.5 h-3.5" />
+              <span>Internal Note (Hidden)</span>
+            </button>
+          </div>
+
+          {/* Delivery Error Notice */}
+          {sendError && (
+            <div
+              role="alert"
+              className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2"
+            >
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              <span>{sendError}</span>
+            </div>
+          )}
+
+          {/* Message Composer Form */}
+          <form onSubmit={handleSend} className="space-y-2">
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={chatDraft}
+                onChange={(e) => {
+                  setChatDraft(e.target.value);
+                  if (sendError) setSendError(null);
+                }}
+                placeholder={
+                  isInternalMode
+                    ? 'Add confidential note visible only to IT staff...'
+                    : `Message ${ticket.requestor} as ${techSenderName}...`
+                }
+                className={`flex-1 min-w-0 px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-xl text-xs text-ink focus:outline-none transition-colors ${
+                  isInternalMode
+                    ? 'bg-amber-50/60 border border-amber-300 focus:border-amber-600 placeholder:text-amber-700/60'
+                    : 'bg-canvas border border-line focus:border-zinc-900'
+                }`}
+              />
+              <button
+                type="submit"
+                disabled={!chatDraft.trim() || isSending}
+                className={`px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors press-fx text-white disabled:opacity-40 shrink-0 ${
+                  isInternalMode
+                    ? 'bg-amber-600 hover:bg-amber-700'
+                    : 'bg-[#111315] hover:bg-orange-500'
+                }`}
+              >
+                {isInternalMode ? (
+                  <>
+                    <Lock className="w-3.5 h-3.5" />
+                    <span>Save Note</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-3.5 h-3.5" />
+                    <span>Send</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </>
+      )}
     </div>
   );
 };

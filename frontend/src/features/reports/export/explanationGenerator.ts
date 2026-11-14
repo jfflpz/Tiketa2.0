@@ -8,6 +8,7 @@ import type {
   PmsComplianceRow,
   ChronicRequestorRow,
 } from '../types/reportSchemas';
+import { parseMonthSortKey } from '../utils/reportMappers';
 
 export interface ExplanationResult {
   text: string;
@@ -35,7 +36,9 @@ export function generateExplanation(
       const totalCompleted = rows.reduce((acc, r) => acc + (r.completed || 0), 0);
       const overallCompletion = totalTickets > 0 ? ((totalCompleted / totalTickets) * 100).toFixed(1) : 'N/A';
 
-      const latestRow = rows[rows.length - 1];
+      const chronological = [...rows].sort((a, b) => parseMonthSortKey(a.month) - parseMonthSortKey(b.month));
+      const oldestRow = chronological[0];
+      const latestRow = chronological[chronological.length - 1];
       const latestSlaRate = latestRow?.slaComplianceRate != null ? `${latestRow.slaComplianceRate.toFixed(1)}%` : 'N/A';
       const latestSameDayRate = latestRow?.sameDayResolutionRate != null ? `${latestRow.sameDayResolutionRate.toFixed(1)}%` : 'N/A';
       const latestAvgLabor = latestRow?.avgResolutionHours != null ? `${latestRow.avgResolutionHours.toFixed(1)}h` : 'N/A';
@@ -47,7 +50,7 @@ export function generateExplanation(
       }
 
       return {
-        text: `Across **${rows.length} months** (${rows[0].month} to ${rows[rows.length - 1].month}), total volume is **${totalTickets} requests** with **${totalCompleted} completed** (${overallCompletion}% resolved). For the latest month (**${latestRow.month}**), **48-hour SLA resolution compliance is ${latestSlaRate}**, same-day completion is **${latestSameDayRate}**, and average repair duration is **${latestAvgLabor}**.`,
+        text: `Across **${rows.length} months** (${oldestRow.month} to ${latestRow.month}), total volume is **${totalTickets} requests** with **${totalCompleted} completed** (${overallCompletion}% resolved). For the latest month (**${latestRow.month}**), **48-hour SLA resolution compliance is ${latestSlaRate}**, same-day completion is **${latestSameDayRate}**, and average repair duration is **${latestAvgLabor}**.`,
       };
     }
 

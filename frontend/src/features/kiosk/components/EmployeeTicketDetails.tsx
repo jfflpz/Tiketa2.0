@@ -76,6 +76,15 @@ export const EmployeeTicketDetails: React.FC<EmployeeTicketDetailsProps> = ({ ti
               <p className="text-xs text-emerald-800 leading-relaxed">
                 Please verify your equipment (test printing, connection, etc.). If working normally, click below to review and confirm closure.
               </p>
+              {ticket.closureDeadlineAt ? (
+                <p className="text-[11px] font-medium text-emerald-900">
+                  Auto-closes if unconfirmed at: <strong className="font-mono">{new Date(ticket.closureDeadlineAt).toLocaleString()}</strong>
+                </p>
+              ) : (
+                <p className="text-[11px] text-emerald-700">
+                  Legacy verification policy (no auto-close deadline).
+                </p>
+              )}
             </div>
           </div>
 
@@ -88,6 +97,28 @@ export const EmployeeTicketDetails: React.FC<EmployeeTicketDetailsProps> = ({ ti
               <span>Review &amp; Verify Closure</span>
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Closure Outcome Banner if status === CLSD */}
+      {ticket.status === 'CLSD' && (
+        <div
+          data-testid="employee-closure-outcome"
+          className={`border rounded-2xl p-4 shadow-card text-xs ${
+            ticket.closureReason === 'auto_closed' || (Boolean(ticket.autoClosedAt) && !ticket.userConfirmedAt)
+              ? 'bg-zinc-50 border-zinc-200 text-zinc-800'
+              : 'bg-emerald-50 border-emerald-200 text-emerald-900'
+          }`}
+        >
+          <p className="font-bold">
+            {ticket.closureReason === 'auto_closed' || (Boolean(ticket.autoClosedAt) && !ticket.userConfirmedAt)
+              ? 'Ticket Auto-Closed After Verification Window Elapsed'
+              : ticket.closureReason === 'delegate_confirmed'
+              ? 'Ticket Closed via Delegate Confirmation'
+              : ticket.userConfirmedAt || ticket.closureReason === 'requester_confirmed'
+              ? 'Ticket Closure Confirmed by Requester'
+              : 'Ticket Closed'}
+          </p>
         </div>
       )}
 

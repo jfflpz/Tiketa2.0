@@ -1,5 +1,5 @@
 import { reportsApi } from '../../../api/client';
-import { REPORT_SLUGS, REPORT_TABS } from '../types/reportSchemas';
+import { HARDWARE_HOTSPOTS_REPORT_ID, REPORT_SLUGS, REPORT_TABS } from '../types/reportSchemas';
 import {
   mapMonthlySlaRows,
   mapStaffUtilizationRows,
@@ -69,12 +69,17 @@ export function mapReportData(reportId: number, rawRows: any[]): any[] {
 export async function executePptxExport(options: ExecuteExportOptions): Promise<ExportResult> {
   const { selectedReportIds, dateRange, filterParams = {}, customCommentaryByReportId, onProgress, signal } = options;
 
-  if (!selectedReportIds || selectedReportIds.length === 0) {
-    throw new Error('No reports selected for export.');
+  const exportableIds = (selectedReportIds || []).filter((id) => id !== HARDWARE_HOTSPOTS_REPORT_ID);
+  if (exportableIds.length === 0) {
+    throw new Error(
+      selectedReportIds?.includes(HARDWARE_HOTSPOTS_REPORT_ID)
+        ? 'Hardware Hotspots export has been removed.'
+        : 'No reports selected for export.'
+    );
   }
 
   // Pre-fetch validation: If PMS is included, ensure complete calendar months
-  if (selectedReportIds.includes(7)) {
+  if (exportableIds.includes(7)) {
     const pmsVal = validatePmsDateRange(dateRange.dateFrom, dateRange.dateTo);
     if (!pmsVal.isValid) {
       throw new Error(
@@ -92,7 +97,7 @@ export async function executePptxExport(options: ExecuteExportOptions): Promise<
   };
 
   const pres = createPresentationInstance();
-  const totalReports = selectedReportIds.length;
+  const totalReports = exportableIds.length;
   const formattedPeriod = formatPeriodDisplay(dateRange.dateFrom, dateRange.dateTo);
 
   for (let i = 0; i < totalReports; i++) {
@@ -100,7 +105,7 @@ export async function executePptxExport(options: ExecuteExportOptions): Promise<
       throw new DOMException('Export cancelled by user', 'AbortError');
     }
 
-    const reportId = selectedReportIds[i];
+    const reportId = exportableIds[i];
     const meta = REPORT_TABS.find((t) => t.id === reportId) || REPORT_TABS[0];
     const slug = REPORT_SLUGS[reportId];
 

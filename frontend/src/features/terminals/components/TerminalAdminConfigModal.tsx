@@ -111,7 +111,7 @@ export const TerminalAdminConfigModal: React.FC<TerminalAdminConfigModalProps> =
         address: newHubAddress.trim() || undefined,
       });
 
-      setSuccessMessage(`Terminal Hub '${newHubName}' created successfully.`);
+      setSuccessMessage(`Location '${newHubName}' created successfully.`);
       setNewHubCode('');
       setNewHubName('');
       setNewHubAddress('');
@@ -122,7 +122,7 @@ export const TerminalAdminConfigModal: React.FC<TerminalAdminConfigModalProps> =
       if (axiosErr.response?.status === 409) {
         setConflictMessage(
           axiosErr.response?.data?.detail ||
-            `Conflict (409): Terminal Hub code '${newHubCode}' or name already exists in the system.`
+            `Conflict (409): Location code '${newHubCode}' or name already exists in the system.`
         );
       } else {
         setError(axiosErr.response?.data?.detail || axiosErr.message || 'Failed to create terminal hub.');
@@ -134,7 +134,7 @@ export const TerminalAdminConfigModal: React.FC<TerminalAdminConfigModalProps> =
 
   const handleUpdateHub = async (id: string) => {
     if (!editHubName.trim()) {
-      setError('Terminal hub name cannot be empty.');
+      setError('Location name cannot be empty.');
       return;
     }
 
@@ -148,7 +148,7 @@ export const TerminalAdminConfigModal: React.FC<TerminalAdminConfigModalProps> =
         address: editHubAddress.trim() || undefined,
       });
 
-      setSuccessMessage('Terminal Hub updated successfully.');
+      setSuccessMessage('Location updated successfully.');
       setEditingHubId(null);
       await fetchDictionaries();
       await onRefreshHubs();
@@ -156,7 +156,7 @@ export const TerminalAdminConfigModal: React.FC<TerminalAdminConfigModalProps> =
       const axiosErr = err as { response?: { status?: number; data?: { detail?: string } }; message?: string };
       if (axiosErr.response?.status === 409) {
         setConflictMessage(
-          axiosErr.response?.data?.detail || 'Conflict (409): Terminal Hub name already in use by another station.'
+          axiosErr.response?.data?.detail || 'Conflict (409): Location name already in use.'
         );
       } else {
         setError(axiosErr.response?.data?.detail || axiosErr.message || 'Failed to update terminal hub.');
@@ -179,7 +179,7 @@ export const TerminalAdminConfigModal: React.FC<TerminalAdminConfigModalProps> =
       });
 
       setSuccessMessage(
-        `Terminal Hub '${hub.name}' has been ${targetActive ? 'reactivated' : 'deactivated'} successfully.`
+        `Location '${hub.name}' has been ${targetActive ? 'reactivated' : 'deactivated'} successfully.`
       );
       setDeactivatingHub(null);
       await fetchDictionaries();
@@ -189,7 +189,7 @@ export const TerminalAdminConfigModal: React.FC<TerminalAdminConfigModalProps> =
       if (axiosErr.response?.status === 409) {
         setConflictMessage(
           axiosErr.response?.data?.detail ||
-            `Conflict (409): Terminal Hub '${hub.name}' is currently in use with active tickets or assigned staff. Reassign or resolve active workloads before deactivating.`
+            `Conflict (409): Location '${hub.name}' is currently in use with active tickets or assigned staff. Reassign or resolve active workloads before deactivating.`
         );
       } else {
         setError(axiosErr.response?.data?.detail || axiosErr.message || 'Failed to change terminal hub status.');
@@ -410,7 +410,7 @@ export const TerminalAdminConfigModal: React.FC<TerminalAdminConfigModalProps> =
   const handleAssignScope = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedHubId || !selectedDeptId) {
-      setError('Please select both a Terminal Hub and a Department to link.');
+      setError('Please select both a Location and a Department to link.');
       return;
     }
 
@@ -424,7 +424,7 @@ export const TerminalAdminConfigModal: React.FC<TerminalAdminConfigModalProps> =
         department_id: selectedDeptId,
       });
 
-      setSuccessMessage('Terminal-Department membership linked successfully.');
+      setSuccessMessage('Location-Department membership linked successfully.');
       setSelectedHubId('');
       setSelectedDeptId('');
       await fetchDictionaries();
@@ -432,7 +432,7 @@ export const TerminalAdminConfigModal: React.FC<TerminalAdminConfigModalProps> =
     } catch (err: unknown) {
       const axiosErr = err as { response?: { status?: number; data?: { detail?: string } }; message?: string };
       if (axiosErr.response?.status === 409) {
-        setConflictMessage('Conflict (409): This Department is already assigned to this Terminal Hub.');
+        setConflictMessage('Conflict (409): This Department is already assigned to this Location.');
       } else {
         setError(axiosErr.response?.data?.detail || axiosErr.message || 'Failed to link terminal membership.');
       }
@@ -460,7 +460,7 @@ export const TerminalAdminConfigModal: React.FC<TerminalAdminConfigModalProps> =
             </div>
             <div>
               <h2 id="terminal-admin-title" className="text-base sm:text-lg font-bold text-ink">
-                Terminal Hub &amp; Station Administration
+                Location Administration
               </h2>
               <p className="text-xs text-zinc-500">
                 Authoritative configuration for transit terminal stations, operating departments, and station memberships.
@@ -494,7 +494,7 @@ export const TerminalAdminConfigModal: React.FC<TerminalAdminConfigModalProps> =
             }`}
           >
             <Building2 className="w-4 h-4" />
-            <span>Terminal Hubs ({locations.length})</span>
+            <span>Locations ({locations.length})</span>
           </button>
 
           <button
@@ -585,7 +585,7 @@ export const TerminalAdminConfigModal: React.FC<TerminalAdminConfigModalProps> =
               <form onSubmit={handleCreateHub} className="p-4 bg-orange-50/40 border border-orange-200/60 rounded-2xl space-y-3">
                 <div className="flex items-center gap-2 text-xs font-bold text-orange-900">
                   <Plus className="w-4 h-4 text-orange-600" />
-                  <span>Add New Terminal Hub Station</span>
+                  <span>Add New Location</span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -602,7 +602,7 @@ export const TerminalAdminConfigModal: React.FC<TerminalAdminConfigModalProps> =
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-semibold text-zinc-600 mb-1">Terminal Name *</label>
+                    <label className="block text-[11px] font-semibold text-zinc-600 mb-1">Location Name *</label>
                     <input
                       type="text"
                       value={newHubName}
@@ -644,7 +644,7 @@ export const TerminalAdminConfigModal: React.FC<TerminalAdminConfigModalProps> =
                   <thead className="bg-[#F8F9FA] text-zinc-500 border-b border-[#ECEEF2]">
                     <tr>
                       <th className="py-3 px-4 font-bold">Code</th>
-                      <th className="py-3 px-4 font-bold">Terminal Station Name</th>
+                      <th className="py-3 px-4 font-bold">Location Name</th>
                       <th className="py-3 px-4 font-bold">Status</th>
                       <th className="py-3 px-4 font-bold text-right">Actions</th>
                     </tr>
@@ -668,7 +668,7 @@ export const TerminalAdminConfigModal: React.FC<TerminalAdminConfigModalProps> =
                                   type="text"
                                   value={editHubName}
                                   onChange={(e) => setEditHubName(e.target.value)}
-                                  placeholder="Terminal Name"
+                                  placeholder="Location Name"
                                   className="w-full px-2.5 py-1.5 border border-orange-300 rounded-lg text-xs"
                                 />
                                 <input
@@ -927,19 +927,19 @@ export const TerminalAdminConfigModal: React.FC<TerminalAdminConfigModalProps> =
               <form onSubmit={handleAssignScope} className="p-4 bg-purple-50/40 border border-purple-200/60 rounded-2xl space-y-3">
                 <div className="flex items-center gap-2 text-xs font-bold text-purple-900">
                   <Plus className="w-4 h-4 text-purple-600" />
-                  <span>Assign Operating Department to Terminal Hub</span>
+                  <span>Assign Operating Department to Location</span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[11px] font-semibold text-zinc-600 mb-1">Terminal Hub Station *</label>
+                    <label className="block text-[11px] font-semibold text-zinc-600 mb-1">Location *</label>
                     <select
                       value={selectedHubId}
                       onChange={(e) => setSelectedHubId(e.target.value)}
                       disabled={isSubmitting}
                       className="w-full px-3 py-2 bg-white border border-zinc-200 rounded-xl text-xs focus:outline-none focus:border-purple-500"
                     >
-                      <option value="">-- Choose Terminal Hub --</option>
+                      <option value="">-- Choose Location --</option>
                       {locations.filter((l: DictionaryItem) => l.is_active !== false).map((loc: DictionaryItem) => (
                         <option key={loc.id} value={loc.id}>
                           {loc.name} ({loc.code})
@@ -983,7 +983,7 @@ export const TerminalAdminConfigModal: React.FC<TerminalAdminConfigModalProps> =
                 <table className="w-full text-left border-collapse text-xs">
                   <thead className="bg-[#F8F9FA] text-zinc-500 border-b border-[#ECEEF2]">
                     <tr>
-                      <th className="py-3 px-4 font-bold">Terminal Hub</th>
+                      <th className="py-3 px-4 font-bold">Location</th>
                       <th className="py-3 px-4 font-bold">Operating Department</th>
                       <th className="py-3 px-4 font-bold">Status</th>
                     </tr>
@@ -1204,7 +1204,7 @@ export const TerminalAdminConfigModal: React.FC<TerminalAdminConfigModalProps> =
               </div>
               <div>
                 <h3 id="deactivate-hub-dialog-title" className="text-sm font-bold text-ink">
-                  Confirm Terminal Hub Deactivation
+                  Confirm Location Deactivation
                 </h3>
                 <p className="text-xs text-zinc-500">
                   Station: <strong>{deactivatingHub.name} ({deactivatingHub.code})</strong>

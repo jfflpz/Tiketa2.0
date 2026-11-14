@@ -82,7 +82,7 @@ describe('F-04 Terminal Configuration, Station Confirmation & Administration Sui
       />
     );
 
-    expect(screen.getByText(/Terminal Hub & Station Administration/i)).toBeDefined();
+    expect(screen.getByText(/Location Administration/i)).toBeDefined();
     expect(screen.getByText('Cubao Central Terminal')).toBeDefined();
 
     // Fill form to create new station
@@ -132,7 +132,7 @@ describe('F-04 Terminal Configuration, Station Confirmation & Administration Sui
     fireEvent.click(deactivateBtn);
 
     // Verify confirmation modal opens
-    expect(screen.getByText(/Confirm Terminal Hub Deactivation/i)).toBeDefined();
+    expect(screen.getByText(/Confirm Location Deactivation/i)).toBeDefined();
     expect(
       screen.getByText(/Are you sure you want to deactivate/i)
     ).toBeDefined();
@@ -192,7 +192,7 @@ describe('F-04 Terminal Configuration, Station Confirmation & Administration Sui
 
     // Switch to Memberships tab
     fireEvent.click(screen.getByRole('button', { name: /hub-dept memberships/i }));
-    expect(screen.getByText(/Assign Operating Department to Terminal Hub/i)).toBeDefined();
+    expect(screen.getByText(/Assign Operating Department to Location/i)).toBeDefined();
 
     const selects = screen.getAllByRole('combobox');
     fireEvent.change(selects[0], { target: { value: 'loc-1' } });

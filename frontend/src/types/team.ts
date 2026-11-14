@@ -5,6 +5,8 @@ export type StaffRole = 'intern' | 'it' | 'supervisor' | 'admin';
 
 export type TeamMemberStatus = 'active' | 'on_leave' | 'away' | 'offline' | 'pending' | 'inactive';
 
+export type StaffAvailabilityStatus = 'available' | 'busy' | 'on_leave' | 'unavailable';
+
 export type TeamRole =
   | 'Owner'
   | 'Admin'
@@ -25,6 +27,9 @@ export interface TeamMember {
   avatar: string;
   department: string;
   status: TeamMemberStatus;
+  availabilityStatus?: StaffAvailabilityStatus;
+  availabilityNote?: string | null;
+  isOnline?: boolean | null;
   primaryLocation: string;
   ticketsClosed: number;
   activeTickets: number;

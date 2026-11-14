@@ -287,7 +287,7 @@ export const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
             <div>
               <label className="block text-xs font-semibold text-ink mb-1 flex items-center gap-1">
                 <MapPin className="w-3.5 h-3.5 text-zinc-400" />
-                Terminal Hub Station <span className="text-rose-500">*</span>
+                Location <span className="text-rose-500">*</span>
               </label>
               <select
                 value={locationId}

@@ -232,6 +232,26 @@ export interface StaffTicketResponse extends PublicTicketResponse {
     assigned_tech_id: string | null;
     technician_name?: string | null;
     user_confirmed_at: string | null;
+    // contract: C2 — awaiting backend B-C2
+    is_paused?: boolean;
+    paused_at?: string | null;
+    pause_reason?: string | null;
+    active_minutes?: number | null;
+    elapsed_minutes?: number | null;
+    // contract: C3 — awaiting backend B-C3
+    closure_deadline_at?: string | null;
+    closure_token_expires_at?: string | null;
+    closure_reason?: string | null;
+    auto_closed_at?: string | null;
+    confirmed_by?: string | null;
+    // contract: F1/G2 — awaiting backend B-F1/B-G2
+    subcategory_code?: string | null;
+    subcategory_name?: string | null;
+    risk_level?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | 'UNKNOWN' | null;
+    asset_id?: string | null;
+    asset_tag?: string | null;
+    asset_serial?: string | null;
+    asset_model?: string | null;
 }
 
 export interface TicketCommentItem {
@@ -279,6 +299,19 @@ export const authApi = {
     const res = await apiClient.get('/auth/me');
     return res.data;
     },
+    // contract: B3 — awaiting backend B-B3 owner password change & recovery endpoints
+    changePassword: async (payload: { current_password: string; new_password: string }) => {
+    const res = await apiClient.post('/auth/change-password', payload);
+    return res.data;
+    },
+    requestPasswordRecovery: async (payload: { identifier: string }) => {
+    const res = await apiClient.post('/auth/recovery/request', payload);
+    return res.data;
+    },
+    confirmPasswordRecovery: async (payload: { token: string; new_password: string }) => {
+    const res = await apiClient.post('/auth/recovery/confirm', payload);
+    return res.data;
+    },
 };
 
 export interface ServerDictionaryItem {
@@ -304,6 +337,10 @@ export interface AdminUserItem {
   full_name: string;
   role: StaffRole;
   status?: string;
+  // contract: D2 — awaiting backend B-D2
+  availability_status?: string;
+  availability_note?: string | null;
+  is_online?: boolean | null;
   custom_permissions?: string[];
   is_active: boolean;
 }
@@ -411,6 +448,7 @@ export const ticketsApi = {
     submitPublicTicket: async (payload: {
     employee_id: string;
     task_code: string;
+    subcategory_code?: string;
     reported_issue_code?: string;
     description: string;
     match_token: string;
@@ -487,6 +525,7 @@ export const ticketsApi = {
     quickIntake: async (payload: {
     employee_id: string;
     task_code: string;
+    subcategory_code?: string;
     description: string;
     mode: SupportMode;
     }): Promise<StaffTicketResponse> => {
@@ -495,6 +534,40 @@ export const ticketsApi = {
     },
     getComments: async (ticketId: string) => {
     const res = await apiClient.get<TicketCommentItem[]>(`/tickets/${ticketId}/comments`);
+    return res.data;
+    },
+    // contract: C1 — awaiting backend B-C1 read-only paginated ticket activity endpoint
+    getTicketActivity: async (
+    ticketId: string,
+    params?: { page?: number; page_size?: number }
+    ): Promise<{
+    items: Array<{
+        id: string;
+        actor_name: string;
+        actor_role?: string;
+        action: string;
+        created_at: string;
+        changes?: Array<{ field: string; from?: string | null; to?: string | null }>;
+    }>;
+    total: number;
+    page: number;
+    page_size: number;
+    has_more?: boolean;
+    }> => {
+    const res = await apiClient.get(`/tickets/${ticketId}/activity`, { params });
+    return res.data;
+    },
+    // contract: C2 — awaiting backend B-C2
+    pauseTicketWork: async (
+    ticketId: string,
+    reason?: string
+    ): Promise<StaffTicketResponse> => {
+    const res = await apiClient.post<StaffTicketResponse>(`/tickets/${ticketId}/pause`, reason ? { reason } : {});
+    return res.data;
+    },
+    // contract: C2 — awaiting backend B-C2
+    resumeTicketWork: async (ticketId: string): Promise<StaffTicketResponse> => {
+    const res = await apiClient.post<StaffTicketResponse>(`/tickets/${ticketId}/resume`, {});
     return res.data;
     },
     addComment: async (
@@ -729,6 +802,14 @@ export const adminApi = {
         const res = await apiClient.patch<AdminUserItem>(`/admin/users/${id}`, payload);
         return res.data;
     },
+    // contract: D2 — awaiting backend B-D2
+    updateStaffAvailability: async (
+        id: string,
+        payload: { availability_status: string; availability_note?: string | null }
+    ): Promise<AdminUserItem> => {
+        const res = await apiClient.patch<AdminUserItem>(`/admin/users/${id}/availability`, payload);
+        return res.data;
+    },
     deactivateAdminUser: async (id: string): Promise<AdminUserItem> => {
         const res = await apiClient.patch<AdminUserItem>(`/admin/users/${id}`, { is_active: false });
         return res.data;
@@ -903,5 +984,249 @@ export const usersApi = {
     },
     removeSelfPhoto: async (): Promise<void> => {
         await apiClient.delete('/users/me/photo');
+    },
+};
+
+// contract: D3 — awaiting backend B-D3
+export interface CalendarAssignment {
+    id: string;
+    ticket_id: string;
+    ticket_code: string;
+    task_name: string;
+    staff_id: string;
+    staff_name: string;
+    staff_role: StaffRole;
+    staff_title?: string;
+    availability_status?: string;
+    scheduled_date: string; // YYYY-MM-DD
+    status: string;
+}
+
+export interface RescheduleRequest {
+    id: string;
+    assignment_id: string;
+    ticket_id: string;
+    ticket_code: string;
+    requester_id: string;
+    requester_name: string;
+    original_date: string;
+    proposed_date: string;
+    reason?: string | null;
+    status: 'pending' | 'approved' | 'rejected';
+    decided_by_name?: string | null;
+    decided_at?: string | null;
+}
+
+export interface CalendarAssignmentsResponse {
+    assignments: CalendarAssignment[];
+    reschedule_requests: RescheduleRequest[];
+    undated_tickets_count?: number;
+}
+
+export const scheduleApi = {
+    getCalendarAssignments: async (params?: { month?: string }): Promise<CalendarAssignmentsResponse> => {
+        const res = await apiClient.get<CalendarAssignmentsResponse>('/schedule/assignments', { params });
+        return res.data;
+    },
+    submitRescheduleRequest: async (payload: {
+        assignment_id: string;
+        proposed_date: string;
+        reason?: string;
+    }): Promise<{ assignment?: CalendarAssignment; request?: RescheduleRequest; applied_directly?: boolean }> => {
+        const res = await apiClient.post('/schedule/reschedule-requests', payload);
+        return res.data;
+    },
+    decideRescheduleRequest: async (
+        requestId: string,
+        payload: { decision: 'approved' | 'rejected'; comment?: string }
+    ): Promise<RescheduleRequest> => {
+        const res = await apiClient.post<RescheduleRequest>(
+            `/schedule/reschedule-requests/${requestId}/decision`,
+            payload
+        );
+        return res.data;
+    },
+};
+
+// contract: E1/E2 — awaiting backend B-E1/B-E2
+export interface NonemployeePerson {
+    id: string;
+    full_name: string;
+    company_id: string;
+    company_name: string;
+    location_id: string;
+    location_name: string;
+    department_id: string;
+    department_name: string;
+    contact_hint?: string | null;
+    is_active: boolean;
+}
+
+export const nonemployeeApi = {
+    search: async (q: string): Promise<NonemployeePerson[]> => {
+        const res = await apiClient.get<NonemployeePerson[]>('/nonemployees', { params: { q } });
+        return res.data;
+    },
+    create: async (payload: {
+        full_name: string;
+        company_id: string;
+        location_id: string;
+        department_id: string;
+        contact_hint?: string;
+    }): Promise<NonemployeePerson> => {
+        const res = await apiClient.post<NonemployeePerson>('/nonemployees', payload);
+        return res.data;
+    },
+    trackDelegated: async (
+        code: string,
+        payload?: { delegation_token?: string }
+    ): Promise<StaffTicketResponse & { represented_person?: string; delegation_status?: 'active' | 'expired' | 'revoked' }> => {
+        const res = await apiClient.post(`/tickets/${code}/delegated-track`, payload ?? {});
+        return res.data;
+    },
+    confirmDelegatedClosure: async (
+        ticketId: string,
+        payload: { delegation_token?: string; remarks?: string; represented_person?: string }
+    ): Promise<StaffTicketResponse> => {
+        const res = await apiClient.post<StaffTicketResponse>(`/tickets/${ticketId}/delegated-confirm`, payload);
+        return res.data;
+    },
+};
+
+// contract: E3 — awaiting backend B-E3
+export interface RepeatRequesterTicketItem {
+    id: string;
+    ticket_code: string;
+    task_name: string;
+    status: TicketStatus;
+    location_name: string;
+    department_name: string;
+    date_started: string;
+}
+
+export interface RepeatRequesterDrilldownResponse {
+    requestor_name: string;
+    total_count: number;
+    is_uncertain_legacy?: boolean;
+    groups: Array<{
+        location_name: string;
+        department_name: string;
+        count: number;
+    }>;
+    items: RepeatRequesterTicketItem[];
+    page: number;
+    page_size: number;
+    has_more?: boolean;
+}
+
+export const repeatRequesterApi = {
+    getDrilldown: async (params: {
+        requestor_name: string;
+        requester_id?: string;
+        location_name?: string;
+        department_name?: string;
+        page?: number;
+        page_size?: number;
+    }): Promise<RepeatRequesterDrilldownResponse> => {
+        const res = await apiClient.get<RepeatRequesterDrilldownResponse>('/reports/repeat-requestors/drilldown', {
+            params,
+        });
+        return res.data;
+    },
+};
+
+// contract: F1/F2 — awaiting backend B-F1/B-F2
+export interface AssetRecord {
+    id: string;
+    asset_tag: string;
+    serial_number?: string | null;
+    model_name: string;
+    category_code?: string | null;
+    location_name?: string | null;
+    department_name?: string | null;
+    acquisition_date?: string | null;
+    acquisition_cost?: number | null;
+    status: 'ACTIVE' | 'RETIRED' | 'UNKNOWN';
+}
+
+export interface AssetServiceMetric {
+    asset_id: string;
+    asset_tag: string;
+    serial_number?: string | null;
+    model_name: string;
+    acquisition_date?: string | null;
+    age_months: number | null;
+    service_incident_count: number;
+    repair_cost_total: number | null;
+    acquisition_cost: number | null;
+    data_limitation_note?: string | null;
+}
+
+export const assetsApi = {
+    list: async (params?: { q?: string; location_id?: string }): Promise<AssetRecord[]> => {
+        const res = await apiClient.get<AssetRecord[]>('/assets', { params });
+        return res.data;
+    },
+    attachToTicket: async (ticketId: string, assetId: string): Promise<StaffTicketResponse> => {
+        const res = await apiClient.patch<StaffTicketResponse>(`/tickets/${ticketId}/asset`, {
+            asset_id: assetId,
+        });
+        return res.data;
+    },
+    getServiceMetrics: async (params?: {
+        date_from?: string;
+        date_to?: string;
+        location_id?: string;
+    }): Promise<AssetServiceMetric[]> => {
+        const res = await apiClient.get<AssetServiceMetric[]>('/reports/asset-service-metrics', { params });
+        return res.data;
+    },
+};
+
+// contract: G1/G2 — awaiting backend B-G1/B-G2
+export type CategoryRiskLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | 'UNKNOWN';
+
+export interface CategorySubcategoryItem {
+    code: string;
+    name: string;
+    default_risk?: CategoryRiskLevel | null;
+    effective_risk: CategoryRiskLevel;
+    is_active: boolean;
+}
+
+export interface CategoryCatalogItem {
+    code: string;
+    name: string;
+    default_risk: CategoryRiskLevel;
+    is_active: boolean;
+    subcategories: CategorySubcategoryItem[];
+}
+
+export const categoryCatalogApi = {
+    getCatalog: async (includeInactive = false): Promise<CategoryCatalogItem[]> => {
+        const res = await apiClient.get<CategoryCatalogItem[]>('/categories/catalog', {
+            params: { include_inactive: includeInactive },
+        });
+        return res.data;
+    },
+    updateCategory: async (
+        code: string,
+        payload: { name?: string; default_risk?: CategoryRiskLevel; is_active?: boolean }
+    ): Promise<CategoryCatalogItem> => {
+        const res = await apiClient.patch<CategoryCatalogItem>(
+            `/categories/catalog/${encodeURIComponent(code)}`,
+            payload
+        );
+        return res.data;
+    },
+    upsertSubcategory: async (
+        parentCode: string,
+        payload: { code: string; name: string; default_risk?: CategoryRiskLevel | null; is_active?: boolean }
+    ): Promise<CategorySubcategoryItem> => {
+        const res = await apiClient.put<CategorySubcategoryItem>(
+            `/categories/catalog/${encodeURIComponent(parentCode)}/subcategories/${encodeURIComponent(payload.code)}`,
+            payload
+        );
+        return res.data;
     },
 };

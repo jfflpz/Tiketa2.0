@@ -16,7 +16,7 @@ import {
   Check,
   Loader2,
 } from 'lucide-react';
-import type { TeamMember, TeamMemberStatus, TeamRole } from '../../../types/team';
+import type { TeamMember, TeamMemberStatus, TeamRole, StaffAvailabilityStatus } from '../../../types/team';
 import type { StaffRole } from '../../../types';
 import { useAppStore } from '../../../store/useAppStore';
 
@@ -48,7 +48,7 @@ export const AVAILABLE_PERMISSIONS = [
   },
   {
     key: 'terminals:view',
-    label: '15 Terminal Hubs Monitor',
+    label: 'Locations Monitor',
     desc: 'Real-time telemetry and station workload across 15 provincial hubs',
   },
   {
@@ -98,6 +98,8 @@ export interface EditITStaffModalProps {
       role?: TeamRole;
       systemRole: StaffRole;
       status?: TeamMemberStatus;
+      availability_status?: StaffAvailabilityStatus;
+      availability_note?: string | null;
       custom_permissions?: string[];
       department: string;
       primaryLocation: string;
@@ -120,15 +122,9 @@ export const EditITStaffModal: React.FC<EditITStaffModalProps> = ({
   const [email, setEmail] = useState('');
   const [systemRole, setSystemRole] = useState<StaffRole>('it');
   const [selectedStatus, setSelectedStatus] = useState<'active' | 'on_leave' | 'inactive'>('active');
+  const [availabilityStatus, setAvailabilityStatus] = useState<StaffAvailabilityStatus>('available');
+  const [availabilityNote, setAvailabilityNote] = useState('');
   const [customPermissions, setCustomPermissions] = useState<string[]>([]);
-
-  // Administrative Password Reset (S5-12)
-  const [actingAdminPassword, setActingAdminPassword] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showActingPassword, setShowActingPassword] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Separate Admin Password Authorization Modal State
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -170,13 +166,19 @@ export const EditITStaffModal: React.FC<EditITStaffModalProps> = ({
           ? 'on_leave'
           : 'active'
       );
+      setAvailabilityStatus(
+        member.availabilityStatus ??
+          (member.status === 'on_leave'
+            ? 'on_leave'
+            : member.is_active === false
+            ? 'unavailable'
+            : 'available')
+      );
+      setAvailabilityNote(member.availabilityNote || '');
       setCustomPermissions(member.custom_permissions || []);
-      setActingAdminPassword('');
       setAuthPassword('');
       setIsAuthModalOpen(false);
       setAuthModalError(null);
-      setPassword('');
-      setConfirmPassword('');
       setFormError(null);
     }
   }, [member, isOpen]);
@@ -203,10 +205,6 @@ export const EditITStaffModal: React.FC<EditITStaffModalProps> = ({
   const isDeactivated = selectedStatus === 'inactive' && member.is_active !== false;
   const isGovernedAction = isRoleChanged || isDeactivated;
 
-  const wantsPasswordReset = Boolean(
-    password.trim() || confirmPassword.trim() || (actingAdminPassword.trim() && (password || confirmPassword))
-  );
-
   const roleDefaultKeys = DEFAULT_ROLE_PERMISSIONS[systemRole] || [];
   const defaultPermissions = AVAILABLE_PERMISSIONS.filter((p) => roleDefaultKeys.includes(p.key));
   const additionalPermissions = AVAILABLE_PERMISSIONS.filter((p) => !roleDefaultKeys.includes(p.key));
@@ -224,20 +222,18 @@ export const EditITStaffModal: React.FC<EditITStaffModalProps> = ({
         username: !isCooldownActive && cleanUsername ? cleanUsername : undefined,
         systemRole,
         status: selectedStatus,
+        availability_status: availabilityStatus,
+        availability_note: availabilityNote.trim() || null,
         custom_permissions: customPermissions,
         department: member.department || 'Terminal Operations & PMS',
         primaryLocation: member.primaryLocation || 'Pasay (PSY)',
         locationId: null,
         is_active: selectedStatus !== 'inactive',
-        password: wantsPasswordReset ? password.trim() : undefined,
-        acting_admin_password: adminPasswordToUse?.trim() || (wantsPasswordReset ? actingAdminPassword.trim() : undefined),
+        acting_admin_password: adminPasswordToUse?.trim() || undefined,
       });
 
       if (success) {
-        setActingAdminPassword('');
         setAuthPassword('');
-        setPassword('');
-        setConfirmPassword('');
         setIsAuthModalOpen(false);
         onClose();
         return true;
@@ -282,24 +278,6 @@ export const EditITStaffModal: React.FC<EditITStaffModalProps> = ({
         setFormError('Username can only contain lowercase letters, numbers, underscores, dots, and hyphens.');
         return;
       }
-    }
-
-    // Password reset validation (S5-12)
-    if (wantsPasswordReset) {
-      if (!actingAdminPassword.trim()) {
-        setFormError('Your current Admin password is required to reset target credentials.');
-        return;
-      }
-      if (password.trim().length < 12) {
-        setFormError('Target new password must be at least 12 characters long.');
-        return;
-      }
-      if (password !== confirmPassword) {
-        setFormError('Target new password and confirmation do not match.');
-        return;
-      }
-      await executeSave(actingAdminPassword);
-      return;
     }
 
     // Governed action (B-03): Submit proposal directly for Supervisor review
@@ -537,6 +515,55 @@ export const EditITStaffModal: React.FC<EditITStaffModalProps> = ({
               )}
             </div>
 
+            {/* Manual Availability & Leave (F-D2 — distinct from live online presence) */}
+            <div className="space-y-2 p-3 rounded-2xl bg-[#F8F9FA] border border-[#ECEEF2]">
+              <div className="flex items-center justify-between gap-2">
+                <label className="block text-xs font-semibold text-ink">
+                  Manual Availability &amp; Leave
+                </label>
+                {typeof member?.isOnline === 'boolean' && (
+                  <span className="text-[10px] font-semibold text-zinc-500">
+                    Online presence: <strong>{member.isOnline ? 'Online' : 'Offline'}</strong>
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-zinc-500">
+                Set manual roster availability independently of live online session status.
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                {(
+                  [
+                    { id: 'available', label: 'Available' },
+                    { id: 'busy', label: 'Busy' },
+                    { id: 'on_leave', label: 'On Leave' },
+                    { id: 'unavailable', label: 'Unavailable' },
+                  ] as const
+                ).map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    disabled={isSubmitting}
+                    onClick={() => setAvailabilityStatus(opt.id)}
+                    className={`py-1.5 px-2 rounded-xl text-[11px] font-semibold border transition-colors ${
+                      availabilityStatus === opt.id
+                        ? 'bg-zinc-900 text-white border-zinc-900'
+                        : 'bg-white text-zinc-600 border-[#ECEEF2] hover:text-zinc-900'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              <input
+                type="text"
+                value={availabilityNote}
+                onChange={(e) => setAvailabilityNote(e.target.value)}
+                disabled={isSubmitting}
+                placeholder="Optional availability or leave note (e.g. Medical leave until Nov 20)"
+                className="w-full px-3 py-1.5 bg-white border border-[#ECEEF2] rounded-xl text-xs text-ink focus:outline-none focus:border-orange-500"
+              />
+            </div>
+
             {/* Feature Access & Permissions: Separated into Default Access vs Other Features */}
             <div className="p-3.5 rounded-2xl bg-zinc-50 border border-[#ECEEF2] space-y-3.5">
               <div className="flex items-center justify-between">
@@ -651,87 +678,15 @@ export const EditITStaffModal: React.FC<EditITStaffModalProps> = ({
               </div>
             </div>
 
-            {/* Administrative Password Reset (S5-12) */}
-            <div className="p-3.5 rounded-2xl bg-orange-50/50 border border-orange-200/60 space-y-3">
+            {/* Owner-Controlled Passwords Notice (F-B3) */}
+            <div className="p-3.5 rounded-2xl bg-zinc-50 border border-[#ECEEF2] space-y-1.5">
               <div className="flex items-center gap-2 text-xs font-bold text-ink">
-                <Lock className="w-4 h-4 text-orange-600" />
-                <span>Administrative Password Reset</span>
+                <Lock className="w-4 h-4 text-zinc-500" />
+                <span>Owner-Controlled Passwords</span>
               </div>
               <p className="text-[11px] text-zinc-500 leading-relaxed">
-                To reset this account's password, enter your active administrator credential followed by the target new password confirmed twice. Leave blank to retain current password.
+                Administrators cannot set replacement passwords for staff accounts. Staff members manage and recover their own passwords via My Profile or the Sign-In recovery screen.
               </p>
-
-              {/* 1. Acting Admin Current Password */}
-              <div>
-                <label className="block text-[11px] font-semibold text-zinc-700 mb-1">
-                  Acting Admin Current Password
-                </label>
-                <div className="relative">
-                  <input
-                    type={showActingPassword ? 'text' : 'password'}
-                    value={actingAdminPassword}
-                    onChange={(e) => setActingAdminPassword(e.target.value)}
-                    placeholder="Enter your current admin password"
-                    disabled={isSubmitting}
-                    className="w-full pl-3 pr-9 py-2 bg-white border border-[#ECEEF2] rounded-xl text-xs font-medium text-ink focus:outline-none focus:border-orange-500 disabled:opacity-60"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowActingPassword(!showActingPassword)}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
-                  >
-                    {showActingPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              {/* 2. Target New Password */}
-              <div>
-                <label className="block text-[11px] font-semibold text-zinc-700 mb-1">
-                  Target New Password (min. 12 characters)
-                </label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter new 12+ character password"
-                    disabled={isSubmitting}
-                    className="w-full pl-3 pr-9 py-2 bg-white border border-[#ECEEF2] rounded-xl text-xs font-medium text-ink focus:outline-none focus:border-orange-500 disabled:opacity-60"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              {/* 3. Confirm Target New Password */}
-              <div>
-                <label className="block text-[11px] font-semibold text-zinc-700 mb-1">
-                  Confirm Target New Password
-                </label>
-                <div className="relative">
-                  <input
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Re-enter target new password"
-                    disabled={isSubmitting}
-                    className="w-full pl-3 pr-9 py-2 bg-white border border-[#ECEEF2] rounded-xl text-xs font-medium text-ink focus:outline-none focus:border-orange-500 disabled:opacity-60"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
-                  >
-                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
             </div>
           </div>
 

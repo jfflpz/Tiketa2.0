@@ -1,6 +1,6 @@
 // @spec UI-TEAM-01: IT Support Specialist Roster, Employee Directory & Account Governance
 import React, { useState, useEffect, useMemo } from 'react';
-import { UserPlus, Plus, Briefcase, Fingerprint, Clock, Search, RefreshCw, Loader2, ShieldCheck } from 'lucide-react';
+import { UserPlus, Plus, Briefcase, Fingerprint, Clock, Search, RefreshCw, Loader2, ShieldCheck, Layers } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import type { TeamMember } from '../../types/team';
 import type { EmployeeProfile } from '../../types';
@@ -13,6 +13,7 @@ import { EditITStaffModal } from './components/EditITStaffModal';
 import { AddEmployeeModal } from './components/AddEmployeeModal';
 import { EditEmployeeModal } from './components/EditEmployeeModal';
 import { PendingApprovalsQueue } from './components/PendingApprovalsQueue';
+import { CategoryCatalogPanel } from './components/CategoryCatalogPanel';
 import { accountRequestsApi } from '../../api/client';
 import { normalizeApiError } from '../../utils/errorUtils';
 
@@ -38,7 +39,7 @@ export const TeamAdministrationView: React.FC = () => {
   const currentUser = useAppStore((state) => state.currentUser);
   const addToast = useAppStore((state) => state.addToast);
 
-  const [activeTab, setActiveTab] = useState<'IT_STAFF' | 'EMPLOYEES' | 'ACTIVITY' | 'APPROVALS'>('IT_STAFF');
+  const [activeTab, setActiveTab] = useState<'IT_STAFF' | 'EMPLOYEES' | 'ACTIVITY' | 'APPROVALS' | 'CATEGORIES'>('IT_STAFF');
   const [employeeSearch, setEmployeeSearch] = useState('');
   const [employeeCompanyFilter, setEmployeeCompanyFilter] = useState('ALL');
   const [employeeDeptFilter, setEmployeeDeptFilter] = useState('ALL');
@@ -306,6 +307,19 @@ export const TeamAdministrationView: React.FC = () => {
             <Clock className="w-3.5 h-3.5" />
             <span>Recent Technician Activity</span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('CATEGORIES')}
+            className={`py-2 px-3.5 rounded-xl text-xs font-bold transition-all press-fx flex items-center gap-2 ${
+              activeTab === 'CATEGORIES'
+                ? 'bg-zinc-900 text-white shadow-sm'
+                : 'text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100/70'
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5" />
+            <span>Category Catalog</span>
+          </button>
         </div>
 
         {/* Search Input */}
@@ -390,6 +404,11 @@ export const TeamAdministrationView: React.FC = () => {
           {activeTab === 'APPROVALS' && (
             <PendingApprovalsQueue />
           )}
+
+          {/* TAB 5: CATEGORY CATALOG & DEFAULT RISK (F-G1) */}
+          {activeTab === 'CATEGORIES' && (
+            <CategoryCatalogPanel />
+          )}
         </>
       )}
 
@@ -399,21 +418,25 @@ export const TeamAdministrationView: React.FC = () => {
         onClose={() => setAddITModalOpen(false)}
         onSubmit={async (data) => {
           try {
-            await accountRequestsApi.create({
-              username: data.username,
+            const created = await accountRequestsApi.create({
+              username: data.username || undefined,
               email: data.email,
               full_name: data.name,
               role: data.systemRole === 'admin' ? 'it' : (data.systemRole as 'intern' | 'it'),
               department: data.department || undefined,
               location_id: data.locationId,
-            });
+            } as any);
+            const assignedUsername = (created as { username?: string })?.username || data.username;
+            const hasCollision = Boolean((created as { collision?: boolean })?.collision);
             addToast(
               'Proposal Submitted',
-              `Account proposal for @${data.username} submitted. Awaiting supervisor approval.`,
+              assignedUsername
+                ? `Account proposal for @${assignedUsername} submitted. Awaiting supervisor approval.`
+                : 'Account proposal submitted. Awaiting supervisor approval.',
               'success'
             );
             setActiveTab('APPROVALS');
-            return true;
+            return assignedUsername ? { username: assignedUsername, collision: hasCollision } : true;
           } catch (err: any) {
             if (err?.response?.status === 409) {
               const conflictMsg = 'A staff member or pending proposal with this username or email already exists.';

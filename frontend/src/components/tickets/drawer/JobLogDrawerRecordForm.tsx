@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { Edit2, Check } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Edit2, Check, Pause, Play, Clock, HardDrive } from 'lucide-react';
 import { useAppStore } from '../../../store/useAppStore';
-import { ticketsApi } from '../../../api/client';
+import { ticketsApi, assetsApi, type AssetRecord } from '../../../api/client';
 import { canEditTicket } from '../../../store/slices/ticketOperationsSlice';
 import type { Ticket, SupportMode, TicketStatus } from '../../../types/ticket';
 import type { TeamMember } from '../../../types/team';
@@ -30,10 +30,137 @@ export const JobLogDrawerRecordForm: React.FC<JobLogDrawerRecordFormProps> = ({
   const currentUser = useAppStore((state) => state.currentUser);
   const isOwner = canEditTicket(currentUser, ticket);
   const addToast = useAppStore((state) => state.addToast);
+  const pauseTicketWorkApi = useAppStore((state) => state.pauseTicketWorkApi);
+  const resumeTicketWorkApi = useAppStore((state) => state.resumeTicketWorkApi);
 
   const [isEditingDiagnosis, setIsEditingDiagnosis] = useState(false);
   const [editDiagnosis, setEditDiagnosis] = useState(ticket.technicianDiagnosis || ticket.description || '');
   const [isSavingDiagnosis, setIsSavingDiagnosis] = useState(false);
+  const [isTogglingPause, setIsTogglingPause] = useState(false);
+  const [pauseError, setPauseError] = useState<string | null>(null);
+
+  // F-F1: Minimal authorized asset selection & history capture
+  const canEditAsset = isOwner || isAdmin;
+  const [assetOptions, setAssetOptions] = useState<AssetRecord[]>([]);
+  const [selectedAssetId, setSelectedAssetId] = useState<string>(ticket.assetId ?? '');
+  const [isLoadingAssets, setIsLoadingAssets] = useState(false);
+  const [isSavingAsset, setIsSavingAsset] = useState(false);
+  const [assetError, setAssetError] = useState<string | null>(null);
+  const [attachedAssetSummary, setAttachedAssetSummary] = useState<{
+    tag?: string;
+    model?: string;
+    serial?: string;
+  }>({
+    tag: ticket.assetTag,
+    model: ticket.assetModel,
+    serial: ticket.assetSerial,
+  });
+
+  useEffect(() => {
+    setSelectedAssetId(ticket.assetId ?? '');
+    setAttachedAssetSummary({
+      tag: ticket.assetTag,
+      model: ticket.assetModel,
+      serial: ticket.assetSerial,
+    });
+  }, [ticket.id, ticket.assetId, ticket.assetTag, ticket.assetModel, ticket.assetSerial]);
+
+  useEffect(() => {
+    if (!canEditAsset) return;
+    let cancelled = false;
+    setIsLoadingAssets(true);
+    assetsApi
+      .list(ticket.locationId ? { location_id: ticket.locationId } : undefined)
+      .then((rows) => {
+        if (!cancelled) setAssetOptions(Array.isArray(rows) ? rows : []);
+      })
+      .catch(() => {
+        if (!cancelled) setAssetOptions([]);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingAssets(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [canEditAsset, ticket.locationId]);
+
+  const handleSaveAsset = async () => {
+    if (!selectedAssetId || isSavingAsset) return;
+    setAssetError(null);
+    setIsSavingAsset(true);
+    try {
+      const updated = await assetsApi.attachToTicket(ticket.id, selectedAssetId);
+      const picked = assetOptions.find((a) => a.id === selectedAssetId);
+      setAttachedAssetSummary({
+        tag: updated.asset_tag ?? picked?.asset_tag ?? undefined,
+        model: updated.asset_model ?? picked?.model_name ?? undefined,
+        serial: updated.asset_serial ?? picked?.serial_number ?? undefined,
+      });
+      addToast('Asset Linked', 'Saved asset identity recorded on ticket.', 'success');
+    } catch (err) {
+      // Keep user's selectedAssetId intact so failed saves retain input
+      setAssetError(err instanceof Error ? err.message : 'Failed to attach asset. Your selection was kept.');
+    } finally {
+      setIsSavingAsset(false);
+    }
+  };
+
+  const renderRiskBadge = (risk?: Ticket['riskLevel']) => {
+    const normalized = risk ?? 'UNKNOWN';
+    const styles: Record<string, string> = {
+      CRITICAL: 'bg-rose-50 text-rose-700 border-rose-200',
+      HIGH: 'bg-amber-50 text-amber-700 border-amber-200',
+      MEDIUM: 'bg-sky-50 text-sky-700 border-sky-200',
+      LOW: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      UNKNOWN: 'bg-zinc-100 text-zinc-600 border-zinc-200',
+    };
+    const labels: Record<string, string> = {
+      CRITICAL: 'Critical Risk',
+      HIGH: 'High Risk',
+      MEDIUM: 'Medium Risk',
+      LOW: 'Low Risk',
+      UNKNOWN: 'Unknown Risk',
+    };
+    return (
+      <span
+        data-testid="ticket-risk-badge"
+        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold border ${styles[normalized] ?? styles.UNKNOWN}`}
+      >
+        {labels[normalized] ?? 'Unknown Risk'}
+      </span>
+    );
+  };
+
+  const formatMinutes = (minutes?: number): string => {
+    if (minutes === undefined || minutes === null || Number.isNaN(minutes)) {
+      return '— (Server-tracked)';
+    }
+    const rounded = Math.max(0, Math.round(minutes));
+    const hrs = Math.floor(rounded / 60);
+    const mins = rounded % 60;
+    return hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+  };
+
+  const handleTogglePause = async () => {
+    if (isTogglingPause) return;
+    setPauseError(null);
+    setIsTogglingPause(true);
+    try {
+      const ok = ticket.isPaused
+        ? await resumeTicketWorkApi(ticket.id)
+        : await pauseTicketWorkApi(ticket.id);
+      if (!ok) {
+        setPauseError(
+          ticket.isPaused
+            ? 'Could not resume work. Saved server state remains paused.'
+            : 'Could not pause work. Saved server state remains active.'
+        );
+      }
+    } finally {
+      setIsTogglingPause(false);
+    }
+  };
 
   const handleSaveDiagnosis = async () => {
     setIsSavingDiagnosis(true);
@@ -121,7 +248,7 @@ export const JobLogDrawerRecordForm: React.FC<JobLogDrawerRecordFormProps> = ({
           {/* Group 1: Organization & Requestor (Read-Only Intake Audit Record Across All Roles) */}
           <div className="bg-canvas border border-line rounded-2xl divide-y divide-line relative z-20 overflow-visible">
             <div className="px-3.5 py-2 bg-zinc-100/70 text-[11px] font-bold text-ink-subtle uppercase tracking-wider flex items-center justify-between">
-              <span>1. Terminal &amp; Requestor Info</span>
+              <span>1. Location &amp; Requestor Info</span>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-200/60 text-zinc-600 font-semibold">
                 Intake Record
               </span>
@@ -269,11 +396,146 @@ export const JobLogDrawerRecordForm: React.FC<JobLogDrawerRecordFormProps> = ({
               )}
             </div>
           ))}
+
+          {/* F-G2: Subcategory & Server-Resolved Risk */}
+          <div className="px-3.5 py-2 flex items-center justify-between gap-4 text-xs">
+            <span className="text-ink-subtle font-medium shrink-0">Subcategory &amp; Risk</span>
+            <div className="flex items-center gap-2 flex-wrap justify-end">
+              {ticket.subcategoryName || ticket.subcategoryCode ? (
+                <span className="font-semibold text-ink">
+                  {ticket.subcategoryName ?? ticket.subcategoryCode}
+                </span>
+              ) : (
+                <span className="text-zinc-400">Parent category only</span>
+              )}
+              {renderRiskBadge(ticket.riskLevel)}
+            </div>
+          </div>
+
+          {/* F-F1: Authorized Saved Asset Identity */}
+          <div className="px-3.5 py-2.5 space-y-2 text-xs">
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-ink-subtle font-medium shrink-0 inline-flex items-center gap-1.5">
+                <HardDrive className="w-3.5 h-3.5 text-zinc-400" />
+                <span>Affected Asset</span>
+              </span>
+              {attachedAssetSummary.tag || attachedAssetSummary.model ? (
+                <span className="font-semibold text-ink text-right" data-testid="attached-asset-summary">
+                  {attachedAssetSummary.tag ?? 'Tag Unknown'} · {attachedAssetSummary.model ?? 'Model Unknown'} · S/N:{' '}
+                  {attachedAssetSummary.serial ?? 'Unknown'}
+                </span>
+              ) : (
+                <span className="text-zinc-400">Not linked</span>
+              )}
+            </div>
+
+            {canEditAsset && (
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
+                <select
+                  aria-label="Select saved asset"
+                  value={selectedAssetId}
+                  onChange={(e) => {
+                    setSelectedAssetId(e.target.value);
+                    setAssetError(null);
+                  }}
+                  disabled={isLoadingAssets || isSavingAsset}
+                  className="flex-1 px-2.5 py-1.5 bg-surface border border-line rounded-lg text-xs text-ink focus:border-orange-500 focus:outline-none"
+                >
+                  <option value="">
+                    {isLoadingAssets ? 'Loading saved assets...' : 'Select saved asset identity...'}
+                  </option>
+                  {assetOptions.map((asset) => (
+                    <option key={asset.id} value={asset.id}>
+                      {asset.asset_tag} — {asset.model_name} (S/N: {asset.serial_number ?? 'Unknown'} ·{' '}
+                      {asset.location_name ?? 'Location Unknown'})
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  disabled={!selectedAssetId || isSavingAsset}
+                  onClick={handleSaveAsset}
+                  className="px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white text-[11px] font-bold disabled:opacity-50 press-fx"
+                >
+                  {isSavingAsset ? 'Saving...' : 'Save Asset'}
+                </button>
+              </div>
+            )}
+            {assetError && (
+              <div role="alert" className="text-[11px] font-semibold text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-2.5 py-1.5">
+                {assetError}
+              </div>
+            )}
+          </div>
         </div>
         {/* Group 3: Timestamps & Duration */}
         <div className="bg-canvas border border-line rounded-2xl divide-y divide-line overflow-hidden">
-          <div className="px-3.5 py-2 bg-zinc-100/70 text-[11px] font-bold text-ink-subtle uppercase tracking-wider">
-            3. Timestamps &amp; Active Labor Duration
+          <div className="px-3.5 py-2 bg-zinc-100/70 text-[11px] font-bold text-ink-subtle uppercase tracking-wider flex items-center justify-between gap-2">
+            <span>3. Timestamps &amp; Active Labor Duration</span>
+            {ticket.status === 'PROG' && (
+              <div className="flex items-center gap-2">
+                <span
+                  data-testid="labor-state-badge"
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                    ticket.isPaused
+                      ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                      : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                  }`}
+                >
+                  <Clock className="w-3 h-3" />
+                  <span>{ticket.isPaused ? 'Paused' : 'Active'}</span>
+                </span>
+                {isOwner && (
+                  <button
+                    type="button"
+                    disabled={isTogglingPause}
+                    onClick={handleTogglePause}
+                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold normal-case tracking-normal transition-colors press-fx disabled:opacity-50 ${
+                      ticket.isPaused
+                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                        : 'bg-amber-600 hover:bg-amber-700 text-white'
+                    }`}
+                  >
+                    {ticket.isPaused ? (
+                      <>
+                        <Play className="w-3 h-3" />
+                        <span>{isTogglingPause ? 'Resuming...' : 'Resume Work'}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Pause className="w-3 h-3" />
+                        <span>{isTogglingPause ? 'Pausing...' : 'Pause Work'}</span>
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+          {pauseError && (
+            <div role="alert" className="px-3.5 py-2 bg-rose-50 text-rose-700 text-[11px] font-semibold">
+              {pauseError}
+            </div>
+          )}
+          {ticket.isPaused && ticket.pausedAt && (
+            <div className="px-3.5 py-2 bg-amber-50/70 flex items-center justify-between gap-4 text-xs">
+              <span className="text-amber-800 font-semibold">Paused Since</span>
+              <span className="font-mono font-semibold text-amber-900 text-right">
+                {new Date(ticket.pausedAt).toLocaleString()}
+              </span>
+            </div>
+          )}
+          <div className="px-3.5 py-2 flex items-center justify-between gap-4 text-xs">
+            <span className="text-ink-subtle font-medium">Active Labor Time</span>
+            <span data-testid="active-labor-time" className="font-mono font-semibold text-ink text-right">
+              {formatMinutes(ticket.activeMinutes)}
+            </span>
+          </div>
+          <div className="px-3.5 py-2 flex items-center justify-between gap-4 text-xs">
+            <span className="text-ink-subtle font-medium">Total Elapsed Time</span>
+            <span data-testid="elapsed-labor-time" className="font-mono font-semibold text-ink text-right">
+              {formatMinutes(ticket.elapsedMinutes)}
+            </span>
           </div>
           {timeFields.map((f) => (
             <div

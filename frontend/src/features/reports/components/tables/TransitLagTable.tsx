@@ -11,7 +11,7 @@ export const TransitLagTable: React.FC<TransitLagTableProps> = ({ data }) => {
       <table className="w-full text-left border-collapse text-xs">
         <thead>
           <tr className="bg-canvas text-ink-subtle text-[11px] font-semibold border-y border-line">
-            <th className="py-2.5 px-3 text-left">Terminal Location</th>
+            <th className="py-2.5 px-3 text-left">Location</th>
             <th className="py-2.5 px-3 text-left">Mode</th>
             <th className="py-2.5 px-3 text-right">Tickets</th>
             <th className="py-2.5 px-3 text-right">Active Labor (Mins)</th>

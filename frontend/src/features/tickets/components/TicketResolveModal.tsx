@@ -93,7 +93,7 @@ export const TicketResolveModal: React.FC<TicketResolveModalProps> = ({
               <strong className="text-ink">{ticket.requestor} ({ticket.department})</strong>
             </div>
             <div className="flex justify-between text-zinc-600">
-              <span>Terminal Hub:</span>
+              <span>Location:</span>
               <strong className="text-ink">{ticket.location}</strong>
             </div>
             {ticket.workedBy && (

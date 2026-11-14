@@ -59,6 +59,21 @@ const getPriorityBadge = (priority: Ticket['priority']) => {
   }
 };
 
+const getRiskBadge = (riskLevel?: Ticket['riskLevel']) => {
+  switch (riskLevel) {
+    case 'CRITICAL':
+      return { label: 'Critical Risk', cls: 'bg-rose-50 text-rose-700 border-rose-200' };
+    case 'HIGH':
+      return { label: 'High Risk', cls: 'bg-amber-50 text-amber-700 border-amber-200' };
+    case 'MEDIUM':
+      return { label: 'Medium Risk', cls: 'bg-sky-50 text-sky-700 border-sky-200' };
+    case 'LOW':
+      return { label: 'Low Risk', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+    default:
+      return { label: 'Unknown Risk', cls: 'bg-zinc-100 text-zinc-600 border-zinc-200' };
+  }
+};
+
 export const TicketQueueTable: React.FC<TicketQueueTableProps> = ({
   tickets,
   isAdmin,
@@ -85,7 +100,7 @@ export const TicketQueueTable: React.FC<TicketQueueTableProps> = ({
               <th className="py-3 px-3">Priority</th>
               <th className="py-3 px-3">Task &amp; Description</th>
               <th className="py-3 px-3">Requestor &amp; Dept</th>
-              <th className="py-3 px-3">Terminal Hub</th>
+              <th className="py-3 px-3">Location</th>
               <th className="py-3 px-3">Assigned Tech</th>
               <th className="py-3 px-3">Status</th>
               <th className="py-3 px-4 text-right">Actions</th>
@@ -135,20 +150,39 @@ export const TicketQueueTable: React.FC<TicketQueueTableProps> = ({
                     </span>
                   </td>
 
-                  {/* Priority */}
+                  {/* Priority & Risk */}
                   <td className="py-3 px-3 whitespace-nowrap">
-                    <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${getPriorityBadge(
-                        ticket.priority
-                      )}`}
-                    >
-                      {ticket.priority}
-                    </span>
+                    <div className="flex flex-col gap-1 items-start">
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${getPriorityBadge(
+                          ticket.priority
+                        )}`}
+                      >
+                        {ticket.priority}
+                      </span>
+                      {(() => {
+                        const risk = getRiskBadge(ticket.riskLevel);
+                        return (
+                          <span
+                            className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border ${risk.cls}`}
+                          >
+                            {risk.label}
+                          </span>
+                        );
+                      })()}
+                    </div>
                   </td>
 
                   {/* Task & Description */}
                   <td className="py-3 px-3 max-w-xs">
-                    <p className="font-bold text-ink truncate">{ticket.task}</p>
+                    <p className="font-bold text-ink truncate">
+                      {ticket.task}
+                      {(ticket.subcategoryName || ticket.subcategoryCode) && (
+                        <span className="ml-1.5 font-normal text-zinc-500">
+                          · {ticket.subcategoryName ?? ticket.subcategoryCode}
+                        </span>
+                      )}
+                    </p>
                     {ticket.description && (
                       <p className="text-[11px] text-zinc-500 truncate mt-0.5">
                         {ticket.description}

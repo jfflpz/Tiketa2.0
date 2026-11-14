@@ -6,15 +6,16 @@ import {
   Copy,
   MessageSquare,
   FileSpreadsheet,
+  History,
 } from 'lucide-react';
 import type { Ticket } from '../../../types/ticket';
 import { StatusBadge } from '../../common/StatusBadge';
 
 export interface JobLogDrawerHeaderProps {
   ticket: Ticket;
-  drawerTab: 'CHAT' | 'JOB_LOG';
+  drawerTab: 'CHAT' | 'JOB_LOG' | 'HISTORY';
   messageCount: number;
-  onSelectTab: (tab: 'CHAT' | 'JOB_LOG') => void;
+  onSelectTab: (tab: 'CHAT' | 'JOB_LOG' | 'HISTORY') => void;
   onCopyShareLink: () => void;
   onRequestValidation?: () => void;
   onClose: () => void;
@@ -78,8 +79,8 @@ export const JobLogDrawerHeader: React.FC<JobLogDrawerHeaderProps> = ({
         </div>
       </div>
 
-      {/* Drawer View Switcher: Live Chat vs 15-Column Job Log */}
-      <div className="grid grid-cols-2 gap-1.5 bg-surface p-1 rounded-xl border border-line">
+      {/* Drawer View Switcher: Live Chat vs 15-Column Job Log vs Activity Timeline */}
+      <div className="grid grid-cols-3 gap-1.5 bg-surface p-1 rounded-xl border border-line">
         <button
           type="button"
           onClick={() => onSelectTab('CHAT')}
@@ -112,6 +113,18 @@ export const JobLogDrawerHeader: React.FC<JobLogDrawerHeaderProps> = ({
         >
           <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-500" />
           <span>15-Column Job Log &amp; Controls</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => onSelectTab('HISTORY')}
+          className={`py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-all press-fx ${
+            drawerTab === 'HISTORY'
+              ? 'bg-[#111315] text-white shadow-sm'
+              : 'text-ink-subtle hover:text-ink'
+          }`}
+        >
+          <History className="w-3.5 h-3.5 text-sky-400" />
+          <span>Activity History</span>
         </button>
       </div>
     </div>

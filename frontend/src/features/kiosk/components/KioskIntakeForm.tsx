@@ -16,6 +16,7 @@ import {
   Compass,
 } from 'lucide-react';
 import type { TaskCategoryCode } from '../../../types/ticket';
+import { useCategoryCatalog } from '../../../hooks/useCategoryCatalog';
 import {
   formatRemainingTime,
   type LocationObservationState,
@@ -42,6 +43,8 @@ export interface KioskIntakeFormProps {
   activeHubName: string;
   selectedTask: TaskCategoryCode;
   onSelectTask: (code: TaskCategoryCode) => void;
+  selectedSubcategory?: string;
+  onSelectSubcategory?: (code: string) => void;
   description: string;
   onDescriptionChange: (desc: string) => void;
   isSubmitting: boolean;
@@ -107,11 +110,14 @@ export const KioskIntakeForm: React.FC<KioskIntakeFormProps> = ({
   onCaptureLocation,
   selectedTask,
   onSelectTask,
+  selectedSubcategory = '',
+  onSelectSubcategory,
   description,
   onDescriptionChange,
   isSubmitting,
   onSubmit,
 }) => {
+  const { activeSubcategories } = useCategoryCatalog(selectedTask);
   const isCooldown = cooldownSeconds > 0;
 
   const renderIcon = (name: string) => {
@@ -235,7 +241,7 @@ export const KioskIntakeForm: React.FC<KioskIntakeFormProps> = ({
           </button>
 
           {isCooldown && (
-            <span className="text-[11px] text-amber-700 flex items-center gap-1">
+            <span role="status" aria-live="polite" className="text-[11px] text-amber-700 flex items-center gap-1">
               <AlertCircle className="w-3.5 h-3.5 shrink-0" />
               Cooldown active to prevent abuse. Matching will re-enable automatically.
             </span>
@@ -244,7 +250,7 @@ export const KioskIntakeForm: React.FC<KioskIntakeFormProps> = ({
 
         {/* Mismatch Error */}
         {matchError && !isCooldown && (
-          <div className="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-700 flex items-center gap-2">
+          <div role="alert" className="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-700 flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
             <span>{matchError}</span>
           </div>
@@ -280,7 +286,7 @@ export const KioskIntakeForm: React.FC<KioskIntakeFormProps> = ({
               </div>
               <div className="bg-white/80 p-2.5 rounded-xl border border-emerald-100">
                 <span className="block text-[10px] uppercase font-semibold text-emerald-800">
-                  Terminal
+                  Location
                 </span>
                 <strong className="text-ink block truncate">{employeeProfile.location}</strong>
               </div>
@@ -318,10 +324,10 @@ export const KioskIntakeForm: React.FC<KioskIntakeFormProps> = ({
             <div className="space-y-0.5">
               <div className="flex items-center gap-1.5 text-xs font-bold text-ink">
                 <Compass className="w-3.5 h-3.5 text-brand" />
-                <span>Terminal Bay Location (Optional)</span>
+                <span>Location Telemetry (Optional)</span>
               </div>
               <p className="text-[11px] text-ink-subtle">
-                Sharing location telemetry helps dispatchers identify your terminal bay. Not required to submit.
+                Sharing location telemetry helps dispatchers identify your site area. Not required to submit.
               </p>
             </div>
 
@@ -358,7 +364,7 @@ export const KioskIntakeForm: React.FC<KioskIntakeFormProps> = ({
             <p className="text-[11px] text-emerald-700 mt-1.5 px-1 flex items-center gap-1 font-medium">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
               <span>
-                Terminal bay detected: <strong>{locationState.placeName}</strong>
+                Location detected: <strong>{locationState.placeName}</strong>
                 {locationState.capturedAt ? ` • captured at ${locationState.capturedAt}` : ''}
               </span>
             </p>
@@ -433,6 +439,29 @@ export const KioskIntakeForm: React.FC<KioskIntakeFormProps> = ({
             );
           })}
         </div>
+
+        {/* F-G2: Optional dependent subcategory without overwhelming parent flow */}
+        {activeSubcategories.length > 0 && onSelectSubcategory && (
+          <div className="pt-2 border-t border-line/60">
+            <label className="block text-[11px] font-bold text-ink-subtle mb-1">
+              Specific Issue (Optional)
+              <select
+                aria-label="Specific Issue Subcategory"
+                value={selectedSubcategory}
+                disabled={!isMatched}
+                onChange={(e) => onSelectSubcategory(e.target.value)}
+                className="mt-1 w-full px-3 py-2 bg-canvas border border-line rounded-xl text-xs text-ink focus:outline-none focus:border-zinc-500"
+              >
+                <option value="">General / Parent category only</option>
+                {activeSubcategories.map((sub) => (
+                  <option key={sub.code} value={sub.code}>
+                    {sub.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        )}
       </div>
 
       {/* Step 3: Optional Extra Description & Submit Button */}

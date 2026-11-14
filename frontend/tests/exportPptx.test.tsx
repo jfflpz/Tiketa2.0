@@ -122,6 +122,21 @@ describe('PPTX Export Suite — Tiketa Executive Standards', () => {
   });
 
   describe('3. Data Mappers & Null Preservation', () => {
+    it('sorts monthly SLA rows newest-first across year boundaries', () => {
+      const mappedIso = mapMonthlySlaRows([
+        { month: '2025-12', total_tickets: 12, completed: 10, active_tickets: 2 },
+        { month: '2026-02', total_tickets: 8, completed: 7, active_tickets: 1 },
+        { month: '2026-01', total_tickets: 15, completed: 14, active_tickets: 1 },
+      ]);
+      expect(mappedIso.map((r) => r.month)).toEqual(['2026-02', '2026-01', '2025-12']);
+
+      const mappedNamed = mapMonthlySlaRows([
+        { month: 'December 2025', total_tickets: 12, completed: 10, active_tickets: 2 },
+        { month: 'January 2026', total_tickets: 15, completed: 14, active_tickets: 1 },
+      ]);
+      expect(mappedNamed.map((r) => r.month)).toEqual(['January 2026', 'December 2025']);
+    });
+
     it('preserves null SLA rates and averages without manufacturing zero', () => {
       const mapped = mapMonthlySlaRows([
         {
@@ -270,7 +285,7 @@ describe('PPTX Export Suite — Tiketa Executive Standards', () => {
       );
     });
 
-    it('executes 8-slide export for "All reports" with complete calendar months', async () => {
+    it('executes 7-slide export for "All reports" excluding Hardware Hotspots with complete calendar months', async () => {
       vi.mocked(reportsApi.getReport).mockResolvedValue({
         date_from: '2026-10-01',
         date_to: '2026-10-31',
@@ -283,8 +298,22 @@ describe('PPTX Export Suite — Tiketa Executive Standards', () => {
         dateRange: { dateFrom: '2026-10-01', dateTo: '2026-10-31' },
       });
 
-      expect(res.slideCount).toBe(8);
-      expect(reportsApi.getReport).toHaveBeenCalledTimes(8);
+      expect(res.slideCount).toBe(7);
+      expect(reportsApi.getReport).toHaveBeenCalledTimes(7);
+      expect(reportsApi.getReport).not.toHaveBeenCalledWith(
+        'hardware-vulnerability',
+        expect.anything(),
+        expect.anything()
+      );
+    });
+
+    it('rejects exporting Hardware Hotspots alone', async () => {
+      await expect(
+        executePptxExport({
+          selectedReportIds: [6],
+          dateRange: { dateFrom: '2026-10-01', dateTo: '2026-10-31' },
+        })
+      ).rejects.toThrow(/Hardware Hotspots export has been removed/);
     });
 
     it('throws when PMS is included with a partial month', async () => {
@@ -607,6 +636,10 @@ describe('PPTX Export Suite — Tiketa Executive Standards', () => {
       const expl = generateExplanation(1, multiMonthData, { dateFrom: '2026-08-01', dateTo: '2026-09-30' });
       expect(expl.text).toContain('Across **2 months** (2026-08 to 2026-09)');
       expect(expl.text).toContain('For the latest month (**2026-09**), **48-hour SLA resolution compliance is 94.0%**');
+
+      const newestFirstExpl = generateExplanation(1, [...multiMonthData].reverse(), { dateFrom: '2026-08-01', dateTo: '2026-09-30' });
+      expect(newestFirstExpl.text).toContain('Across **2 months** (2026-08 to 2026-09)');
+      expect(newestFirstExpl.text).toContain('For the latest month (**2026-09**), **48-hour SLA resolution compliance is 94.0%**');
     });
 
     it('produces mode-specific heuristic recommendations and retains negative lag review flags', () => {

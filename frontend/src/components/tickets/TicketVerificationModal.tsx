@@ -203,6 +203,25 @@ export const TicketVerificationModal: React.FC = () => {
 
         {/* Scrollable Body */}
         <div className="p-6 overflow-y-auto space-y-4 text-xs">
+          {ticket.delegatedForName && (
+            <div
+              data-testid="modal-delegation-banner"
+              className={`p-3 rounded-2xl border text-xs ${
+                ticket.delegationStatus === 'expired' || ticket.delegationStatus === 'revoked'
+                  ? 'bg-rose-50 border-rose-200 text-rose-800'
+                  : 'bg-sky-50 border-sky-200 text-sky-900'
+              }`}
+            >
+              <strong>Delegated Confirmation — Representing: {ticket.delegatedForName}</strong>
+              {ticket.delegationStatus === 'expired' && (
+                <p className="mt-0.5">Delegation expired. Closure confirmation is disabled.</p>
+              )}
+              {ticket.delegationStatus === 'revoked' && (
+                <p className="mt-0.5">Delegation revoked. Closure confirmation is disabled.</p>
+              )}
+            </div>
+          )}
+
           {/* Repair Summary Strip */}
           <div className="p-3.5 bg-canvas border border-line rounded-2xl space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-2 text-[11px]">

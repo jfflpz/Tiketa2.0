@@ -155,7 +155,7 @@ export const TerminalHubDetailModal: React.FC<TerminalHubDetailModalProps> = ({
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 id="terminal-hub-title" className="text-lg font-bold text-ink">
-                  {hub.name} Terminal Station
+                  {hub.name} Location
                 </h2>
                 <span className="font-mono text-xs px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-600 font-semibold">
                   Station Code: {hub.code}

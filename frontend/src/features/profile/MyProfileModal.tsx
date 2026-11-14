@@ -1,9 +1,9 @@
 // @spec F-02: Staff Profile Modal with Photo Upload, Initials Fallback & Object URL Revocation
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Upload, Trash2, Loader2, AlertCircle, CheckCircle2, User } from 'lucide-react';
+import { X, Upload, Trash2, Loader2, AlertCircle, CheckCircle2, User, KeyRound } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { StaffAvatar } from '../../components/common/StaffAvatar';
-import { usersApi } from '../../api/client';
+import { authApi, usersApi } from '../../api/client';
 import { normalizeApiError } from '../../utils/errorUtils';
 
 export interface MyProfileModalProps {
@@ -17,6 +17,7 @@ const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
 export const MyProfileModal: React.FC<MyProfileModalProps> = ({ isOpen, onClose }) => {
   const currentUser = useAppStore((state) => state.currentUser);
   const setCurrentUser = useAppStore((state) => state.setCurrentUser);
+  const logoutToKiosk = useAppStore((state) => state.logoutToKiosk);
   const addToast = useAppStore((state) => state.addToast);
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -24,6 +25,13 @@ export const MyProfileModal: React.FC<MyProfileModalProps> = ({ isOpen, onClose 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previewUrlRef = useRef<string | null>(null);
@@ -52,6 +60,45 @@ export const MyProfileModal: React.FC<MyProfileModalProps> = ({ isOpen, onClose 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, isSubmitting]);
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError(null);
+    if (!currentPassword) {
+      setPasswordError('Current password is required.');
+      return;
+    }
+    if (newPassword.length < 12) {
+      setPasswordError('New password must be at least 12 characters long.');
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setPasswordError('New password and confirmation do not match.');
+      return;
+    }
+
+    setIsChangingPassword(true);
+    try {
+      await authApi.changePassword({
+        current_password: currentPassword,
+        new_password: newPassword,
+      });
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+      addToast(
+        'Password Updated',
+        'Your session has been invalidated. Please sign in with your new password.',
+        'success'
+      );
+      onClose();
+      await logoutToKiosk({ rememberProfile: false });
+    } catch (err) {
+      setPasswordError(normalizeApiError(err, 'Failed to change password. Please verify your current password.'));
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
 
   if (!isOpen || !currentUser) return null;
 
@@ -340,6 +387,67 @@ export const MyProfileModal: React.FC<MyProfileModalProps> = ({ isOpen, onClose 
                 {currentUser.role}
               </span>
             </div>
+          </div>
+
+          {/* F-B3: Owner-Controlled Password Change */}
+          <div className="border border-line rounded-xl p-3 space-y-2.5 bg-canvas/50">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-ink flex items-center gap-1.5">
+                <KeyRound className="w-3.5 h-3.5 text-orange-600" />
+                <span>Account Password</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPasswordForm((prev) => !prev);
+                  setPasswordError(null);
+                }}
+                className="text-[11px] font-semibold text-orange-600 hover:text-orange-700"
+              >
+                {showPasswordForm ? 'Cancel' : 'Change Password'}
+              </button>
+            </div>
+
+            {showPasswordForm && (
+              <form onSubmit={handlePasswordChange} className="space-y-2 pt-1">
+                {passwordError && (
+                  <div role="alert" className="p-2 rounded-lg bg-rose-50 border border-rose-200 text-[11px] text-rose-700">
+                    {passwordError}
+                  </div>
+                )}
+                <input
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="Current password"
+                  disabled={isChangingPassword}
+                  className="w-full px-3 py-2 bg-surface border border-line rounded-lg text-xs"
+                />
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="New password (min. 12 characters)"
+                  disabled={isChangingPassword}
+                  className="w-full px-3 py-2 bg-surface border border-line rounded-lg text-xs"
+                />
+                <input
+                  type="password"
+                  value={confirmNewPassword}
+                  onChange={(e) => setConfirmNewPassword(e.target.value)}
+                  placeholder="Confirm new password"
+                  disabled={isChangingPassword}
+                  className="w-full px-3 py-2 bg-surface border border-line rounded-lg text-xs"
+                />
+                <button
+                  type="submit"
+                  disabled={isChangingPassword}
+                  className="w-full py-2 px-3 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-semibold disabled:opacity-50"
+                >
+                  {isChangingPassword ? 'Updating Password...' : 'Update Password & Re-Login'}
+                </button>
+              </form>
+            )}
           </div>
 
           <div className="pt-1">

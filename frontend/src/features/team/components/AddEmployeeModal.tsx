@@ -253,7 +253,7 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
           {/* Location & Department */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="font-semibold text-zinc-700 block mb-1">Terminal Hub</label>
+              <label className="font-semibold text-zinc-700 block mb-1">Location</label>
               <select
                 value={locationId}
                 onChange={(e) => setLocationId(e.target.value)}

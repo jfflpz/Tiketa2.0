@@ -106,6 +106,28 @@ describe('kiosk employee record matching and intake', () => {
     expect(emailInput).toHaveProperty('value', 'wrong@example.com');
   });
 
+  it('shows generic feedback on 401/403 without leaking field-specific detail and defaults 429 to 15m', async () => {
+    const matchSpy = vi.spyOn(directoryApi, 'matchEmployee')
+      .mockRejectedValueOnce(apiError(401, 'Unknown employee ID'))
+      .mockRejectedValueOnce(apiError(429, {}));
+    renderKiosk();
+
+    const idInput = screen.getByPlaceholderText('e.g. 1042');
+    const emailInput = screen.getByPlaceholderText('e.g. employee@fivestarbus.com');
+    const continueBtn = screen.getByRole('button', { name: /Continue/i });
+
+    fireEvent.change(idInput, { target: { value: '99999' } });
+    fireEvent.change(emailInput, { target: { value: 'wrong@example.com' } });
+    fireEvent.click(continueBtn);
+
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toBe('Employee ID and email do not match an active employee record.');
+
+    fireEvent.click(continueBtn);
+    await screen.findByText(/Please try again in 15:00/i);
+    expect(matchSpy).toHaveBeenCalledTimes(2);
+  });
+
   it('handles 429 cooldown with countdown display and automatic re-enabling', async () => {
     vi.useFakeTimers();
     vi.spyOn(directoryApi, 'matchEmployee').mockRejectedValue(

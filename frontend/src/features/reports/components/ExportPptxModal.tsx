@@ -16,7 +16,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
-import { REPORT_TABS, REPORT_SLUGS } from '../types/reportSchemas';
+import { REPORT_TABS, EXPORTABLE_REPORT_TABS, HARDWARE_HOTSPOTS_REPORT_ID, REPORT_SLUGS } from '../types/reportSchemas';
 import { executePptxExport, mapReportData } from '../export/exportPptx';
 import { generateExplanation } from '../export/explanationGenerator';
 import { ExportChartRenderer } from '../export/ExportChartRenderer';
@@ -47,13 +47,15 @@ export const ExportPptxModal: React.FC<ExportPptxModalProps> = ({
 
   // Default mode is strictly 'current' (1 slide)
   const [mode, setMode] = useState<ExportMode>('current');
-  const [selectedIds, setSelectedIds] = useState<number[]>([initialReportId || 1]);
+  const safeInitialReportId =
+    initialReportId && initialReportId !== HARDWARE_HOTSPOTS_REPORT_ID ? initialReportId : 1;
+  const [selectedIds, setSelectedIds] = useState<number[]>([safeInitialReportId]);
 
   const [customCommentary, setCustomCommentary] = useState<Record<number, string>>({});
   const [isCustomized, setIsCustomized] = useState<Record<number, boolean>>({});
   const [autoExplanations, setAutoExplanations] = useState<Record<number, string>>({});
   const [slideDataCache, setSlideDataCache] = useState<Record<number, any[]>>({});
-  const [activeCommentaryTab, setActiveCommentaryTab] = useState<number>(initialReportId || 1);
+  const [activeCommentaryTab, setActiveCommentaryTab] = useState<number>(safeInitialReportId);
   const [isEditingCommentary, setIsEditingCommentary] = useState(false);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [lightboxSlideIndex, setLightboxSlideIndex] = useState(0);
@@ -98,7 +100,7 @@ export const ExportPptxModal: React.FC<ExportPptxModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setMode('current');
-      const startId = initialReportId || 1;
+      const startId = safeInitialReportId;
       setSelectedIds([startId]);
       setActiveCommentaryTab(startId);
       setDateFrom(defaultDates.dateFrom);
@@ -242,11 +244,11 @@ export const ExportPptxModal: React.FC<ExportPptxModalProps> = ({
   const handleModeChange = (newMode: ExportMode) => {
     setMode(newMode);
     if (newMode === 'current') {
-      const id = initialReportId || 1;
+      const id = safeInitialReportId;
       setSelectedIds([id]);
       setActiveCommentaryTab(id);
     } else if (newMode === 'all') {
-      const allIds = REPORT_TABS.map((t) => t.id);
+      const allIds = EXPORTABLE_REPORT_TABS.map((t) => t.id);
       setSelectedIds(allIds);
       setActiveCommentaryTab(allIds[0]);
     }
@@ -529,7 +531,7 @@ export const ExportPptxModal: React.FC<ExportPptxModalProps> = ({
           <div className="space-y-1.5 p-3 rounded-2xl bg-zinc-50 border border-zinc-200 max-h-40 overflow-y-auto">
             <div className="text-[11px] font-semibold text-zinc-500 uppercase px-1">Choose Reports to Include:</div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-              {REPORT_TABS.map((tab) => {
+              {EXPORTABLE_REPORT_TABS.map((tab) => {
                 const isChecked = selectedIds.includes(tab.id);
                 return (
                   <label

@@ -18,7 +18,7 @@ export interface CreateITStaffModalProps {
     department: string;
     primaryLocation: string;
     locationId?: string | null;
-  }) => Promise<boolean>;
+  }) => Promise<boolean | { username?: string; collision?: boolean }>;
 }
 
 export const CreateITStaffModal: React.FC<CreateITStaffModalProps> = ({
@@ -40,6 +40,7 @@ export const CreateITStaffModal: React.FC<CreateITStaffModalProps> = ({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [createdUsernameInfo, setCreatedUsernameInfo] = useState<{ username: string; collision?: boolean } | null>(null);
 
   if (!isOpen) return null;
 
@@ -56,12 +57,12 @@ export const CreateITStaffModal: React.FC<CreateITStaffModalProps> = ({
     const cleanEmail = email.trim().toLowerCase();
     const cleanName = name.trim();
 
-    if (!cleanUsername || cleanUsername.length < 3) {
-      setFormError('Username must be at least 3 characters.');
+    if (cleanUsername && cleanUsername.length < 3) {
+      setFormError('Username must be at least 3 characters when provided.');
       return;
     }
 
-    if (!/^[a-zA-Z0-9_.-]+$/.test(cleanUsername)) {
+    if (cleanUsername && !/^[a-zA-Z0-9_.-]+$/.test(cleanUsername)) {
       setFormError('Username can only contain letters, numbers, underscores, dots, and hyphens.');
       return;
     }
@@ -80,8 +81,9 @@ export const CreateITStaffModal: React.FC<CreateITStaffModalProps> = ({
     const primaryLocationLabel = selectedLoc ? `${selectedLoc.name} (${selectedLoc.code})` : locationCode;
 
     setIsSubmitting(true);
+    setCreatedUsernameInfo(null);
     try {
-      const success = await onSubmit({
+      const result = await onSubmit({
         username: cleanUsername,
         password,
         name: cleanName,
@@ -93,16 +95,20 @@ export const CreateITStaffModal: React.FC<CreateITStaffModalProps> = ({
         locationId: (selectedLoc && 'id' in selectedLoc ? (selectedLoc as { id: string }).id : null),
       });
 
-      if (success) {
+      if (result) {
         setUsername('');
         setPassword('');
         setName('');
         setEmail('');
         setFormError(null);
-        onClose();
+        if (typeof result === 'object' && result.username) {
+          setCreatedUsernameInfo({ username: result.username, collision: result.collision });
+        } else {
+          onClose();
+        }
       } else {
         // Modal deliberately stays open so user can fix issues and does not lose input
-        setFormError('Could not create account. Please check the error toast or server connection.');
+        setFormError('Could not create account. If the username collided, leave it blank for automatic standard assignment.');
       }
     } catch (err: any) {
       setFormError(err?.message || 'A network error occurred while communicating with the backend.');
@@ -215,22 +221,46 @@ export const CreateITStaffModal: React.FC<CreateITStaffModalProps> = ({
             </div>
           </div>
 
+          {createdUsernameInfo && (
+            <div role="status" className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 space-y-1">
+              <div className="font-bold">
+                Account created — Assigned username: <span className="font-mono">{createdUsernameInfo.username}</span>
+              </div>
+              {createdUsernameInfo.collision && (
+                <p className="text-[11px]">
+                  A same-name account already existed, so the server assigned a unique numeric suffix without changing existing accounts.
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setCreatedUsernameInfo(null);
+                  onClose();
+                }}
+                className="mt-1 px-2.5 py-1 bg-emerald-700 text-white rounded-lg text-[11px] font-semibold hover:bg-emerald-800"
+              >
+                Done
+              </button>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="font-semibold text-zinc-700 block mb-1">
-                Username <span className="text-rose-500">*</span>
+                Username <span className="text-[10px] font-normal text-zinc-400">(optional, server-generated)</span>
               </label>
               <input
                 type="text"
-                required
                 minLength={3}
                 maxLength={50}
-                placeholder="e.g. j.doe"
+                placeholder="Auto-generated if blank"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="w-full px-3 py-2 bg-[#F8F9FA] border border-[#ECEEF2] rounded-xl text-xs font-mono text-ink focus:outline-none focus:border-orange-500"
               />
-              <span className="text-[10px] text-zinc-400 block mt-0.5">3-50 letters, numbers, dots, hyphens</span>
+              <span className="text-[10px] text-zinc-400 block mt-0.5">
+                Leave blank for standard server username; collisions add a numeric suffix (no role suffixes).
+              </span>
             </div>
 
             <div>
@@ -293,7 +323,7 @@ export const CreateITStaffModal: React.FC<CreateITStaffModalProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="font-semibold text-zinc-700 block mb-1">Primary Terminal Hub</label>
+              <label className="font-semibold text-zinc-700 block mb-1">Primary Location</label>
               <select
                 value={locationCode}
                 onChange={(e) => setLocationCode(e.target.value)}

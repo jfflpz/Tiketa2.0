@@ -14,6 +14,7 @@ import { ticketsApi } from '../../api/client';
 import { JobLogDrawerHeader } from './drawer/JobLogDrawerHeader';
 import { JobLogDrawerChat } from './drawer/JobLogDrawerChat';
 import { JobLogDrawerRecordForm } from './drawer/JobLogDrawerRecordForm';
+import { JobLogDrawerTimeline } from './drawer/JobLogDrawerTimeline';
 
 export const JobLogDrawer: React.FC = () => {
   const tickets = useAppStore((state) => state.tickets);
@@ -40,7 +41,7 @@ export const JobLogDrawer: React.FC = () => {
 
   const ticket = tickets.find((t) => t.id === selectedTicketId) ?? inspectedTicket;
   const [notesDraft, setNotesDraft] = useState('');
-  const [drawerTab, setDrawerTab] = useState<'CHAT' | 'JOB_LOG'>('JOB_LOG');
+  const [drawerTab, setDrawerTab] = useState<'CHAT' | 'JOB_LOG' | 'HISTORY'>('JOB_LOG');
   const [isSavingNotes, setIsSavingNotes] = useState(false);
 
   const drawerRef = useRef<HTMLDivElement>(null);
@@ -128,6 +129,22 @@ export const JobLogDrawer: React.FC = () => {
     }
   }, [ticket?.id]);
 
+  // @spec F-C3: Refresh ticket status after server auto-closure deadline elapses
+  useEffect(() => {
+    if (!ticket || ticket.status !== 'RESL' || !ticket.closureDeadlineAt) return;
+    const deadlineMs = new Date(ticket.closureDeadlineAt).getTime();
+    if (Number.isNaN(deadlineMs)) return;
+    const delayMs = Math.max(0, deadlineMs - Date.now() + 1000);
+    if (delayMs > 3600000) return;
+    const timer = window.setTimeout(() => {
+      const state = useAppStore.getState();
+      if (state.fetchQueueApi) {
+        state.fetchQueueApi();
+      }
+    }, delayMs);
+    return () => window.clearTimeout(timer);
+  }, [ticket?.id, ticket?.status, ticket?.closureDeadlineAt]);
+
   if (!selectedTicketId) return null;
 
   if (isInspectingTicket && !ticket) {
@@ -194,7 +211,12 @@ export const JobLogDrawer: React.FC = () => {
   const messages = ticket.messages ?? [];
   const techSenderName = ticket.workedBy ?? currentUser?.name ?? 'Christian (IT Specialist)';
   const isAdmin = currentUser?.role === 'admin';
+  const isSupervisor = currentUser?.role === 'supervisor';
   const isOwner = canEditTicket(currentUser, ticket);
+
+  const deadlineDate = ticket.closureDeadlineAt ? new Date(ticket.closureDeadlineAt) : null;
+  const isDeadlineValid = Boolean(deadlineDate && !Number.isNaN(deadlineDate.getTime()));
+  const isDeadlinePast = isDeadlineValid && deadlineDate!.getTime() <= Date.now();
 
   const handleOpenWorkbench = () => {
     // Preserve explicit claiming: opening a ticket or workbench must not claim it automatically
@@ -263,38 +285,98 @@ export const JobLogDrawer: React.FC = () => {
               <p className="text-xs text-zinc-600 leading-relaxed">
                 Technician <strong>{ticket.workedBy}</strong> marked this repair resolved. Requester validation is pending.
               </p>
-              <div className="flex flex-wrap items-center gap-2 pt-0.5">
-                <button
-                  type="button"
-                  onClick={async () => {
-                    if (ticket.closureUrl) {
-                      if (navigator.clipboard?.writeText) {
-                        await navigator.clipboard.writeText(ticket.closureUrl);
-                      }
-                      addToast(
-                        'Viber Link Copied',
-                        `Viber resolution link copied to clipboard`,
-                        'success'
-                      );
-                    } else {
-                      await copyTicketShareLink(ticket.ticketCode, ticket.id);
-                    }
-                  }}
-                  className="py-1.5 px-3 bg-white hover:bg-amber-50 text-amber-800 border border-amber-300 text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition-colors press-fx shadow-2xs"
-                  title="Copy Viber closure link"
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                  <span>Copy Viber Link</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => reopenTicket(ticket.id)}
-                  className="py-1.5 px-3 bg-white hover:bg-zinc-50 text-zinc-700 border border-zinc-300 text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition-colors press-fx shadow-2xs"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Reopen Ticket</span>
-                </button>
+              <div
+                data-testid="closure-deadline-banner"
+                className="text-[11px] font-medium text-amber-800 bg-amber-100/70 border border-amber-200 rounded-xl px-3 py-1.5"
+              >
+                {isDeadlineValid ? (
+                  isDeadlinePast ? (
+                    <span>Auto-close deadline passed ({deadlineDate!.toLocaleString()}). Refreshing status from server…</span>
+                  ) : (
+                    <span>Auto-closes if unconfirmed at: <strong className="font-mono">{deadlineDate!.toLocaleString()}</strong></span>
+                  )
+                ) : (
+                  <span>Legacy verification policy (no automatic closure deadline).</span>
+                )}
               </div>
+              {!isSupervisor && (
+                <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (ticket.closureUrl) {
+                        if (navigator.clipboard?.writeText) {
+                          await navigator.clipboard.writeText(ticket.closureUrl);
+                        }
+                        addToast(
+                          'Viber Link Copied',
+                          `Viber resolution link copied to clipboard`,
+                          'success'
+                        );
+                      } else {
+                        await copyTicketShareLink(ticket.ticketCode, ticket.id);
+                      }
+                    }}
+                    className="py-1.5 px-3 bg-white hover:bg-amber-50 text-amber-800 border border-amber-300 text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition-colors press-fx shadow-2xs"
+                    title="Copy Viber closure link"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>Copy Viber Link</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => reopenTicket(ticket.id)}
+                    className="py-1.5 px-3 bg-white hover:bg-zinc-50 text-zinc-700 border border-zinc-300 text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition-colors press-fx shadow-2xs"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Reopen Ticket</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Closure Outcome Banner (When status is CLSD) */}
+          {ticket.status === 'CLSD' && (
+            <div
+              data-testid="closure-outcome-banner"
+              className={`border rounded-2xl p-3.5 space-y-1.5 animate-fade-in ${
+                ticket.closureReason === 'auto_closed' || (Boolean(ticket.autoClosedAt) && !ticket.userConfirmedAt)
+                  ? 'bg-zinc-50 border-zinc-200'
+                  : 'bg-emerald-50/80 border-emerald-200'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                    ticket.closureReason === 'auto_closed' || (Boolean(ticket.autoClosedAt) && !ticket.userConfirmedAt)
+                      ? 'bg-zinc-200 text-zinc-800'
+                      : 'bg-emerald-100 text-emerald-800'
+                  }`}
+                >
+                  {ticket.closureReason === 'auto_closed' || (Boolean(ticket.autoClosedAt) && !ticket.userConfirmedAt)
+                    ? 'Auto-Closed (Deadline Elapsed)'
+                    : ticket.closureReason === 'delegate_confirmed'
+                    ? 'Closed via Delegate Confirmation'
+                    : ticket.userConfirmedAt || ticket.closureReason === 'requester_confirmed'
+                    ? 'Confirmed by Requester'
+                    : 'Closed (Legacy Record)'}
+                </span>
+                {ticket.autoClosedAt && (ticket.closureReason === 'auto_closed' || !ticket.userConfirmedAt) ? (
+                  <span className="text-[11px] font-mono text-zinc-500">
+                    Auto-closed: {new Date(ticket.autoClosedAt).toLocaleString()}
+                  </span>
+                ) : ticket.userConfirmedAt ? (
+                  <span className="text-[11px] font-mono text-emerald-700">
+                    Confirmed: {new Date(ticket.userConfirmedAt).toLocaleString()}
+                  </span>
+                ) : null}
+              </div>
+              {ticket.confirmedBy && (
+                <p className="text-[11px] text-zinc-600">
+                  Confirmed by: <strong>{ticket.confirmedBy}</strong>
+                </p>
+              )}
             </div>
           )}
 
@@ -303,6 +385,7 @@ export const JobLogDrawer: React.FC = () => {
             <JobLogDrawerChat
               ticket={ticket}
               techSenderName={techSenderName}
+              readOnly={isSupervisor}
               onSendMessage={(msg, isInternal) => {
                 if (!isOwner) {
                   addToast('Permission Denied', `Ticket is assigned to ${ticket.workedBy || 'another technician'}. Only the assigned owner may post comments.`, 'warning');
@@ -311,6 +394,8 @@ export const JobLogDrawer: React.FC = () => {
                 return sendTicketMessageApi(ticket.id, msg, isInternal);
               }}
             />
+          ) : drawerTab === 'HISTORY' ? (
+            <JobLogDrawerTimeline ticketId={ticket.id} />
           ) : (
             /* TAB 2: 15-COLUMN JOB LOG & WORK CONTROLS */
             <JobLogDrawerRecordForm

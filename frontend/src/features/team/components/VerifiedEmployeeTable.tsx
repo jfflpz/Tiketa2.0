@@ -95,7 +95,7 @@ export const VerifiedEmployeeTable: React.FC<VerifiedEmployeeTableProps> = ({
               className="px-2.5 py-1.5 bg-[#F8F9FA] border border-[#ECEEF2] rounded-xl text-xs font-semibold text-ink focus:outline-none focus:border-orange-400"
               aria-label="Filter by Location"
             >
-              <option value="ALL">All Terminal Hubs</option>
+              <option value="ALL">All Locations</option>
               {locationsList.map((l) => (
                 <option key={l} value={l}>{l}</option>
               ))}
@@ -159,7 +159,7 @@ export const VerifiedEmployeeTable: React.FC<VerifiedEmployeeTableProps> = ({
               <th className="py-2.5 px-3">Full Name</th>
               <th className="py-2.5 px-3">Email</th>
               <th className="py-2.5 px-3">Company</th>
-              <th className="py-2.5 px-3">Assigned Terminal Hub</th>
+              <th className="py-2.5 px-3">Assigned Location</th>
               <th className="py-2.5 px-3">Department</th>
               <th className="py-2.5 px-3">Status</th>
               <th className="py-2.5 px-3 text-right">Actions</th>

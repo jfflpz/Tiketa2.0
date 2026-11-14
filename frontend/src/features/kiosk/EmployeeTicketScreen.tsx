@@ -316,6 +316,8 @@ export const EmployeeTicketScreen: React.FC = () => {
                 activeHubName={intake.activeHub.name}
                 selectedTask={intake.selectedTask}
                 onSelectTask={intake.setSelectedTask}
+                selectedSubcategory={intake.selectedSubcategory}
+                onSelectSubcategory={intake.setSelectedSubcategory}
                 description={intake.description}
                 onDescriptionChange={intake.setDescription}
                 isSubmitting={intake.isSubmitting}

@@ -21,11 +21,17 @@ export interface TicketOperationsSlice {
   quickIntakeApi: (input: {
     employeeId: string;
     taskCode: TaskCategoryCode;
+    subcategoryCode?: string;
     description: string;
     mode: SupportMode;
+    reporterName?: string;
+    requesterType?: 'employee' | 'nonemployee';
+    nonemployeeId?: string;
   }) => Promise<Ticket | null>;
 
   claimTicketApi: (ticketId: string) => Promise<boolean>;
+  pauseTicketWorkApi: (ticketId: string, reason?: string) => Promise<boolean>;
+  resumeTicketWorkApi: (ticketId: string) => Promise<boolean>;
   updateTicketStatusApi: (
     ticketId: string,
     status: TicketStatus,
@@ -95,13 +101,20 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
       const res = await ticketsApi.quickIntake({
         employee_id: input.employeeId,
         task_code: input.taskCode,
+        ...(input.subcategoryCode ? { subcategory_code: input.subcategoryCode } : {}),
         description: input.description,
         mode: input.mode,
-      });
+        ...(input.reporterName ? { reporter_name: input.reporterName } : {}),
+        ...(input.requesterType === 'nonemployee' ? { requester_type: 'nonemployee' } : {}),
+        ...(input.nonemployeeId ? { nonemployee_id: input.nonemployeeId } : {}),
+      } as any);
 
       const newTicket: Ticket = {
         ...mapStaffTicket(res, get().serverDictionaries),
-        employeeId: input.employeeId,
+        employeeId: input.employeeId || undefined,
+        reporterName: input.reporterName || undefined,
+        requesterType: input.requesterType ?? 'employee',
+        requesterId: input.nonemployeeId || undefined,
         intakeSource: 'Walk-in / Viber',
       };
 
@@ -573,6 +586,68 @@ export const createTicketOperationsSlice: AppSliceCreator<TicketOperationsSlice>
     const mode = target.mode || 'SITE';
     const taskCode = target.taskCode;
     await get().updateTicketStatusApi(ticketId, 'RESL', mode, taskCode);
+  },
+
+  pauseTicketWorkApi: async (ticketId, reason) => {
+    const target = findTargetTicket(get(), ticketId);
+    if (!target) return false;
+    const sessionUser = get().currentUser;
+    if (!canEditTicket(sessionUser, target)) {
+      get().addToast('Permission Denied', `Only the assigned technician may pause work on ${target.ticketCode}.`, 'warning');
+      return false;
+    }
+    if (target.status !== 'PROG' || target.isPaused) {
+      return false;
+    }
+    try {
+      const updated = await ticketsApi.pauseTicketWork(ticketId, reason);
+      const mapped = mapStaffTicket(updated, get().serverDictionaries, target.workedBy);
+      set((state) =>
+        updateTicketInState(state, ticketId, (t) => ({
+          ...t,
+          ...mapped,
+          isPaused: mapped.isPaused ?? true,
+          messages: t.messages,
+        }))
+      );
+      get().addToast('Work Paused', `${target.ticketCode} labor timer paused on server.`, 'info');
+      return true;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to pause work on server';
+      get().addToast('Pause Failed', msg, 'warning');
+      return false;
+    }
+  },
+
+  resumeTicketWorkApi: async (ticketId) => {
+    const target = findTargetTicket(get(), ticketId);
+    if (!target) return false;
+    const sessionUser = get().currentUser;
+    if (!canEditTicket(sessionUser, target)) {
+      get().addToast('Permission Denied', `Only the assigned technician may resume work on ${target.ticketCode}.`, 'warning');
+      return false;
+    }
+    if (target.status !== 'PROG' || !target.isPaused) {
+      return false;
+    }
+    try {
+      const updated = await ticketsApi.resumeTicketWork(ticketId);
+      const mapped = mapStaffTicket(updated, get().serverDictionaries, target.workedBy);
+      set((state) =>
+        updateTicketInState(state, ticketId, (t) => ({
+          ...t,
+          ...mapped,
+          isPaused: mapped.isPaused ?? false,
+          messages: t.messages,
+        }))
+      );
+      get().addToast('Work Resumed', `${target.ticketCode} labor timer resumed.`, 'success');
+      return true;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to resume work on server';
+      get().addToast('Resume Failed', msg, 'warning');
+      return false;
+    }
   },
 
   requestValidation: (ticketId) => {

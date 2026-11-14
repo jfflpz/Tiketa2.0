@@ -15,6 +15,7 @@ import { ticketsApi } from '../../api/client';
 import { mapStaffTicket } from '../../utils/mapStaffTicket';
 import { formatStandardTime } from '../../utils/timeFormat';
 import type { Ticket } from '../../types/ticket';
+import { SharedScheduleCalendar } from '../schedule/SharedScheduleCalendar';
 
 export const JobLogSheetView: React.FC = () => {
   const currentUser = useAppStore((state) => state.currentUser);
@@ -29,9 +30,16 @@ export const JobLogSheetView: React.FC = () => {
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [companyFilter, setCompanyFilter] = useState('ALL');
   const [modeFilter, setModeFilter] = useState<'ALL' | 'SITE' | 'REM'>('ALL');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'OPEN' | 'PROG' | 'RESL' | 'CLSD'>(
+    currentUser?.role === 'supervisor' ? 'ACTIVE' : 'ALL'
+  );
   const [sheetSearch, setSheetSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [activeSubView, setActiveSubView] = useState<'ledger' | 'calendar'>('ledger');
+  const pageSize = 25;
 
-  const isSupervisorOrAdmin = currentUser?.role === 'admin' || currentUser?.role === 'supervisor';
+  const isSupervisor = currentUser?.role === 'supervisor';
+  const isSupervisorOrAdmin = currentUser?.role === 'admin' || isSupervisor;
   const accountEmployeeName = currentUser?.name ?? 'IT Specialist';
 
   // @spec F-08 & F-04: Load authoritative job history ledger via GET /api/v1/tickets/history
@@ -107,6 +115,8 @@ export const JobLogSheetView: React.FC = () => {
 
   const filteredLogs = useMemo(() => {
     return candidateTickets.filter((t) => {
+      if (statusFilter === 'ACTIVE' && t.status === 'CLSD') return false;
+      if (statusFilter !== 'ALL' && statusFilter !== 'ACTIVE' && t.status !== statusFilter) return false;
       if (companyFilter !== 'ALL' && t.companyCode !== companyFilter) return false;
       if (modeFilter !== 'ALL' && t.mode !== modeFilter) return false;
       const q = sheetSearch.trim().toLowerCase();
@@ -119,7 +129,17 @@ export const JobLogSheetView: React.FC = () => {
         t.description.toLowerCase().includes(q)
       );
     });
-  }, [candidateTickets, companyFilter, modeFilter, sheetSearch]);
+  }, [candidateTickets, statusFilter, companyFilter, modeFilter, sheetSearch]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter, companyFilter, modeFilter, sheetSearch]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredLogs.length / pageSize));
+  const paginatedLogs = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredLogs.slice(start, start + pageSize);
+  }, [filteredLogs, currentPage]);
 
 
   // @spec F-08 & B-07: Executive Styled XLSX Export with 15 Canonical Columns
@@ -176,6 +196,30 @@ export const JobLogSheetView: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
+          <div className="inline-flex items-center bg-white p-1 rounded-xl border border-[#ECEEF2] shadow-xs">
+            <button
+              type="button"
+              onClick={() => setActiveSubView('ledger')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                activeSubView === 'ledger'
+                  ? 'bg-zinc-900 text-white'
+                  : 'text-zinc-500 hover:text-ink'
+              }`}
+            >
+              Job Logs Ledger
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveSubView('calendar')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                activeSubView === 'calendar'
+                  ? 'bg-zinc-900 text-white'
+                  : 'text-zinc-500 hover:text-ink'
+              }`}
+            >
+              Shared Calendar
+            </button>
+          </div>
           <button
             onClick={exportJobLogsXlsx}
             disabled={filteredLogs.length === 0}
@@ -187,7 +231,10 @@ export const JobLogSheetView: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Personal Job Logs Spreadsheet Container */}
+      {activeSubView === 'calendar' ? (
+        <SharedScheduleCalendar onViewUndated={() => setActiveSubView('ledger')} />
+      ) : (
+      /* Main Personal Job Logs Spreadsheet Container */
       <div className="bg-white border border-[#ECEEF2] rounded-2xl p-5 shadow-card space-y-4">
         {/* Filter Bar */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-2 border-b border-[#ECEEF2]">
@@ -234,6 +281,22 @@ export const JobLogSheetView: React.FC = () => {
             </select>
 
             <select
+              aria-label="Filter by status"
+              value={statusFilter}
+              onChange={(e) =>
+                setStatusFilter(e.target.value as 'ALL' | 'ACTIVE' | 'OPEN' | 'PROG' | 'RESL' | 'CLSD')
+              }
+              className="px-3 py-1.5 rounded-lg bg-[#F4F6F9] border border-[#ECEEF2] text-xs font-semibold text-ink"
+            >
+              <option value="ACTIVE">Active Tickets (OPEN/PROG/RESL)</option>
+              <option value="ALL">All Statuses</option>
+              <option value="OPEN">Open (OPEN)</option>
+              <option value="PROG">In Progress (PROG)</option>
+              <option value="RESL">Resolved (RESL)</option>
+              <option value="CLSD">Closed (CLSD)</option>
+            </select>
+
+            <select
               aria-label="Filter by support mode"
               value={modeFilter}
               onChange={(e) =>
@@ -247,6 +310,16 @@ export const JobLogSheetView: React.FC = () => {
             </select>
           </div>
         </div>
+
+        {historyError && (
+          <div
+            role="alert"
+            className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2"
+          >
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+            <span>{historyError}</span>
+          </div>
+        )}
 
         {/* Horizontally Scrollable 15-Column Job Log Table */}
         <div className="overflow-x-auto">
@@ -315,7 +388,7 @@ export const JobLogSheetView: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                filteredLogs.map((t) => (
+                paginatedLogs.map((t) => (
                   <tr
                     key={t.id}
                     onClick={() => setSelectedTicketId(t.id)}
@@ -377,7 +450,7 @@ export const JobLogSheetView: React.FC = () => {
                         className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 text-xs
                         font-semibold transition-colors press-fx"
                       >
-                        Edit
+                        {isSupervisor ? 'Inspect' : 'Edit'}
                       </button>
                     </td>
                   </tr>
@@ -386,7 +459,35 @@ export const JobLogSheetView: React.FC = () => {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Controls */}
+        {filteredLogs.length > pageSize && (
+          <div className="flex items-center justify-between pt-2 border-t border-[#ECEEF2] text-xs">
+            <span className="text-zinc-500">
+              Page {currentPage} of {totalPages} ({filteredLogs.length} records)
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={currentPage <= 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                className="px-3 py-1 rounded-lg border border-[#ECEEF2] bg-[#F4F6F9] hover:bg-zinc-200 disabled:opacity-40 font-semibold text-ink"
+              >
+                Previous
+              </button>
+              <button
+                type="button"
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                className="px-3 py-1 rounded-lg border border-[#ECEEF2] bg-[#F4F6F9] hover:bg-zinc-200 disabled:opacity-40 font-semibold text-ink"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
+      )}
     </div>
   );
 };

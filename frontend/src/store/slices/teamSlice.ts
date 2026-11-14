@@ -1,6 +1,6 @@
 // @spec BF-08: IT accounts, employee directory profiles & server dictionaries
 import type { AppSliceCreator } from '../types';
-import type { TeamMember, TeamRole, TeamMemberStatus } from '../../types/team';
+import type { TeamMember, TeamRole, TeamMemberStatus, StaffAvailabilityStatus } from '../../types/team';
 import type { EmployeeProfile, StaffRole } from '../../types';
 import {
   adminApi,
@@ -32,6 +32,8 @@ export interface TeamSlice {
       role?: TeamRole;
       systemRole: StaffRole;
       status?: TeamMemberStatus;
+      availability_status?: StaffAvailabilityStatus;
+      availability_note?: string | null;
       custom_permissions?: string[];
       department: string;
       primaryLocation: string;
@@ -139,6 +141,16 @@ const mapBackendUserToTeamMember = (
       : u.status === 'on_leave'
       ? 'on_leave'
       : 'active',
+    availabilityStatus:
+      (u as any).availability_status === 'on_leave' || u.status === 'on_leave'
+        ? 'on_leave'
+        : (u as any).availability_status === 'busy'
+        ? 'busy'
+        : (u as any).availability_status === 'unavailable' || !u.is_active
+        ? 'unavailable'
+        : 'available',
+    availabilityNote: (u as any).availability_note ?? null,
+    isOnline: typeof (u as any).is_online === 'boolean' ? (u as any).is_online : null,
     primaryLocation: locationName,
     ticketsClosed: u.closed_repairs ?? 0,
     activeTickets: u.active_bench ?? 0,
@@ -303,6 +315,13 @@ export const createTeamSlice: AppSliceCreator<TeamSlice> = (set, get) => ({
       }
       if (payload.locationId !== undefined) {
         updateData.location_id = payload.locationId;
+      }
+
+      if (payload.availability_status !== undefined) {
+        await adminApi.updateStaffAvailability(id, {
+          availability_status: payload.availability_status,
+          availability_note: payload.availability_note ?? null,
+        });
       }
 
       // Persist UI metadata locally

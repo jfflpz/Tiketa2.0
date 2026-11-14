@@ -33,7 +33,13 @@ export function useEmployeeIntake() {
   const [employeeId, setEmployeeId] = useState('');
   const [registeredEmail, setRegisteredEmail] = useState('');
   const [selectedTask, setSelectedTask] = useState<TaskCategoryCode>('PRN-TS');
+  const [selectedSubcategory, setSelectedSubcategory] = useState<string>('');
   const [description, setDescription] = useState('');
+
+  const handleSelectTask = (code: TaskCategoryCode) => {
+    setSelectedTask(code);
+    setSelectedSubcategory(''); // Clear stale child selection when parent changes (F-G2)
+  };
   const [submittedTicket, setSubmittedTicket] = useState<Ticket | null>(null);
 
   // Verification & Cooldown State
@@ -161,16 +167,14 @@ export function useEmployeeIntake() {
         if (err.response?.status === 429) {
           const retryHeader = err.response.headers?.['retry-after'];
           const retryBody = err.response.data?.retry_after;
-          const retrySec = Number(retryHeader || retryBody || 120);
-          setCooldownSeconds(retrySec > 0 ? retrySec : 120);
-          setMatchError(`Too many failed matching attempts.`);
-        } else if (err.response?.status === 404) {
+          const retrySec = Number(retryHeader || retryBody || 900);
+          setCooldownSeconds(retrySec > 0 ? retrySec : 900);
+          setMatchError('Too many failed matching attempts.');
+        } else if ([400, 401, 403, 404].includes(err.response?.status ?? 0)) {
+          // Never reveal whether Employee ID or email failed individually
           setMatchError('Employee ID and email do not match an active employee record.');
         } else {
-          setMatchError(
-            err.response?.data?.detail ||
-              'Unable to match employee record at this time. Please retry.'
-          );
+          setMatchError('Unable to match employee record at this time. Please retry.');
         }
       } else {
         setMatchError('A network or server error occurred. Please check your connection.');
@@ -294,6 +298,7 @@ export function useEmployeeIntake() {
     const created = await submitTicketApi({
       employeeId: employeeId.trim(),
       taskCode: selectedTask,
+      subcategoryCode: selectedSubcategory || undefined,
       description: finalDescription,
       matchToken,
       observationId: locationState.observationId,
@@ -321,7 +326,9 @@ export function useEmployeeIntake() {
     registeredEmail,
     setRegisteredEmail: handleEmailChange,
     selectedTask,
-    setSelectedTask,
+    setSelectedTask: handleSelectTask,
+    selectedSubcategory,
+    setSelectedSubcategory,
     description,
     setDescription,
     submittedTicket,

@@ -4,7 +4,7 @@ import { Download, FileSpreadsheet, Layers } from 'lucide-react';
 
 import { BarcodeDivider } from '../../components/common/TickMeter';
 import { useAppStore } from '../../store/useAppStore';
-import { REPORT_TABS, REPORT_SLUGS } from './types/reportSchemas';
+import { HARDWARE_HOTSPOTS_REPORT_ID, REPORT_TABS, REPORT_SLUGS } from './types/reportSchemas';
 import {
   mapMonthlySlaRows,
   mapStaffUtilizationRows,
@@ -18,6 +18,8 @@ import {
 import { ReportTabSelector } from './components/ReportTabSelector';
 import { ReportPeriodSelector } from './components/ReportPeriodSelector';
 import { ReportChartCard } from './components/ReportChartCard';
+import { AssetServiceMetricsCard } from './components/AssetServiceMetricsCard';
+import { assetsApi, type AssetServiceMetric } from '../../api/client';
 import { MonthlySlaTable } from './components/tables/MonthlySlaTable';
 import { StaffUtilizationTable } from './components/tables/StaffUtilizationTable';
 import { DeptDemandTable } from './components/tables/DeptDemandTable';
@@ -43,6 +45,9 @@ export const StandardizedReportsView: React.FC = () => {
   const reportFilters = useAppStore((state) => state.reportFilters);
 
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [assetMetrics, setAssetMetrics] = useState<AssetServiceMetric[]>([]);
+  const [isLoadingAssetMetrics, setIsLoadingAssetMetrics] = useState(false);
+  const [assetMetricsError, setAssetMetricsError] = useState<string | null>(null);
 
   const activeTabMeta = REPORT_TABS.find((t) => t.id === activeReportId) || REPORT_TABS[0];
   const currentSlug = REPORT_SLUGS[activeReportId] || 'monthly-sla';
@@ -54,6 +59,34 @@ export const StandardizedReportsView: React.FC = () => {
   useEffect(() => {
     fetchReportApi(currentSlug);
   }, [currentSlug, fetchReportApi]);
+
+  useEffect(() => {
+    if (activeReportId !== 6) return;
+    let cancelled = false;
+    setIsLoadingAssetMetrics(true);
+    setAssetMetricsError(null);
+    assetsApi
+      .getServiceMetrics({
+        date_from: reportFilters?.date_from,
+        date_to: reportFilters?.date_to,
+        location_id: reportFilters?.location_id,
+      })
+      .then((rows) => {
+        if (!cancelled) setAssetMetrics(Array.isArray(rows) ? rows : []);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setAssetMetrics([]);
+          setAssetMetricsError('Unable to load asset service metrics from server.');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingAssetMetrics(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeReportId, reportFilters?.date_from, reportFilters?.date_to, reportFilters?.location_id]);
 
   const rawRows = activeReportData || [];
 
@@ -93,15 +126,17 @@ export const StandardizedReportsView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={handleExportCSV}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-[#ECEEF2] text-xs font-semibold text-zinc-700
-            shadow-sm hover:bg-zinc-50 transition-colors press-fx"
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Export XLSX</span>
-          </button>
+          {activeReportId !== HARDWARE_HOTSPOTS_REPORT_ID && (
+            <button
+              type="button"
+              onClick={handleExportCSV}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-[#ECEEF2] text-xs font-semibold text-zinc-700
+              shadow-sm hover:bg-zinc-50 transition-colors press-fx"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Export XLSX</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setIsExportModalOpen(true)}
@@ -158,6 +193,15 @@ export const StandardizedReportsView: React.FC = () => {
         report8Data={report8Data}
       />
 
+      {activeReportId === 6 && (
+        <AssetServiceMetricsCard
+          metrics={assetMetrics}
+          isLoading={isLoadingAssetMetrics}
+          error={assetMetricsError}
+          activePeriodText={activePeriodText}
+        />
+      )}
+
       {/* Data Table Section for Active Report */}
       <div className="bg-white border border-[#ECEEF2] rounded-3xl p-5 shadow-card space-y-4">
         <div className="flex items-center justify-between">
@@ -202,7 +246,7 @@ export const StandardizedReportsView: React.FC = () => {
       <ExportPptxModal
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
-        initialReportId={activeReportId}
+        initialReportId={activeReportId === HARDWARE_HOTSPOTS_REPORT_ID ? 1 : activeReportId}
         initialDateRange={reportDateRange ? { dateFrom: reportDateRange.date_from, dateTo: reportDateRange.date_to } : undefined}
         filterParams={reportFilters}
       />

@@ -71,64 +71,22 @@ describe('F-07: Admin Governance Security (S5-12 & S5-13)', () => {
     expect(screen.getByText(/168 hours/i)).toBeTruthy();
   });
 
-  it('3. Rejects password reset if acting Admin password is omitted (S5-12)', async () => {
-    const mockSubmit = vi.fn().mockResolvedValue(true);
-
+  it('3. Removes Admin replacement-password inputs in favor of owner-controlled passwords (F-B3)', () => {
     render(
       <EditITStaffModal
         isOpen={true}
         onClose={vi.fn()}
         member={mockMember}
-        onSubmit={mockSubmit}
+        onSubmit={vi.fn().mockResolvedValue(true)}
       />
     );
 
-    // Enter new password without entering acting Admin password
-    const newPassInput = screen.getByPlaceholderText('Enter new 12+ character password');
-    const confirmPassInput = screen.getByPlaceholderText('Re-enter target new password');
-
-    fireEvent.change(newPassInput, { target: { value: 'ValidP@ssword123!' } });
-    fireEvent.change(confirmPassInput, { target: { value: 'ValidP@ssword123!' } });
-
-    const submitBtn = screen.getByText('Save Account Changes');
-    fireEvent.click(submitBtn);
-
-    await waitFor(() => {
-      expect(screen.getByText(/Your current Admin password is required to reset target credentials/i)).toBeTruthy();
-      expect(mockSubmit).not.toHaveBeenCalled();
-    });
+    expect(screen.queryByPlaceholderText('Enter new 12+ character password')).toBeNull();
+    expect(screen.queryByPlaceholderText('Re-enter target new password')).toBeNull();
+    expect(screen.getByText(/Owner-Controlled Passwords/i)).toBeTruthy();
   });
 
-  it('4. Rejects password reset if target new password and confirmation mismatch (S5-12)', async () => {
-    const mockSubmit = vi.fn().mockResolvedValue(true);
-
-    render(
-      <EditITStaffModal
-        isOpen={true}
-        onClose={vi.fn()}
-        member={mockMember}
-        onSubmit={mockSubmit}
-      />
-    );
-
-    const actingPassInput = screen.getByPlaceholderText('Enter your current admin password');
-    const newPassInput = screen.getByPlaceholderText('Enter new 12+ character password');
-    const confirmPassInput = screen.getByPlaceholderText('Re-enter target new password');
-
-    fireEvent.change(actingPassInput, { target: { value: 'AdminMasterPass123!' } });
-    fireEvent.change(newPassInput, { target: { value: 'ValidP@ssword123!' } });
-    fireEvent.change(confirmPassInput, { target: { value: 'MismatchP@ssword999!' } });
-
-    const submitBtn = screen.getByText('Save Account Changes');
-    fireEvent.click(submitBtn);
-
-    await waitFor(() => {
-      expect(screen.getByText(/Target new password and confirmation do not match/i)).toBeTruthy();
-      expect(mockSubmit).not.toHaveBeenCalled();
-    });
-  });
-
-  it('5. Successfully submits username update and verified administrative password reset (S5-12 & S5-13)', async () => {
+  it('4. Successfully submits username update with Admin authorization without password reset fields (F-B3)', async () => {
     const mockSubmit = vi.fn().mockResolvedValue(true);
     const mockClose = vi.fn();
 
@@ -142,17 +100,12 @@ describe('F-07: Admin Governance Security (S5-12 & S5-13)', () => {
     );
 
     const usernameInput = screen.getByPlaceholderText('e.g. jdoe_it');
-    const actingPassInput = screen.getByPlaceholderText('Enter your current admin password');
-    const newPassInput = screen.getByPlaceholderText('Enter new 12+ character password');
-    const confirmPassInput = screen.getByPlaceholderText('Re-enter target new password');
-
     fireEvent.change(usernameInput, { target: { value: 'jdelacruz_updated' } });
-    fireEvent.change(actingPassInput, { target: { value: 'AdminMasterPass123!' } });
-    fireEvent.change(newPassInput, { target: { value: 'SecureNewPassword2026!' } });
-    fireEvent.change(confirmPassInput, { target: { value: 'SecureNewPassword2026!' } });
 
-    const submitBtn = screen.getByText('Save Account Changes');
-    fireEvent.click(submitBtn);
+    fireEvent.click(screen.getByText('Save Account Changes'));
+    const adminPassInput = screen.getByPlaceholderText('Enter your current admin password');
+    fireEvent.change(adminPassInput, { target: { value: 'AdminMasterPass123!' } });
+    fireEvent.click(screen.getByText('Authorize & Save'));
 
     await waitFor(() => {
       expect(mockSubmit).toHaveBeenCalledTimes(1);
@@ -160,7 +113,6 @@ describe('F-07: Admin Governance Security (S5-12 & S5-13)', () => {
         'user-uuid-101',
         expect.objectContaining({
           username: 'jdelacruz_updated',
-          password: 'SecureNewPassword2026!',
           acting_admin_password: 'AdminMasterPass123!',
           name: 'Juan Dela Cruz',
           email: 'jdelacruz@fivestar.com.ph',

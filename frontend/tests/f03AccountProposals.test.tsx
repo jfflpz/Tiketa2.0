@@ -177,8 +177,8 @@ describe('F-03 Two-Man Rule & Supervisor Approval Queue Suite', () => {
       />
     );
 
-    // Fill form
-    fireEvent.change(screen.getByPlaceholderText('e.g. j.doe'), { target: { value: 'r.cadiente' } });
+    // Fill form (F-B2: username placeholder is 'Auto-generated if blank'; password is required)
+    fireEvent.change(screen.getByPlaceholderText('Auto-generated if blank'), { target: { value: 'r.cadiente' } });
     fireEvent.change(screen.getByPlaceholderText('Min. 12 characters'), { target: { value: 'ValidPassword123!' } });
     fireEvent.change(screen.getByPlaceholderText('e.g. Angelo P. Cruz'), { target: { value: 'Rafael Cadiente' } });
     fireEvent.change(screen.getByPlaceholderText('a.cruz@fivestar.com.ph'), { target: { value: 'r.cadiente@fivestar.com.ph' } });
@@ -189,8 +189,9 @@ describe('F-03 Two-Man Rule & Supervisor Approval Queue Suite', () => {
     await waitFor(() => {
       expect(handleSubmit).toHaveBeenCalled();
       // Form fields are preserved
-      expect((screen.getByPlaceholderText('e.g. j.doe') as HTMLInputElement).value).toBe('r.cadiente');
+      expect((screen.getByPlaceholderText('Auto-generated if blank') as HTMLInputElement).value).toBe('r.cadiente');
       expect((screen.getByPlaceholderText('e.g. Angelo P. Cruz') as HTMLInputElement).value).toBe('Rafael Cadiente');
+      expect((screen.getByPlaceholderText('a.cruz@fivestar.com.ph') as HTMLInputElement).value).toBe('r.cadiente@fivestar.com.ph');
     });
   });
 });

@@ -126,7 +126,7 @@ export const TerminalHubsView: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold text-ink tracking-tight">
-              {hubs.length > 0 ? `${hubs.length} Bus Terminal Hubs Monitor` : 'Bus Terminal Hubs Monitor'}
+              {hubs.length > 0 ? `${hubs.length} Locations Monitor` : 'Locations Monitor'}
             </h1>
             {isStale && (
               <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-[10px] font-bold">
@@ -153,7 +153,7 @@ export const TerminalHubsView: React.FC = () => {
               type="button"
               onClick={() => setIsAdminConfigOpen(true)}
               className="py-2 px-3 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-sm transition-colors press-fx"
-              title="Configure Terminal Hubs & Departments"
+              title="Configure Locations & Departments"
             >
               <Settings2 className="w-3.5 h-3.5" />
               <span>Station Administration</span>
@@ -209,13 +209,13 @@ export const TerminalHubsView: React.FC = () => {
       {isLoading ? (
         <div className="p-16 bg-white border border-[#ECEEF2] rounded-3xl text-center space-y-3 shadow-card">
           <RefreshCw className="w-8 h-8 animate-spin mx-auto text-orange-500" />
-          <h3 className="text-sm font-bold text-ink">Loading Terminal Hub Summaries</h3>
+          <h3 className="text-sm font-bold text-ink">Loading Location Summaries</h3>
           <p className="text-xs text-zinc-500">Querying authoritative ticket metrics and department mappings...</p>
         </div>
       ) : error && hubs.length === 0 ? (
         <div className="p-12 bg-white border border-rose-200 rounded-3xl text-center space-y-3 shadow-card">
           <AlertCircle className="w-10 h-10 text-rose-500 mx-auto" />
-          <h3 className="text-sm font-bold text-ink">Failed to Load Terminal Hubs</h3>
+          <h3 className="text-sm font-bold text-ink">Failed to Load Locations</h3>
           <p className="text-xs text-zinc-500 max-w-md mx-auto">{error}</p>
           <button
             type="button"
@@ -228,7 +228,7 @@ export const TerminalHubsView: React.FC = () => {
       ) : filteredHubs.length === 0 ? (
         <div className="p-12 bg-white border border-[#ECEEF2] rounded-3xl text-center space-y-2 shadow-card">
           <Building2 className="w-10 h-10 text-zinc-300 mx-auto" />
-          <h3 className="text-sm font-bold text-ink">No Terminals Found</h3>
+          <h3 className="text-sm font-bold text-ink">No Locations Found</h3>
           <p className="text-xs text-zinc-500">No terminal hub stations match "{hubSearch}".</p>
         </div>
       ) : (

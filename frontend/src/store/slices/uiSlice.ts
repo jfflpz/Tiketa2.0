@@ -28,6 +28,8 @@ export interface AuthenticatedUser {
   username?: string;
   status?: string;
   custom_permissions?: string[];
+  // contract: B1 — awaiting backend B-B1 effective_permissions field
+  effectivePermissions?: string[];
 }
 
 export interface ToastItem {

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import type { StaffRole, ActiveView } from '../../store/slices/uiSlice';
+import { getAllowedViewsForUser } from '../../utils/permissions';
 
 export const Sidebar: React.FC = () => {
   const currentUser = useAppStore((state) => state.currentUser);
@@ -25,6 +26,7 @@ export const Sidebar: React.FC = () => {
   const tickets = useAppStore((state) => state.tickets);
 
   const role: StaffRole = currentUser?.role ?? 'it';
+  const allowedViews = getAllowedViewsForUser(currentUser);
   const isAdmin = role === 'admin';
   const isSupervisor = role === 'supervisor';
   const isIntern = role === 'intern';
@@ -86,6 +88,7 @@ export const Sidebar: React.FC = () => {
     isDrawer: boolean = false,
     badge?: number | string
   ) => {
+    if (!allowedViews.includes(view)) return null;
     const isActive = activeView === view || (view === 'reports' && activeView === 'analytics');
     const showText = isDrawer || !sidebarCollapsed;
 
@@ -180,7 +183,7 @@ export const Sidebar: React.FC = () => {
             )}
             {renderNavButton('tickets', 'Active Tickets', Inbox, 'text-sky-400', isDrawer, activeTicketsCount)}
             {renderNavButton('workbench', 'My Active Workbench', Wrench, 'text-orange-400', isDrawer)}
-            {renderNavButton('terminals', 'Terminal Hubs', Building2, 'text-teal-400', isDrawer)}
+            {renderNavButton('terminals', 'Locations', Building2, 'text-teal-400', isDrawer)}
           </div>
 
           <div className="space-y-1.5">
@@ -212,7 +215,7 @@ export const Sidebar: React.FC = () => {
                 GOVERNANCE &amp; AUDIT
               </div>
             )}
-            {renderNavButton('terminals', 'Terminal Hubs', Building2, 'text-teal-400', isDrawer)}
+            {renderNavButton('terminals', 'Locations', Building2, 'text-teal-400', isDrawer)}
             {renderNavButton('team', 'IT Team & Accounts', Users, 'text-emerald-400', isDrawer)}
             {renderNavButton('joblogs', 'Job Logs', FileSpreadsheet, 'text-emerald-400', isDrawer)}
           </div>
@@ -249,7 +252,7 @@ export const Sidebar: React.FC = () => {
             )}
             {renderNavButton('tickets', 'Active Tickets', Inbox, 'text-sky-400', isDrawer, activeTicketsCount)}
             {renderNavButton('workbench', 'My Active Workbench', Wrench, 'text-orange-400', isDrawer)}
-            {renderNavButton('terminals', 'Terminal Hubs', Building2, 'text-teal-400', isDrawer)}
+            {renderNavButton('terminals', 'Locations', Building2, 'text-teal-400', isDrawer)}
           </div>
 
           <div className="space-y-1.5">

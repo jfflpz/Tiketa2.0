@@ -165,6 +165,12 @@ export const REPORT_TABS: ReportMeta[] = [
   },
 ];
 
+export const HARDWARE_HOTSPOTS_REPORT_ID = 6;
+
+export const EXPORTABLE_REPORT_TABS: ReportMeta[] = REPORT_TABS.filter(
+  (t) => t.id !== HARDWARE_HOTSPOTS_REPORT_ID
+);
+
 export const REPORT_SLUGS: Record<number, string> = {
   1: 'monthly-sla',
   2: 'staff-productivity',

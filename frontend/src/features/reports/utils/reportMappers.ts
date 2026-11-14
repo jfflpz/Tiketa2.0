@@ -11,8 +11,21 @@ import type {
 
 type RawRow = Record<string, unknown>;
 
+export function parseMonthSortKey(month: string): number {
+  const isoMatch = /^(\d{4})-(\d{1,2})(?:-\d{1,2})?$/.exec(month.trim());
+  if (isoMatch) {
+    return Number(isoMatch[1]) * 12 + (Number(isoMatch[2]) - 1);
+  }
+  const parsed = Date.parse(`${month.trim()} 1`);
+  if (!Number.isNaN(parsed)) {
+    const d = new Date(parsed);
+    return d.getFullYear() * 12 + d.getMonth();
+  }
+  return Number.NEGATIVE_INFINITY;
+}
+
 export function mapMonthlySlaRows(rows: unknown[]): MonthlySlaRow[] {
-  return (rows as RawRow[]).map((r) => ({
+  const mapped = (rows as RawRow[]).map((r) => ({
     month: String(r.month || 'Current Month'),
     totalRequests: Number(r.total_tickets ?? r.totalRequests ?? 0),
     completed: Number(r.completed ?? 0),
@@ -24,6 +37,13 @@ export function mapMonthlySlaRows(rows: unknown[]): MonthlySlaRow[] {
     sameDayResolutionRate: r.same_day_resolution_pct != null ? Number(r.same_day_resolution_pct) : (r.sameDayResolutionRate != null ? Number(r.sameDayResolutionRate) : null),
     slaComplianceRate: r.sla_compliance_pct != null ? Number(r.sla_compliance_pct) : null,
   }));
+
+  return mapped.sort((a, b) => {
+    const ka = parseMonthSortKey(a.month);
+    const kb = parseMonthSortKey(b.month);
+    if (ka === kb) return 0;
+    return kb - ka;
+  });
 }
 
 export function mapStaffUtilizationRows(rows: unknown[]): StaffUtilizationRow[] {

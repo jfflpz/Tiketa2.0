@@ -76,27 +76,59 @@ export const ITStaffTable: React.FC<ITStaffTableProps> = ({
                     </div>
                   </div>
 
-                  <span
-                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
-                      isDeactivated
-                        ? 'bg-zinc-100 text-zinc-500 border border-zinc-200'
-                        : member.status === 'on_leave'
-                        ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                        : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                    }`}
-                  >
+                  <div className="flex flex-col items-end gap-1 shrink-0">
                     <span
-                      className={`w-1.5 h-1.5 rounded-full ${
-                        isDeactivated
-                          ? 'bg-zinc-400'
-                          : member.status === 'on_leave'
-                          ? 'bg-amber-500'
-                          : 'bg-emerald-500 animate-pulse'
+                      data-testid={`availability-badge-${member.id}`}
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        isDeactivated || member.availabilityStatus === 'unavailable'
+                          ? 'bg-zinc-100 text-zinc-500 border border-zinc-200'
+                          : member.availabilityStatus === 'on_leave' || member.status === 'on_leave'
+                          ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                          : member.availabilityStatus === 'busy'
+                          ? 'bg-orange-50 text-orange-700 border border-orange-200'
+                          : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                       }`}
-                    />
-                    {isDeactivated ? 'Deactivated' : member.status === 'on_leave' ? 'On-leave' : 'Active'}
-                  </span>
+                    >
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${
+                          isDeactivated || member.availabilityStatus === 'unavailable'
+                            ? 'bg-zinc-400'
+                            : member.availabilityStatus === 'on_leave' || member.status === 'on_leave'
+                            ? 'bg-amber-500'
+                            : member.availabilityStatus === 'busy'
+                            ? 'bg-orange-500'
+                            : 'bg-emerald-500'
+                        }`}
+                      />
+                      {isDeactivated
+                        ? 'Unavailable'
+                        : member.availabilityStatus === 'on_leave' || member.status === 'on_leave'
+                        ? 'On Leave'
+                        : member.availabilityStatus === 'busy'
+                        ? 'Busy'
+                        : member.availabilityStatus === 'unavailable'
+                        ? 'Unavailable'
+                        : 'Available'}
+                    </span>
+                    {typeof member.isOnline === 'boolean' && (
+                      <span
+                        data-testid={`online-presence-${member.id}`}
+                        className={`text-[9px] font-semibold px-1.5 py-0.5 rounded border ${
+                          member.isOnline
+                            ? 'bg-sky-50 text-sky-700 border-sky-200'
+                            : 'bg-zinc-50 text-zinc-500 border-zinc-200'
+                        }`}
+                      >
+                        {member.isOnline ? 'Online' : 'Offline'}
+                      </span>
+                    )}
+                  </div>
                 </div>
+                {member.availabilityNote && (
+                  <p className="text-[11px] text-amber-800 bg-amber-50/70 border border-amber-200/70 rounded-lg px-2.5 py-1">
+                    {member.availabilityNote}
+                  </p>
+                )}
 
                 <div className="bg-[#F8F9FA] rounded-xl p-2.5 text-xs space-y-1.5 border border-[#ECEEF2]">
                   <div className="flex items-center justify-between text-[11px]">

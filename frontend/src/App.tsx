@@ -20,23 +20,9 @@ import { ToastContainer } from './components/common/ToastContainer';
 import { useAppStore } from './store/useAppStore';
 import type { StaffRole, ActiveView } from './store/slices/uiSlice';
 import { resolvePathToView, viewToCanonicalPath, getDefaultHomeForRole } from './utils/routeUtils';
+import { ROLE_ALLOWED_VIEWS, getAllowedViewsForUser } from './utils/permissions';
 
-export const ROLE_ALLOWED_VIEWS: Record<StaffRole, ActiveView[]> = {
-  intern: ['overview', 'workbench', 'notes', 'joblogs'],
-  it: ['overview', 'tickets', 'workbench', 'notes', 'joblogs', 'terminals'],
-  supervisor: ['analytics', 'reports', 'team', 'joblogs', 'terminals'],
-  admin: [
-    'overview',
-    'tickets',
-    'workbench',
-    'notes',
-    'joblogs',
-    'terminals',
-    'analytics',
-    'reports',
-    'team',
-  ],
-};
+export { ROLE_ALLOWED_VIEWS };
 
 // getDefaultHomeForRole imported from routeUtils
 
@@ -174,10 +160,10 @@ export default function App() {
   }
 
   const userRole: StaffRole = currentUser.role ?? 'it';
-  const allowedViews = ROLE_ALLOWED_VIEWS[userRole] ?? ['overview'];
+  const allowedViews = getAllowedViewsForUser(currentUser);
   const resolvedView: ActiveView = allowedViews.includes(activeView)
     ? activeView
-    : getDefaultHomeForRole(userRole);
+    : (allowedViews[0] ?? getDefaultHomeForRole(userRole));
 
   return (
     <div className="flex h-screen w-full max-w-full overflow-hidden bg-[#F4F6F9] text-ink font-sans">

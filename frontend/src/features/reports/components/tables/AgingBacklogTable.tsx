@@ -16,7 +16,7 @@ export const AgingBacklogTable: React.FC<AgingBacklogTableProps> = ({ data }) =>
             <th className="py-2.5 px-3 text-left">Department</th>
             <th className="py-2.5 px-3 text-left">Requestor</th>
             <th className="py-2.5 px-3 text-left">Task Description</th>
-            <th className="py-2.5 px-3 text-left">Terminal Location</th>
+            <th className="py-2.5 px-3 text-left">Location</th>
             <th className="py-2.5 px-3 text-left">Assigned Tech</th>
             <th className="py-2.5 px-3 text-center">Status</th>
           </tr>

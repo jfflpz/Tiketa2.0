@@ -11,6 +11,8 @@ import {
   UserX,
 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
+import { authApi } from '../../api/client';
+import { normalizeApiError } from '../../utils/errorUtils';
 import type { StaffRole } from '../../store/slices/uiSlice';
 
 interface RememberedProfile {
@@ -31,7 +33,24 @@ export const StaffLoginModal: React.FC = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
+  const [recoveryStep, setRecoveryStep] = useState<'none' | 'request' | 'confirm'>('none');
+  const [recoveryIdentifier, setRecoveryIdentifier] = useState('');
+  const [recoveryToken, setRecoveryToken] = useState('');
+  const [recoveryPassword, setRecoveryPassword] = useState('');
+  const [recoveryConfirm, setRecoveryConfirm] = useState('');
+  const [recoveryBusy, setRecoveryBusy] = useState(false);
+  const [recoveryMessage, setRecoveryMessage] = useState<string | null>(null);
+  const [recoveryError, setRecoveryError] = useState<string | null>(null);
+
   useEffect(() => {
+    setRecoveryStep('none');
+    setRecoveryIdentifier('');
+    setRecoveryToken('');
+    setRecoveryPassword('');
+    setRecoveryConfirm('');
+    setRecoveryMessage(null);
+    setRecoveryError(null);
+
     if (loginModalRole) {
       try {
         const stored = localStorage.getItem('tiketa_remembered_profile');
@@ -273,7 +292,135 @@ export const StaffLoginModal: React.FC = () => {
               </>
             )}
           </button>
+
+          <div className="text-center pt-1">
+            <button
+              type="button"
+              onClick={() => {
+                setRecoveryStep(recoveryStep === 'none' ? 'request' : 'none');
+                setRecoveryError(null);
+                setRecoveryMessage(null);
+              }}
+              className="text-[11px] font-semibold text-orange-600 hover:text-orange-700"
+            >
+              {recoveryStep === 'none' ? 'Forgot password? Recover via verified email' : 'Back to Sign In'}
+            </button>
+          </div>
         </form>
+
+        {recoveryStep !== 'none' && (
+          <div className="px-6 pb-6 pt-0 space-y-3 border-t border-line/60 mt-1">
+            <div className="pt-4 text-xs font-bold text-ink">Owner Password Recovery</div>
+            {recoveryError && (
+              <div role="alert" className="p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700">
+                {recoveryError}
+              </div>
+            )}
+            {recoveryMessage && (
+              <div role="status" className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-700">
+                {recoveryMessage}
+              </div>
+            )}
+
+            {recoveryStep === 'request' ? (
+              <div className="space-y-2.5">
+                <input
+                  type="text"
+                  value={recoveryIdentifier}
+                  onChange={(e) => setRecoveryIdentifier(e.target.value)}
+                  placeholder="Enter your staff username or registered email"
+                  disabled={recoveryBusy}
+                  className="w-full px-3.5 py-2.5 bg-canvas border border-line rounded-xl text-xs"
+                />
+                <button
+                  type="button"
+                  disabled={recoveryBusy || !recoveryIdentifier.trim()}
+                  onClick={async () => {
+                    setRecoveryBusy(true);
+                    setRecoveryError(null);
+                    try {
+                      await authApi.requestPasswordRecovery({ identifier: recoveryIdentifier.trim() });
+                      setRecoveryMessage('If an eligible account matches, a recovery code has been sent to your registered email.');
+                      setRecoveryStep('confirm');
+                    } catch (err) {
+                      setRecoveryError(normalizeApiError(err, 'Unable to initiate password recovery.'));
+                    } finally {
+                      setRecoveryBusy(false);
+                    }
+                  }}
+                  className="w-full py-2.5 px-4 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-xs font-semibold disabled:opacity-50"
+                >
+                  {recoveryBusy ? 'Sending Recovery Code...' : 'Send Recovery Code'}
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                <input
+                  type="text"
+                  value={recoveryToken}
+                  onChange={(e) => setRecoveryToken(e.target.value)}
+                  placeholder="Enter recovery token / code"
+                  disabled={recoveryBusy}
+                  className="w-full px-3.5 py-2.5 bg-canvas border border-line rounded-xl text-xs font-mono"
+                />
+                <input
+                  type="password"
+                  value={recoveryPassword}
+                  onChange={(e) => setRecoveryPassword(e.target.value)}
+                  placeholder="New password (min. 12 characters)"
+                  disabled={recoveryBusy}
+                  className="w-full px-3.5 py-2.5 bg-canvas border border-line rounded-xl text-xs"
+                />
+                <input
+                  type="password"
+                  value={recoveryConfirm}
+                  onChange={(e) => setRecoveryConfirm(e.target.value)}
+                  placeholder="Confirm new password"
+                  disabled={recoveryBusy}
+                  className="w-full px-3.5 py-2.5 bg-canvas border border-line rounded-xl text-xs"
+                />
+                <button
+                  type="button"
+                  disabled={recoveryBusy}
+                  onClick={async () => {
+                    setRecoveryError(null);
+                    if (!recoveryToken.trim()) {
+                      setRecoveryError('Recovery token is required.');
+                      return;
+                    }
+                    if (recoveryPassword.length < 12) {
+                      setRecoveryError('New password must be at least 12 characters.');
+                      return;
+                    }
+                    if (recoveryPassword !== recoveryConfirm) {
+                      setRecoveryError('New password and confirmation do not match.');
+                      return;
+                    }
+                    setRecoveryBusy(true);
+                    try {
+                      await authApi.confirmPasswordRecovery({
+                        token: recoveryToken.trim(),
+                        new_password: recoveryPassword,
+                      });
+                      setRecoveryMessage('Password updated. You can now sign in with your new password.');
+                      setRecoveryStep('none');
+                      setRecoveryToken('');
+                      setRecoveryPassword('');
+                      setRecoveryConfirm('');
+                    } catch (err) {
+                      setRecoveryError(normalizeApiError(err, 'Recovery token is invalid, expired, or already used.'));
+                    } finally {
+                      setRecoveryBusy(false);
+                    }
+                  }}
+                  className="w-full py-2.5 px-4 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-semibold disabled:opacity-50"
+                >
+                  {recoveryBusy ? 'Resetting Password...' : 'Confirm Password Recovery'}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
